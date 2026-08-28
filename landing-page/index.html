@@ -37,39 +37,25 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 60px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 20px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       font-family: var(--font-heading);
       font-size: 22px;
       color: var(--brass);
       letter-spacing: 2px;
     }
 
-    .black-ore-logo-small {
+    .brand-logo {
       width: 32px;
       height: 32px;
     }
 
-    .ore-poly {
-      fill: #0d0d0d;
-      stroke: var(--brass);
-      stroke-width: 2;
-    }
-
-    .keyhole-path {
-      fill: #000000;
-      stroke: var(--brass);
-      stroke-width: 1;
-    }
-
     .hero {
-      max-width: 900px;
+      max-width: 850px;
       text-align: center;
       margin-bottom: 80px;
       display: flex;
@@ -77,74 +63,75 @@
       align-items: center;
     }
 
-    .hero-logo-container {
-      margin-bottom: 30px;
+    .black-ore-container {
+      margin-bottom: 28px;
     }
 
-    .ore-poly-hero {
+    .ore-polygon {
       fill: #0d0d0d;
       stroke: var(--brass);
       stroke-width: 1.5;
-      filter: drop-shadow(0 0 16px var(--brass-glow));
+      filter: drop-shadow(0 0 15px var(--brass-glow));
+    }
+
+    .keyhole {
+      fill: #c9a24a;
     }
 
     .hero h1 {
       font-family: var(--font-heading);
-      font-size: 54px;
+      font-size: 52px;
       font-weight: 300;
       margin-bottom: 20px;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
+      line-height: 1.15;
     }
 
     .hero p {
-      font-size: 20px;
+      font-size: 19px;
       color: var(--muted);
       line-height: 1.6;
-      max-width: 750px;
       margin-bottom: 40px;
+      max-width: 720px;
     }
 
     .download-group {
       display: flex;
-      gap: 20px;
+      gap: 16px;
       justify-content: center;
       flex-wrap: wrap;
     }
 
     .cta-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
+      display: inline-block;
       background: var(--brass);
       color: #000;
-      font-weight: 700;
-      padding: 18px 36px;
+      font-weight: 600;
+      padding: 16px 30px;
       border-radius: 6px;
       text-decoration: none;
-      font-size: 16px;
-      transition: all 0.25s ease;
+      font-size: 15px;
+      transition: all 0.2s;
       cursor: pointer;
     }
 
     .cta-btn:hover {
       background: #dbae52;
-      box-shadow: 0 0 25px rgba(201, 162, 74, 0.5);
+      box-shadow: 0 0 25px rgba(201, 162, 74, 0.4);
       transform: translateY(-2px);
     }
 
     .cta-btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
+      display: inline-block;
       background: transparent;
       color: var(--brass);
       border: 1px solid var(--brass);
       font-weight: 600;
-      padding: 18px 36px;
+      padding: 16px 30px;
       border-radius: 6px;
       text-decoration: none;
-      font-size: 16px;
-      transition: all 0.25s ease;
+      font-size: 15px;
+      transition: all 0.2s;
       cursor: pointer;
     }
 
@@ -153,7 +140,7 @@
       transform: translateY(-2px);
     }
 
-    .section {
+    .section-container {
       width: 100%;
       max-width: 1000px;
       margin-bottom: 80px;
@@ -163,114 +150,105 @@
       font-family: var(--font-heading);
       font-size: 32px;
       color: var(--brass);
-      margin-bottom: 32px;
       text-align: center;
+      margin-bottom: 20px;
+      font-weight: 300;
     }
 
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
-    }
-
-    .feature-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 32px;
-      transition: border-color 0.3s;
-    }
-
-    .feature-card:hover {
-      border-color: var(--brass);
-    }
-
-    .feature-title {
-      color: var(--brass);
-      font-size: 20px;
-      margin-bottom: 12px;
-      font-family: var(--font-heading);
-    }
-
-    .feature-desc {
+    .section-subtitle {
+      text-align: center;
       color: var(--muted);
       font-size: 15px;
+      margin-bottom: 40px;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
       line-height: 1.6;
     }
 
-    /* Vault Types Section */
-    .vault-types-grid {
+    .content-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 36px;
+      margin-bottom: 24px;
+    }
+
+    .content-box h3 {
+      font-family: var(--font-heading);
+      color: var(--text);
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .content-box p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    .tech-list {
+      list-style: none;
+      margin-top: 12px;
+    }
+
+    .tech-list li {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .tech-list li::before {
+      content: "—";
+      color: var(--brass);
+      position: absolute;
+      left: 0;
+    }
+
+    .step-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 20px;
     }
 
-    .vault-box {
+    .step-card {
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 24px;
     }
 
-    .vault-box-title {
+    .step-num {
       font-family: var(--font-mono);
-      font-size: 14px;
+      font-size: 12px;
       color: var(--brass);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
-    .vault-box-list {
-      list-style: none;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.8;
-    }
-
-    .vault-box-list li::before {
-      content: "• ";
-      color: var(--brass);
-    }
-
-    /* FAQ Section */
-    .faq-list {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .faq-item {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px 24px;
-    }
-
-    .faq-q {
-      font-size: 16px;
-      font-weight: 600;
+    .step-title {
+      font-family: var(--font-heading);
+      font-size: 18px;
       color: var(--text);
       margin-bottom: 8px;
     }
 
-    .faq-a {
-      font-size: 14px;
+    .step-desc {
       color: var(--muted);
-      line-height: 1.6;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     footer {
-      width: 100%;
-      max-width: 1000px;
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       font-family: var(--font-mono);
+      text-align: center;
+      margin-top: 40px;
     }
   </style>
 </head>
@@ -278,115 +256,114 @@
 
   <header>
     <div class="brand">
-      <svg class="black-ore-logo-small" viewBox="0 0 100 100">
-        <polygon class="ore-poly" points="50,5 90,25 95,70 50,95 10,70 5,25" />
-        <path class="keyhole-path" d="M50,38 A8,8 0 1,0 50,54 L52,68 L48,68 Z" />
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
       </svg>
       VANTALOCK
     </div>
-    <span style="font-family: var(--font-mono); font-size: 12px; color: var(--brass);">OFFLINE VAULT v1.0</span>
   </header>
 
   <main class="hero">
-    <div class="hero-logo-container">
+    <div class="black-ore-container">
       <svg viewBox="0 0 100 100" width="120" height="120">
-        <polygon class="ore-poly-hero" points="50,5 90,25 95,70 50,95 10,70 5,25" />
-        <path class="keyhole-path" d="M50,38 A8,8 0 1,0 50,54 L52,68 L48,68 Z" />
+        <polygon class="ore-polygon" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
       </svg>
     </div>
 
-    <h1>Absolute Privacy. Zero Cloud.</h1>
-    <p>VantaLock is a standalone desktop vault engineered for total digital sovereignty. Military-grade AES-256-GCM encryption derived via Argon2id keeps your bank credentials, crypto seeds, identity cards, and private notes locked on your device forever.</p>
+    <h1>The Zero-Cloud Encrypted Vault</h1>
+    <p>Military-grade AES-256-GCM encryption derived via Argon2id. Passwords, bank details, contracts, and confidential documents stay strictly on your local hardware.</p>
 
     <div class="download-group">
-      <a href="downloads/VantaLock-Setup.exe" download="VantaLock-Setup.exe" class="cta-btn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download Windows Installer (.exe)
-      </a>
-      <a href="downloads/VantaLock-Linux-x64.tar.gz" download="VantaLock-Linux-x64.tar.gz" class="cta-btn-secondary">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download Linux Package (.tar.gz)
-      </a>
+      <a href="downloads/VantaLock-Setup.exe" download="VantaLock-Setup.exe" class="cta-btn">Download for Windows (.exe)</a>
+      <a href="downloads/VantaLock-Mac.dmg" download="VantaLock-Mac.dmg" class="cta-btn">Download for macOS (.dmg)</a>
+      <a href="downloads/VantaLock-Linux-x64.tar.gz" download="VantaLock-Linux-x64.tar.gz" class="cta-btn-secondary">Linux Package (.tar.gz)</a>
     </div>
   </main>
 
-  <!-- Cryptographic Features -->
-  <section class="section">
-    <h2 class="section-title">Zero-Trust Cryptographic Core</h2>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-title">AES-256-GCM + Argon2id</div>
-        <div class="feature-desc">Your vault key is derived in RAM using Argon2id with 64MB memory cost. Secrets exist exclusively in memory while unlocked and never touch persistent storage.</div>
+  <!-- Section 1: How Encryption Works -->
+  <section class="section-container">
+    <h2 class="section-title">Cryptographic Architecture</h2>
+    <p class="section-subtitle">VantaLock utilizes mathematical defense-in-depth to eliminate single points of failure and guarantee privacy.</p>
+
+    <div class="content-box">
+      <h3>What is AES-256-GCM and How It Works</h3>
+      <p>AES-256-GCM (Advanced Encryption Standard with 256-bit key in Galois/Counter Mode) is the gold standard for authenticated symmetric encryption used by governments and high-security institutions worldwide.</p>
+      <ul class="tech-list">
+        <li><strong>256-bit Key Length:</strong> Provides $2^{256}$ possible key combinations, making brute-force attacks physically impossible with current and foreseeable computing power.</li>
+        <li><strong>Authenticated Encryption (GCM):</strong> Unlike standard AES modes, Galois/Counter Mode calculates a 128-bit authentication tag alongside the ciphertext. Any tampering, bit-flipping, or data corruption is detected immediately before decryption is attempted.</li>
+        <li><strong>Unique Initialization Vectors (IVs):</strong> Every single entry and file attachment is encrypted with a fresh, random 96-bit IV, ensuring duplicate plaintexts generate completely different ciphertexts.</li>
+      </ul>
+    </div>
+
+    <div class="content-box">
+      <h3>Key Derivation via Argon2id</h3>
+      <p>Your master password is never stored anywhere on disk or in the cloud. Instead, VantaLock uses <strong>Argon2id</strong> (winner of the Password Hashing Competition) to derive the 256-bit AES key on demand.</p>
+      <ul class="tech-list">
+        <li><strong>Memory-Hard Execution:</strong> Configured with 64 MB of RAM allocation per derivation to defeat GPU and ASIC accelerated cracking attempts.</li>
+        <li><strong>Cryptographic Salt:</strong> Combined with a 128-bit random salt stored locally to completely eliminate pre-computed rainbow table attacks.</li>
+        <li><strong>RAM Isolation:</strong> The derived key lives exclusively in RAM during your session and is instantly purged on lock or sleep.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 2: Onboarding & Zero Cloud Promise -->
+  <section class="section-container">
+    <h2 class="section-title">Onboarding & Zero-Cloud Guarantee</h2>
+    <p class="section-subtitle">Designed for users who demand full data sovereignty without trusting remote cloud infrastructure.</p>
+
+    <div class="step-grid">
+      <div class="step-card">
+        <div class="step-num">Phase 01</div>
+        <div class="step-title">License Activation</div>
+        <div class="step-desc">Enter your Lemon Squeezy license key once. This one-time activation is the only network request VantaLock will ever make.</div>
       </div>
-      <div class="feature-card">
-        <div class="feature-title">24-Word Recovery Phrase</div>
-        <div class="feature-desc">Full BIP-39 mnemonic wallet seed phrase support. If you forget your master password, your 24-word recovery phrase generates the exact same vault encryption key.</div>
+
+      <div class="step-card">
+        <div class="step-num">Phase 02</div>
+        <div class="step-title">Master Key Creation</div>
+        <div class="step-desc">Establish your master password with real-time entropy validation. VantaLock never saves your password or key.</div>
       </div>
-      <div class="feature-card">
-        <div class="feature-title">Complete Network Isolation</div>
-        <div class="feature-desc">Zero telemetry, zero analytics, zero server sync. Aside from a one-time activation check, VantaLock never connects to any network.</div>
+
+      <div class="step-card">
+        <div class="step-num">Phase 03</div>
+        <div class="step-title">24-Word Recovery Seed</div>
+        <div class="step-desc">Generate and confirm a standard BIP-39 recovery phrase. This seed is your sole recovery option if you lose your password.</div>
       </div>
     </div>
   </section>
 
-  <!-- Structured Vaults -->
-  <section class="section">
-    <h2 class="section-title">Three Specialized Vaults</h2>
-    <div class="vault-types-grid">
-      <div class="vault-box">
-        <div class="vault-box-title">Financial Vault</div>
-        <ul class="vault-box-list">
-          <li>Bank Accounts & IBANs</li>
-          <li>Credit / Debit Cards & PINs</li>
-          <li>Crypto Wallet Seed Phrases</li>
-          <li>Loans & Investment Accounts</li>
-        </ul>
+  <!-- Section 3: Installation Process -->
+  <section class="section-container">
+    <h2 class="section-title">Installation Guide</h2>
+    <p class="section-subtitle">Simple, straightforward installation across all major desktop platforms.</p>
+
+    <div class="step-grid">
+      <div class="step-card">
+        <div class="step-num">Windows</div>
+        <div class="step-title">Windows Installer (.exe)</div>
+        <div class="step-desc">Click "Download for Windows", open `VantaLock-Setup.exe`, follow the setup wizard, and launch VantaLock from your desktop or start menu.</div>
       </div>
 
-      <div class="vault-box">
-        <div class="vault-box-title">Legal Vault</div>
-        <ul class="vault-box-list">
-          <li>Passports & National IDs</li>
-          <li>Driver's Licenses</li>
-          <li>Signed Contracts & Deeds</li>
-          <li>Insurance Policies</li>
-        </ul>
+      <div class="step-card">
+        <div class="step-num">macOS</div>
+        <div class="step-title">macOS Disk Image (.dmg)</div>
+        <div class="step-desc">Click "Download for macOS", open `VantaLock-Mac.dmg`, drag the VantaLock icon into your Applications folder, and launch instantly.</div>
       </div>
 
-      <div class="vault-box">
-        <div class="vault-box-title">Personal Vault</div>
-        <ul class="vault-box-list">
-          <li>Site Logins & Passwords</li>
-          <li>Encrypted Private Notes</li>
-          <li>Medical Records & Allergy Info</li>
-          <li>Emergency Contact Protocols</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- Frequently Asked Questions -->
-  <section class="section">
-    <h2 class="section-title">Frequently Asked Questions</h2>
-    <div class="faq-list">
-      <div class="faq-item">
-        <div class="faq-q">Where is my data stored?</div>
-        <div class="faq-a">Your data is stored exclusively in an encrypted file on your local computer (`app.getPath('userData')`). VantaLock does not own servers to store your information.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">What happens if I lose my Master Password?</div>
-        <div class="faq-a">During initial setup, VantaLock generates a 24-word BIP-39 recovery seed phrase. You can restore full access to your vault using this phrase. If you lose both, no one can recover your data.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Can I export and back up my vault?</div>
-        <div class="faq-a">Yes. VantaLock supports fully encrypted 1-click backups that can be exported and imported on any device.</div>
+      <div class="step-card">
+        <div class="step-num">Linux</div>
+        <div class="step-title">Linux Tarball (.tar.gz)</div>
+        <div class="step-desc">Download `VantaLock-Linux-x64.tar.gz`, extract the archive, and run `./vantalock` in your terminal or desktop manager.</div>
       </div>
     </div>
   </section>
 
   <footer>
-    <div>&copy; VantaLock. Sovereign Encrypted Storage.</div>
-    <div>100% Offline • Zero Telemetry</div>
+    &copy; VantaLock. Sovereign Encrypted Storage. Pure Black Edition.
   </footer>
 
 </body>

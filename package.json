@@ -1,23 +1,26 @@
 {
-  "name": "app",
+  "name": "vantalock",
   "version": "1.0.0",
-  "description": "",
+  "description": "VantaLock - Zero-Cloud Encrypted Personal Vault",
   "main": "src/main/main.js",
   "scripts": {
-    "test": "jest"
+    "start": "electron .",
+    "test": "jest",
+    "dist": "electron-builder --linux tar.gz"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bomboclat766/VantaLock.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "vault",
+    "encryption",
+    "security",
+    "offline"
+  ],
+  "author": "VantaLock",
   "license": "ISC",
   "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/bomboclat766/VantaLock/issues"
-  },
-  "homepage": "https://github.com/bomboclat766/VantaLock#readme",
   "dependencies": {
     "argon2": "^0.45.1",
     "axios": "^1.19.0",
@@ -28,5 +31,16 @@
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "jest": "^30.4.2"
+  },
+  "build": {
+    "appId": "com.vantalock.app",
+    "productName": "VantaLock",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ]
   }
 }

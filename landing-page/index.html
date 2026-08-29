@@ -3,31 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VantaLock — Encrypted Personal Vault</title>
+  <title>VantaLock — Absolute Privacy. Zero Cloud.</title>
   <style>
     :root {
-      --bg: #050505;
-      --card-bg: #0d0d0d;
-      --border: #1a1a1a;
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
       --brass: #c9a24a;
-      --brass-dim: rgba(201, 162, 74, 0.15);
-      --text: #e1e1e1;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
       --muted: #888888;
-      --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-      --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-heading: Georgia, serif;
+      --font-mono: monospace;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background-color: var(--bg);
       color: var(--text);
-      font-family: var(--font-heading);
-      line-height: 1.5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -44,14 +40,13 @@
     }
 
     .brand {
-      font-family: var(--font-mono);
-      font-weight: 700;
-      letter-spacing: 2px;
+      font-family: var(--font-heading);
+      font-size: 22px;
       color: var(--brass);
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 18px;
+      gap: 10px;
+      letter-spacing: 1px;
     }
 
     .brand-logo {
@@ -93,6 +88,8 @@
       line-height: 1.6;
       margin-bottom: 40px;
       max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .download-group {
@@ -214,7 +211,6 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-
       position: relative;
     }
 
@@ -231,7 +227,7 @@
       font-family: var(--font-heading);
       font-size: 22px;
       color: var(--text);
-      font-weight: 500;
+      font-weight: 300;
     }
 
     .vault-card-badge {
@@ -240,7 +236,7 @@
       color: var(--brass);
       text-transform: uppercase;
       letter-spacing: 1px;
-      background: var(--brass-dim);
+      background: rgba(201, 162, 74, 0.15);
       padding: 4px 8px;
       border-radius: 4px;
       border: 1px solid rgba(201, 162, 74, 0.3);
@@ -300,6 +296,7 @@
       color: var(--text);
       font-size: 20px;
       margin-bottom: 12px;
+      font-weight: 300;
     }
 
     .content-box p {
@@ -356,6 +353,7 @@
       font-size: 18px;
       color: var(--text);
       margin-bottom: 8px;
+      font-weight: 300;
     }
 
     .step-desc {
@@ -409,7 +407,7 @@
       font-size: 17px;
       color: var(--text);
       margin-bottom: 10px;
-      font-weight: 500;
+      font-weight: 300;
     }
 
     .faq-a {

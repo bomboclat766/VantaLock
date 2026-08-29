@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <title>VantaLock — Absolute Privacy. Zero Cloud.</title>
   <style>
     :root {
@@ -40,42 +41,37 @@
     }
 
     .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
       font-family: var(--font-heading);
       font-size: 22px;
       color: var(--brass);
-      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
     }
 
     .brand-logo {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
     }
 
     .hero {
-      max-width: 850px;
       text-align: center;
+      max-width: 800px;
       margin-bottom: 80px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
 
     .black-ore-container {
-      margin-bottom: 28px;
+      margin: 0 auto 30px auto;
+      width: 120px;
+      height: 120px;
     }
 
     .ore-polygon {
       fill: #0d0d0d;
       stroke: var(--brass);
-      stroke-width: 1.5;
-      filter: drop-shadow(0 0 15px var(--brass-glow));
-    }
-
-    .keyhole {
-      fill: #c9a24a;
+      stroke-width: 4;
+      filter: drop-shadow(0 0 15px rgba(201, 162, 74, 0.2));
     }
 
     .hero h1 {
@@ -93,6 +89,8 @@
       line-height: 1.6;
       margin-bottom: 40px;
       max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .download-group {
@@ -122,7 +120,10 @@
     }
 
     .cta-btn-secondary {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
       background: transparent;
       color: var(--brass);
       border: 1px solid var(--brass);
@@ -166,6 +167,126 @@
       line-height: 1.6;
     }
 
+    /* Vault Cards Grid */
+    .vault-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 850px) {
+      .vault-cards-grid, .step-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .vault-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .vault-card:hover {
+      border-color: var(--brass);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .vault-card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .vault-dial-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #141414;
+      border: 2px solid var(--brass);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .vault-dial-notch {
+      width: 3px;
+      height: 10px;
+      background: var(--brass);
+      border-radius: 2px;
+      position: absolute;
+      top: 6px;
+    }
+
+    .vault-card-title {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--text);
+      font-weight: 300;
+    }
+
+    .vault-card-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--brass);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      background: rgba(201, 162, 74, 0.15);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(201, 162, 74, 0.3);
+      width: fit-content;
+      margin-bottom: 16px;
+    }
+
+    .vault-card-desc {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+
+    .vault-data-types-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--brass);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .vault-data-list {
+      list-style: none;
+    }
+
+    .vault-data-list li {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .vault-data-list li::before {
+      content: "✦";
+      color: var(--brass);
+      position: absolute;
+      left: 0;
+      font-size: 10px;
+      top: 2px;
+    }
+
     .content-box {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -179,6 +300,7 @@
       color: var(--text);
       font-size: 20px;
       margin-bottom: 12px;
+      font-weight: 300;
     }
 
     .content-box p {
@@ -235,12 +357,67 @@
       font-size: 18px;
       color: var(--text);
       margin-bottom: 8px;
+      font-weight: 300;
     }
 
     .step-desc {
       color: var(--muted);
       font-size: 13px;
       line-height: 1.5;
+    }
+
+    /* System Requirements Table */
+    .specs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    .specs-table th, .specs-table td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .specs-table th {
+      font-family: var(--font-mono);
+      color: var(--brass);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .specs-table td {
+      color: var(--muted);
+    }
+
+    .specs-table td strong {
+      color: var(--text);
+    }
+
+    /* FAQ Section */
+    .faq-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .faq-q {
+      font-family: var(--font-heading);
+      font-size: 17px;
+      color: var(--text);
+      margin-bottom: 10px;
+      font-weight: 300;
+    }
+
+    .faq-a {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
     }
 
     footer {
@@ -277,12 +454,88 @@
     <h1>The Zero-Cloud Encrypted Vault</h1>
     <p>Military-grade AES-256-GCM encryption derived via Argon2id. Passwords, bank details, contracts, and confidential documents stay strictly on your local hardware.</p>
 
-    <div class="download-group">
-      <a href="downloads/VantaLock-Setup.exe" download="VantaLock-Setup.exe" class="cta-btn">Download for Windows (.exe)</a>
-      <a href="downloads/VantaLock-Mac.dmg" download="VantaLock-Mac.dmg" class="cta-btn">Download for macOS (.dmg)</a>
-      <a href="downloads/VantaLock-Linux-x64.tar.gz" download="VantaLock-Linux-x64.tar.gz" class="cta-btn-secondary">Linux Package (.tar.gz)</a>
+                        <div class="download-group">
+      <a href="https://github.com/bomboclat766/VantaLock/releases/latest/download/VantaLock-Setup.exe" class="cta-btn-secondary"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.965-9.61L24 0v11.411h-13.035M0 12.548h9.75v9.451L0 20.651m10.965-7.962H24V24l-13.035-1.838"/></svg> Download for Windows</a>
+      <a href="https://github.com/bomboclat766/VantaLock/releases/latest/download/VantaLock-Mac.dmg" class="cta-btn-secondary"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.32c.63-.77 1.06-1.84.94-2.92-.92.04-2.07.62-2.72 1.13-.58.45-1.09 1.55-.95 2.61 1.03.08 2.1-.51 2.73-1.22z"/></svg> Download for macOS</a>
+      <a href="https://github.com/bomboclat766/VantaLock/releases/latest/download/VantaLock-Linux-x64.tar.gz" class="cta-btn-secondary"><svg width="20" height="20" viewBox="0 0 100 100" fill="currentColor">
+  <path d="M50 5 C32 5 26 18 26 36 C26 48 20 60 14 72 C10 80 18 90 28 88 C32 80 30 70 30 70 C34 82 42 85 50 85 C58 85 66 82 70 70 C70 70 68 80 72 88 C82 90 90 80 86 72 C80 60 74 48 74 36 C74 18 68 5 50 5 Z" />
+  <path d="M50 38 C40 38 34 48 34 62 C34 76 40 82 50 82 C60 82 66 76 66 62 C66 48 60 38 50 38 Z" fill="#000000" />
+  <path d="M22 82 C14 82 8 88 12 96 C18 100 32 96 34 88 C30 84 26 82 22 82 Z" />
+  <path d="M78 82 C86 82 92 88 88 96 C82 100 68 96 66 88 C70 84 74 82 78 82 Z" />
+  <path d="M40 28 Q50 22 60 28 Q50 38 40 28 Z" fill="currentColor" stroke="#000000" stroke-width="2" />
+  <ellipse cx="43" cy="20" rx="4" ry="6" fill="#000000" />
+  <ellipse cx="57" cy="20" rx="4" ry="6" fill="#000000" />
+</svg> Download for Linux</a>
     </div>
   </main>
+
+  <!-- Rebuilt Section: Specialized Encrypted Vault Cards -->
+  <section class="section-container">
+    <h2 class="section-title">Encrypted Vault Storage Suites</h2>
+    <p class="section-subtitle">VantaLock provides three dedicated, isolated vault compartments designed to categorize and shield all aspects of your digital life.</p>
+
+    <div class="vault-cards-grid">
+      <!-- Card 1: Financial Vault -->
+      <div class="vault-card">
+        <div class="vault-card-header">
+          <div class="vault-dial-icon">
+            <div class="vault-dial-notch"></div>
+          </div>
+          <div class="vault-card-title">Financial Vault</div>
+        </div>
+        <div class="vault-card-badge">AES-256-GCM Isolated</div>
+        <p class="vault-card-desc">Comprehensive offline protection for high-value monetary credentials, banking assets, payment methods, and cryptocurrency recovery keys.</p>
+
+        <div class="vault-data-types-title">Uploadable & Storable Assets:</div>
+        <ul class="vault-data-list">
+          <li>Bank account numbers, SWIFT/IBAN & routing codes</li>
+          <li>Credit / debit cards with encrypted CVVs & PINs</li>
+          <li>Crypto wallet seed phrases, private keys & hardware backup codes</li>
+          <li>Loan agreements, tax records & statement PDF attachments</li>
+        </ul>
+      </div>
+
+      <!-- Card 2: Legal Vault -->
+      <div class="vault-card">
+        <div class="vault-card-header">
+          <div class="vault-dial-icon">
+            <div class="vault-dial-notch"></div>
+          </div>
+          <div class="vault-card-title">Legal Vault</div>
+        </div>
+        <div class="vault-card-badge">Zero-Knowledge Encrypted</div>
+        <p class="vault-card-desc">Sovereign cryptographic storage for binding agreements, property deeds, personal identification, and privileged legal documentation.</p>
+
+        <div class="vault-data-types-title">Uploadable & Storable Assets:</div>
+        <ul class="vault-data-list">
+          <li>Contracts, Non-Disclosure Agreements (NDAs) & corporate filings</li>
+          <li>Real estate title deeds, leases & property registrations</li>
+          <li>Passports, driver licenses, birth certificates & SSN/Tax IDs</li>
+          <li>Wills, estate planning documents & power of attorney records</li>
+        </ul>
+      </div>
+
+      <!-- Card 3: Personal Vault -->
+      <div class="vault-card">
+        <div class="vault-card-header">
+          <div class="vault-dial-icon">
+            <div class="vault-dial-notch"></div>
+          </div>
+          <div class="vault-card-title">Personal Vault</div>
+        </div>
+        <div class="vault-card-badge">Local Sovereign Storage</div>
+        <p class="vault-card-desc">Your private digital sanctuary for personal accounts, secret keys, confidential notes, identity backups, and sensitive media files.</p>
+
+        <div class="vault-data-types-title">Uploadable & Storable Assets:</div>
+        <ul class="vault-data-list">
+          <li>Account passwords & multi-factor authentication (2FA) recovery seeds</li>
+          <li>Private journal entries, creative IP & personal correspondence</li>
+          <li>Medical records, health insurance details & prescription history</li>
+          <li>Encrypted photo & document file attachments</li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
   <!-- Section 1: How Encryption Works -->
   <section class="section-container">
@@ -293,7 +546,7 @@
       <h3>What is AES-256-GCM and How It Works</h3>
       <p>AES-256-GCM (Advanced Encryption Standard with 256-bit key in Galois/Counter Mode) is the gold standard for authenticated symmetric encryption used by governments and high-security institutions worldwide.</p>
       <ul class="tech-list">
-        <li><strong>256-bit Key Length:</strong> Provides $2^{256}$ possible key combinations, making brute-force attacks physically impossible with current and foreseeable computing power.</li>
+        <li><strong>256-bit Key Length:</strong> Provides 2^256 possible key combinations, making brute-force attacks physically impossible with current and foreseeable computing power.</li>
         <li><strong>Authenticated Encryption (GCM):</strong> Unlike standard AES modes, Galois/Counter Mode calculates a 128-bit authentication tag alongside the ciphertext. Any tampering, bit-flipping, or data corruption is detected immediately before decryption is attempted.</li>
         <li><strong>Unique Initialization Vectors (IVs):</strong> Every single entry and file attachment is encrypted with a fresh, random 96-bit IV, ensuring duplicate plaintexts generate completely different ciphertexts.</li>
       </ul>
@@ -306,6 +559,15 @@
         <li><strong>Memory-Hard Execution:</strong> Configured with 64 MB of RAM allocation per derivation to defeat GPU and ASIC accelerated cracking attempts.</li>
         <li><strong>Cryptographic Salt:</strong> Combined with a 128-bit random salt stored locally to completely eliminate pre-computed rainbow table attacks.</li>
         <li><strong>RAM Isolation:</strong> The derived key lives exclusively in RAM during your session and is instantly purged on lock or sleep.</li>
+      </ul>
+    </div>
+
+    <div class="content-box">
+      <h3>Encrypted Local Backups & RAM Protection</h3>
+      <p>Your data security extends through the full lifecycle of your session, ensuring zero remnants remain when the vault is locked.</p>
+      <ul class="tech-list">
+        <li><strong>Local JSON Export & Import:</strong> Easily backup your entire encrypted vault to an offline USB or external hard drive. Backups remain fully encrypted with your master key.</li>
+        <li><strong>Auto-Lock & Clipboard Scrubbing:</strong> Inactive sessions automatically lock and derived keys are zeroed out in memory. Sensitive items copied to the clipboard are purged automatically after 30 seconds.</li>
       </ul>
     </div>
   </section>
@@ -359,6 +621,90 @@
         <div class="step-title">Linux Tarball (.tar.gz)</div>
         <div class="step-desc">Download `VantaLock-Linux-x64.tar.gz`, extract the archive, and run `./vantalock` in your terminal or desktop manager.</div>
       </div>
+    </div>
+  </section>
+
+  <!-- Section 4: System Requirements & Compatibility -->
+  <section class="section-container">
+    <h2 class="section-title">Platform Specifications</h2>
+    <p class="section-subtitle">Lightweight, standalone desktop software engineered for minimal system footprint.</p>
+
+    <div class="content-box" style="padding: 0; overflow: hidden;">
+      <table class="specs-table">
+        <thead>
+          <tr>
+            <th>Operating System</th>
+            <th>Architecture</th>
+            <th>Min. RAM</th>
+            <th>Disk Space</th>
+            <th>Security Features</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Windows</strong> 10 / 11 (64-bit)</td>
+            <td>x86_64 / x64</td>
+            <td>512 MB</td>
+            <td>150 MB</td>
+            <td>DPAPI Encrypted Keyring, ASLR, DEP & Integrity Enforcement</td>
+          </tr>
+          <tr>
+            <td><strong>macOS</strong> 11.0+ (Big Sur / Monterey / Ventura / Sonoma / Sequoia)</td>
+            <td>Intel & Apple Silicon (Universal Binary)</td>
+            <td>512 MB</td>
+            <td>180 MB</td>
+            <td>Keychain Integration, Hardened Runtime & App Sandbox Isolation</td>
+          </tr>
+          <tr>
+            <td><strong>Linux</strong> Ubuntu, Fedora, Debian, Arch & Tails</td>
+            <td>x86_64 / ARM64</td>
+            <td>512 MB</td>
+            <td>120 MB</td>
+            <td>Secret Service API / KWallet Support, Memorylock (mlock) Memory Hardening</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="content-box" style="margin-top: 24px;">
+      <h3>Hardware & Kernel Memory Isolation</h3>
+      <p>VantaLock's runtime engine enforces low-level operating system protection mechanisms across all desktop platforms to maintain absolute data integrity and prevent unauthorized memory inspection:</p>
+      <ul class="tech-list">
+        <li><strong>RAM Memory Lockdown (mlock / VirtualLock):</strong> Key derivation buffers created via Argon2id are explicitly pinned in physical RAM memory using system calls to prevent sensitive cryptographic material from being written to unencrypted swap space or paging files.</li>
+        <li><strong>Zero-Trace RAM Scrubbing:</strong> Master keys and temporary AES-256-GCM cipher contexts are active strictly during operation and are deterministically overwritten with cryptographically random bytes before memory deallocation.</li>
+        <li><strong>Air-Gapped Operation:</strong> Designed to run seamlessly in completely offline, network-isolated environments (including live USB operating systems like Tails or Qubes OS) with zero external library or runtime network calls.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 5: Frequently Asked Questions -->
+  <section class="section-container">
+    <h2 class="section-title">Frequently Asked Questions</h2>
+    <div class="faq-item">
+      <div class="faq-q">Recovery & Loss: What happens if I lose my seed phrase or master key?</div>
+      <div class="faq-a">Because VantaLock uses zero-cloud local AES-256-GCM encryption, there is no remote server, no backdoors, and no administrative password reset option. Before storing critical items like SSNs or property deeds in the Legal Vault, confirm you have securely saved your 24-word recovery seed offline. Without the seed or password, data recovery is mathematically impossible.</div>
+    </div>
+    <p class="section-subtitle">Clear answers about security, storage, recovery, and platform operations.</p>
+
+
+    <div class="faq-item">
+      <div class="faq-q">Recovery & Loss: What happens if I lose my seed phrase or master key?</div>
+      <div class="faq-a">Because VantaLock uses zero-cloud local AES-256-GCM encryption, there is no remote server, no backdoors, and no administrative password reset option. Before storing critical items like SSNs or property deeds in the Legal Vault, confirm you have securely saved your 24-word recovery seed offline. Without the seed or password, data recovery is mathematically impossible.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Where is my encrypted vault file stored on my disk?</div>
+      <div class="faq-a">VantaLock stores your encrypted vault in your operating system's standard application data directory. On Windows, this is `%APPDATA%\vantalock`; on macOS, `~/Library/Application Support/vantalock`; and on Linux, `~/.config/vantalock`.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What happens if I lose my Master Password?</div>
+      <div class="faq-a">Because VantaLock is zero-knowledge and zero-cloud, there are no "Forgot Password" email reset buttons. You must use the 24-word BIP-39 recovery seed phrase generated during initial setup to restore access.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can VantaLock run completely offline?</div>
+      <div class="faq-a">Yes. Beyond the brief 1-time license activation check upon initial launch, VantaLock requires zero internet connectivity and can operate indefinitely in air-gapped environments.</div>
     </div>
   </section>
 

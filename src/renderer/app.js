@@ -78,20 +78,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Splash animation timer
-  setTimeout(() => {
-    splashOverlay.style.opacity = '0';
-    setTimeout(() => {
-      splashOverlay.style.display = 'none';
-      if (!localStorage.getItem('vantalock_activated')) {
-        activationModal.style.display = 'flex';
-      } else if (!localStorage.getItem('vantalock_onboarded')) {
-        onboardingContainer.style.display = 'flex';
-      } else if (!localStorage.getItem('vantalock_vault_salt')) {
-        masterPasswordModal.style.display = 'flex';
-      }
-    }, 800);
-  }, 2200);
+  // Splash animation timer with click-to-dismiss fallback
+  function dismissSplash() {
+    if (splashOverlay && splashOverlay.style.display !== 'none') {
+      splashOverlay.style.opacity = '0';
+      setTimeout(() => {
+        splashOverlay.style.display = 'none';
+        if (!localStorage.getItem('vantalock_activated')) {
+          if (activationModal) activationModal.style.display = 'flex';
+        } else if (!localStorage.getItem('vantalock_onboarded')) {
+          if (onboardingContainer) onboardingContainer.style.display = 'flex';
+        } else if (!localStorage.getItem('vantalock_vault_salt')) {
+          if (masterPasswordModal) masterPasswordModal.style.display = 'flex';
+        }
+      }, 400);
+    }
+  }
+
+  setTimeout(dismissSplash, 1000);
+  if (splashOverlay) {
+    splashOverlay.addEventListener('click', dismissSplash);
+  }
 
   // Phase 8: License Activation Handler
   if (activationForm) {

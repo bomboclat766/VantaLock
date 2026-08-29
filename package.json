@@ -41,6 +41,7 @@
     "files": [
       "src/**/*",
       "package.json"
-    ]
+    ],
+    "icon": "landing-page/favicon.svg"
   }
 }

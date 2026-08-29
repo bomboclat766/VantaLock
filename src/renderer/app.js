@@ -78,10 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Splash animation timer with click-to-dismiss fallback
+  // Splash animation timer with click-to-dismiss fallback and safety timeout
+  let splashDismissed = false;
   function dismissSplash() {
-    if (splashOverlay && splashOverlay.style.display !== 'none') {
+    if (splashDismissed) return;
+    splashDismissed = true;
+    if (splashOverlay) {
       splashOverlay.style.opacity = '0';
+      splashOverlay.style.pointerEvents = 'none';
       setTimeout(() => {
         splashOverlay.style.display = 'none';
         if (!localStorage.getItem('vantalock_activated')) {
@@ -95,7 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  setTimeout(dismissSplash, 1000);
+  // Automatic dismiss timer (1.5s) with safety fallback timeout (3s)
+  setTimeout(dismissSplash, 1500);
+  setTimeout(dismissSplash, 3000);
+
   if (splashOverlay) {
     splashOverlay.addEventListener('click', dismissSplash);
   }

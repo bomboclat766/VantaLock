@@ -626,6 +626,7 @@
             <th>Architecture</th>
             <th>Min. RAM</th>
             <th>Disk Space</th>
+            <th>Security Features</th>
           </tr>
         </thead>
         <tbody>
@@ -634,21 +635,34 @@
             <td>x86_64 / x64</td>
             <td>512 MB</td>
             <td>150 MB</td>
+            <td>DPAPI Encrypted Keyring, ASLR, DEP & Integrity Enforcement</td>
           </tr>
           <tr>
-            <td><strong>macOS</strong> 11.0+ (Big Sur / Monterey / Ventura / Sonoma)</td>
-            <td>Intel & Apple Silicon (Universal)</td>
+            <td><strong>macOS</strong> 11.0+ (Big Sur / Monterey / Ventura / Sonoma / Sequoia)</td>
+            <td>Intel & Apple Silicon (Universal Binary)</td>
             <td>512 MB</td>
             <td>180 MB</td>
+            <td>Keychain Integration, Hardened Runtime & App Sandbox Isolation</td>
           </tr>
           <tr>
-            <td><strong>Linux</strong> Ubuntu, Fedora, Debian, Arch</td>
-            <td>x86_64</td>
+            <td><strong>Linux</strong> Ubuntu, Fedora, Debian, Arch & Tails</td>
+            <td>x86_64 / ARM64</td>
             <td>512 MB</td>
             <td>120 MB</td>
+            <td>Secret Service API / KWallet Support, Memorylock (mlock) Memory Hardening</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="content-box" style="margin-top: 24px;">
+      <h3>Hardware & Kernel Memory Isolation</h3>
+      <p>VantaLock's runtime engine enforces low-level operating system protection mechanisms across all desktop platforms to maintain absolute data integrity and prevent unauthorized memory inspection:</p>
+      <ul class="tech-list">
+        <li><strong>RAM Memory Lockdown (mlock / VirtualLock):</strong> Key derivation buffers created via Argon2id are explicitly pinned in physical RAM memory using system calls to prevent sensitive cryptographic material from being written to unencrypted swap space or paging files.</li>
+        <li><strong>Zero-Trace RAM Scrubbing:</strong> Master keys and temporary AES-256-GCM cipher contexts are active strictly during operation and are deterministically overwritten with cryptographically random bytes before memory deallocation.</li>
+        <li><strong>Air-Gapped Operation:</strong> Designed to run seamlessly in completely offline, network-isolated environments (including live USB operating systems like Tails or Qubes OS) with zero external library or runtime network calls.</li>
+      </ul>
     </div>
   </section>
 

@@ -118,19 +118,26 @@ document.addEventListener('DOMContentLoaded', () => {
   function dismissSplash() {
     if (splashDismissed) return;
     splashDismissed = true;
+
+    const navigateToNextScreen = () => {
+      if (!localStorage.getItem('vantalock_onboarded')) {
+        showScreen('onboarding');
+      } else if (!localStorage.getItem('vantalock_vault_salt')) {
+        showScreen('master-password');
+      } else {
+        showScreen('dashboard');
+      }
+    };
+
     if (splashOverlay) {
       splashOverlay.style.opacity = '0';
       splashOverlay.style.pointerEvents = 'none';
       setTimeout(() => {
         splashOverlay.style.display = 'none';
-        if (!localStorage.getItem('vantalock_onboarded')) {
-          showScreen('onboarding');
-        } else if (!localStorage.getItem('vantalock_vault_salt')) {
-          showScreen('master-password');
-        } else {
-          showScreen('dashboard');
-        }
-      }, 400);
+        navigateToNextScreen();
+      }, 300);
+    } else {
+      navigateToNextScreen();
     }
   }
 

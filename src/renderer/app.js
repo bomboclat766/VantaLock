@@ -3,16 +3,29 @@ const { generateRecoveryKey } = require('../crypto/recoveryKey');
 const { activateLicenseKey } = require('../crypto/licenseActivation');
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Theme Manager
+  const themeSelect = document.getElementById('theme-select');
+  if (themeSelect) {
+    const savedTheme = localStorage.getItem('vantalock_theme') || 'theme-default';
+    document.body.className = savedTheme;
+    themeSelect.value = savedTheme;
+
+    themeSelect.addEventListener('change', (e) => {
+      const selected = e.target.value;
+      document.body.className = selected;
+      localStorage.setItem('vantalock_theme', selected);
+    });
+  }
+
+  // Views & Modals Elements
   const splashOverlay = document.getElementById('splash-overlay');
-  const activationModal = document.getElementById('activation-modal');
+  const setupViewContainer = document.getElementById('setup-view-container');
+  const dashboardViewContainer = document.getElementById('dashboard-view-container');
+
   const onboardingContainer = document.getElementById('onboarding-container');
   const masterPasswordModal = document.getElementById('master-password-modal');
   const recoveryKeyModal = document.getElementById('recovery-key-modal');
   const addEntryModal = document.getElementById('add-entry-modal');
-
-  const licenseInput = document.getElementById('license-input');
-  const activationErrorText = document.getElementById('activation-error-text');
-  const activationForm = document.getElementById('activation-form');
 
   const getStartedBtn = document.getElementById('get-started-btn');
   const mpInput = document.getElementById('mp-input');
@@ -51,34 +64,56 @@ document.addEventListener('DOMContentLoaded', () => {
       title: 'Financial Vault',
       desc: 'Manage bank accounts, payment cards, crypto wallets, and loans.',
       types: [
-        { id: 'bank_account', label: 'Bank Account', fields: ['Bank Name', 'Account Number', 'Account Type', 'Branch'] },
-        { id: 'card', label: 'Card', fields: ['Card Nickname', 'Card Number', 'Expiry', 'CVV', 'PIN'] },
-        { id: 'crypto_wallet', label: 'Crypto Wallet', fields: ['Wallet Name', 'Seed Phrase', 'Wallet Address'] },
-        { id: 'loan', label: 'Loan / Investment', fields: ['Institution', 'Account/Reference Number'] }
+        { id: 'bank', label: 'Bank Account', fields: ['Bank Name', 'Account Number', 'Routing Number'] },
+        { id: 'card', label: 'Payment Card', fields: ['Card Name', 'Card Number', 'Expiry Date', 'CVV'] },
+        { id: 'crypto', label: 'Crypto Wallet', fields: ['Wallet Name', 'Public Address', 'Private Key / Seed'] }
       ]
     },
     legal: {
       title: 'Legal Vault',
-      desc: 'Secure identity documents, signed contracts, and insurance policies.',
+      desc: 'Store passport details, identification numbers, and legal contracts.',
       types: [
-        { id: 'id_document', label: 'ID Document', fields: ['Document Type (Passport/ID/License)', 'Number', 'Issue Date', 'Expiry Date'] },
-        { id: 'contract', label: 'Contract / Agreement', fields: ['Title', 'Parties Involved', 'Date Signed'] },
-        { id: 'insurance', label: 'Insurance Policy', fields: ['Provider', 'Policy Number', 'Coverage Type', 'Expiry Date'] }
+        { id: 'passport', label: 'Passport', fields: ['Country', 'Passport Number', 'Expiration Date'] },
+        { id: 'ssn', label: 'Identity / SSN', fields: ['Full Name', 'SSN / ID Number'] },
+        { id: 'contract', label: 'Legal Contract', fields: ['Document Title', 'Parties Involved', 'Key Terms'] }
       ]
     },
     personal: {
       title: 'Personal Vault',
-      desc: 'Store logins, passwords, private notes, medical data, and emergency instructions.',
+      desc: 'Keep private logins, personal notes, medical info, and emergency instructions.',
       types: [
         { id: 'login', label: 'Login / Password', fields: ['Site/App Name', 'Username', 'Password'] },
         { id: 'note', label: 'Note', fields: ['Title', 'Freeform Text'] },
-        { id: 'medical', label: 'Medical Info', fields: ['Type (Allergy/Condition/Prescription)', 'Details'] },
+        { id: 'medical', label: 'Medical Info', fields: ['Type (Allergy/Condition)', 'Details'] },
         { id: 'emergency', label: 'Emergency Instruction', fields: ['Title', 'Instructions', 'Who to Notify'] }
       ]
     }
   };
 
-  // Splash animation timer with click-to-dismiss fallback and safety timeout
+  // Helper function to switch views cleanly
+  function showScreen(screen) {
+    if (screen === 'dashboard') {
+      if (setupViewContainer) setupViewContainer.classList.add('hidden');
+      if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
+    } else {
+      if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
+      if (setupViewContainer) setupViewContainer.classList.remove('hidden');
+
+      if (onboardingContainer) onboardingContainer.classList.add('hidden');
+      if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
+      if (recoveryKeyModal) recoveryKeyModal.classList.add('hidden');
+
+      if (screen === 'onboarding') {
+        if (onboardingContainer) onboardingContainer.classList.remove('hidden');
+      } else if (screen === 'master-password') {
+        if (masterPasswordModal) masterPasswordModal.classList.remove('hidden');
+      } else if (screen === 'recovery-key') {
+        if (recoveryKeyModal) recoveryKeyModal.classList.remove('hidden');
+      }
+    }
+  }
+
+  // Initial View Determination after splash dismiss
   let splashDismissed = false;
   function dismissSplash() {
     if (splashDismissed) return;
@@ -88,57 +123,33 @@ document.addEventListener('DOMContentLoaded', () => {
       splashOverlay.style.pointerEvents = 'none';
       setTimeout(() => {
         splashOverlay.style.display = 'none';
-        if (false) { // License check bypassed
-          if (activationModal) activationModal.style.display = 'flex';
-        } else if (!localStorage.getItem('vantalock_onboarded')) {
-          if (onboardingContainer) onboardingContainer.style.display = 'flex';
+        if (!localStorage.getItem('vantalock_onboarded')) {
+          showScreen('onboarding');
         } else if (!localStorage.getItem('vantalock_vault_salt')) {
-          if (masterPasswordModal) masterPasswordModal.style.display = 'flex';
+          showScreen('master-password');
+        } else {
+          showScreen('dashboard');
         }
       }, 400);
     }
   }
 
-  // Automatic dismiss timer (1.5s) with safety fallback timeout (3s)
-  setTimeout(dismissSplash, 1500);
-  setTimeout(dismissSplash, 3000);
+  setTimeout(dismissSplash, 1200);
+  setTimeout(dismissSplash, 2500);
 
   if (splashOverlay) {
     splashOverlay.addEventListener('click', dismissSplash);
   }
 
-  // Phase 8: License Activation Handler
-  if (activationForm) {
-    activationForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const key = licenseInput.value.trim();
-      const result = await activateLicenseKey(key);
-
-      if (result.activated) {
-        localStorage.setItem('vantalock_activated', 'true');
-        activationModal.style.display = 'none';
-        if (!localStorage.getItem('vantalock_onboarded')) {
-          onboardingContainer.style.display = 'flex';
-        } else if (!localStorage.getItem('vantalock_vault_salt')) {
-          masterPasswordModal.style.display = 'flex';
-        }
-      } else {
-        activationErrorText.textContent = result.error || 'Activation failed.';
-        activationErrorText.style.display = 'block';
-      }
-    });
-  }
-
+  // Onboarding Screen Get Started Button
   if (getStartedBtn) {
     getStartedBtn.addEventListener('click', () => {
       localStorage.setItem('vantalock_onboarded', 'true');
-      onboardingContainer.style.display = 'none';
-      if (!localStorage.getItem('vantalock_vault_salt')) {
-        masterPasswordModal.style.display = 'flex';
-      }
+      showScreen('master-password');
     });
   }
 
+  // Master Password Form Strength Calculation
   if (mpInput) {
     mpInput.addEventListener('input', () => {
       const val = mpInput.value;
@@ -151,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Master Password Submission
   if (mpForm) {
     mpForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -171,20 +183,20 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('vantalock_vault_salt', salt.toString('hex'));
       localStorage.setItem('vantalock_vault_verifier', verifier);
 
-      masterPasswordModal.style.display = 'none';
       setupRecoveryKeyScreen();
     });
   }
 
+  // 24-Word Recovery Phrase Screen
   function setupRecoveryKeyScreen() {
     const rawPhrase = generateRecoveryKey();
-    activeRecoveryKeyWords = rawPhrase.split(' ');
+    activeRecoveryKeyWords = rawPhrase.trim().split(/\s+/);
 
     recoveryWordsGrid.innerHTML = '';
     activeRecoveryKeyWords.forEach((word, idx) => {
       const chip = document.createElement('div');
       chip.className = 'word-chip';
-      chip.innerHTML = `<span class="word-num">${idx + 1}.</span>${word}`;
+      chip.innerHTML = `<span class="word-num">${idx + 1}.</span> <span>${word}</span>`;
       recoveryWordsGrid.appendChild(chip);
     });
 
@@ -207,9 +219,37 @@ document.addEventListener('DOMContentLoaded', () => {
       rkVerifyInputs.appendChild(inputWrap);
     });
 
-    recoveryKeyModal.style.display = 'flex';
+    showScreen('recovery-key');
   }
 
+  // Recovery Key Copy / Print / Save Actions
+  if (copyRkBtn) {
+    copyRkBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(activeRecoveryKeyWords.join(' '));
+      copyRkBtn.textContent = 'Copied!';
+      setTimeout(() => copyRkBtn.textContent = 'Copy', 2000);
+    });
+  }
+
+  if (printRkBtn) {
+    printRkBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  if (saveRkBtn) {
+    saveRkBtn.addEventListener('click', () => {
+      const blob = new Blob([activeRecoveryKeyWords.join(' ')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'vantalock-recovery-phrase.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // Verify Recovery Key Phrase
   if (verifyRkBtn) {
     verifyRkBtn.addEventListener('click', () => {
       const inputs = document.querySelectorAll('.rk-verify-input');
@@ -229,10 +269,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       rkErrorText.style.display = 'none';
-      recoveryKeyModal.style.display = 'none';
+      showScreen('dashboard');
     });
   }
 
+  // Entry Modals & Dynamic Form Rendering
   if (addEntryBtn) {
     addEntryBtn.addEventListener('click', () => {
       openAddEntryModal();
@@ -241,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (closeEntryModalBtn) {
     closeEntryModalBtn.addEventListener('click', () => {
-      addEntryModal.style.display = 'none';
+      addEntryModal.classList.add('hidden');
     });
   }
 
@@ -266,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDynamicFormFields(availableTypes[0]);
     }
 
-    addEntryModal.style.display = 'flex';
+    addEntryModal.classList.remove('hidden');
   }
 
   function renderDynamicFormFields(typeConfig) {
@@ -308,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       vaultEntries.push(newEntry);
-      addEntryModal.style.display = 'none';
+      addEntryModal.classList.add('hidden');
       entryDynamicForm.reset();
       renderVaultEntries();
     });

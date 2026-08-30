@@ -6,7 +6,7 @@
   <title>VantaLock — Encrypted Personal Vault</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="theme-default">
 
   <!-- Top Window Bar -->
   <div class="titlebar">
@@ -18,9 +18,20 @@
       </svg>
       <span>VANTALOCK</span>
     </div>
-    <div class="status-indicator">
-      <span class="status-dot"></span>
-      <span id="lock-status-text">VAULT SECURED</span>
+    <div class="titlebar-right" style="display: flex; align-items: center; gap: 16px;">
+      <div class="theme-selector-wrap" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Theme</span>
+        <select id="theme-select" class="theme-select-dropdown">
+          <option value="theme-default">Pure Black (Default)</option>
+          <option value="theme-obsidian">Obsidian Gold</option>
+          <option value="theme-emerald">Cyber Emerald</option>
+          <option value="theme-midnight">Midnight Sapphire</option>
+        </select>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span id="lock-status-text">VAULT SECURED</span>
+      </div>
     </div>
   </div>
 
@@ -39,101 +50,86 @@
     <div class="futuristic-sub">Zero-Cloud Encrypted Vault</div>
   </div>
 
-  <!-- First Launch Activation Modal (Phase 8) -->
-  <div id="activation-modal" class="modal-overlay" style="display: none; z-index: 9800;">
-    <div class="setup-card">
-      <h2 class="setup-title">Activate VantaLock License</h2>
-      <p class="setup-desc">Enter your Lemon Squeezy license key received upon purchase to activate your copy of VantaLock. This one-time check is the only network request the app ever makes.</p>
+  <!-- Setup Views Container (Single Page Routing Screen) -->
+  <div id="setup-view-container" class="full-view-screen">
+    <!-- Onboarding View -->
+    <div id="onboarding-container" class="setup-card-wrap">
+      <div class="onboarding-card">
+        <h2 class="onboarding-title">Welcome to VantaLock</h2>
+        <p class="onboarding-desc">Your ultimate personal vault. Built for total privacy, zero telemetry, and complete local sovereignty.</p>
 
-      <form id="activation-form">
-        <div class="form-group">
-          <label class="form-label" for="license-input">Lemon Squeezy License Key</label>
-          <input type="text" id="license-input" class="input-field" placeholder="e.g. 1A2B3C4D-5E6F-7G8H-9I0J" required />
-          <div id="activation-error-text" class="error-text">Invalid or expired license key. Please check and try again.</div>
-        </div>
-
-        <button type="submit" id="activate-btn" class="btn-primary">Activate License</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- First Time User Q&A / Get Started Onboarding -->
-  <div id="onboarding-container">
-    <div class="onboarding-card">
-      <h2 class="onboarding-title">Welcome to VantaLock</h2>
-      <p class="onboarding-desc">Your ultimate personal vault. Built for total privacy, zero telemetry, and complete local sovereignty.</p>
-
-      <div class="qa-list">
-        <div class="qa-item">
-          <div class="qa-q">Where is my vault stored?</div>
-          <div class="qa-a">Exclusively on your local device using military-grade AES-256-GCM encryption derived with Argon2id.</div>
-        </div>
-        <div class="qa-item">
-          <div class="qa-q">Does VantaLock connect to cloud servers?</div>
-          <div class="qa-a">Never. Except for the one-time activation check, VantaLock never transmits data to any network or server.</div>
-        </div>
-        <div class="qa-item">
-          <div class="qa-q">What if I forget my master password?</div>
-          <div class="qa-a">You will generate a 24-word recovery seed phrase during setup. That phrase is your only key if lost.</div>
-        </div>
-      </div>
-
-      <button id="get-started-btn" class="btn-primary">Get Started</button>
-    </div>
-  </div>
-
-  <!-- Master Password Setup Modal (Phase 2) -->
-  <div id="master-password-modal">
-    <div class="setup-card">
-      <h2 class="setup-title">Set Master Password</h2>
-      <p class="setup-desc">Choose a strong master password. This password will derive your vault's AES-256 key via Argon2id and is never saved anywhere.</p>
-
-      <form id="master-password-form">
-        <div class="form-group">
-          <label class="form-label" for="mp-input">Master Password</label>
-          <input type="password" id="mp-input" class="input-field" placeholder="Enter master password..." required />
-          <div class="strength-meter">
-            <div id="strength-bar" class="strength-bar"></div>
+        <div class="qa-list">
+          <div class="qa-item">
+            <div class="qa-q">Where is my vault stored?</div>
+            <div class="qa-a">Exclusively on your local device using military-grade AES-256-GCM encryption derived with Argon2id.</div>
           </div>
-          <div id="strength-text" class="strength-text">Strength: Empty</div>
+          <div class="qa-item">
+            <div class="qa-q">Does VantaLock connect to cloud servers?</div>
+            <div class="qa-a">Never. Except for optional license checks, VantaLock never transmits data to any network or server.</div>
+          </div>
+          <div class="qa-item">
+            <div class="qa-q">What if I forget my master password?</div>
+            <div class="qa-a">You will generate a 24-word recovery seed phrase during setup. That phrase is your only key if lost.</div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="mp-confirm-input">Confirm Master Password</label>
-          <input type="password" id="mp-confirm-input" class="input-field" placeholder="Confirm master password..." required />
-          <div id="mp-error-text" class="error-text">Passwords do not match.</div>
+        <button id="get-started-btn" class="btn-primary">Get Started</button>
+      </div>
+    </div>
+
+    <!-- Master Password Setup View -->
+    <div id="master-password-modal" class="setup-card-wrap hidden">
+      <div class="setup-card">
+        <h2 class="setup-title">Set Master Password</h2>
+        <p class="setup-desc">Choose a strong master password. This password will derive your vault's AES-256 key via Argon2id and is never saved anywhere.</p>
+
+        <form id="master-password-form">
+          <div class="form-group">
+            <label class="form-label" for="mp-input">Master Password</label>
+            <input type="password" id="mp-input" class="input-field" placeholder="Enter master password..." required />
+            <div class="strength-meter">
+              <div id="strength-bar" class="strength-bar"></div>
+            </div>
+            <div id="strength-text" class="strength-text">Strength: Empty</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="mp-confirm-input">Confirm Master Password</label>
+            <input type="password" id="mp-confirm-input" class="input-field" placeholder="Confirm master password..." required />
+            <div id="mp-error-text" class="error-text">Passwords do not match.</div>
+          </div>
+
+          <button type="submit" id="create-mp-btn" class="btn-primary">Create Vault Key</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Recovery Key View -->
+    <div id="recovery-key-modal" class="setup-card-wrap hidden">
+      <div class="setup-card" style="max-width: 720px;">
+        <h2 class="setup-title">24-Word Recovery Phrase</h2>
+        <p class="setup-desc">This is the only way to recover your vault if you forget your master password. VantaLock cannot assist if lost. Write it down, print it, or save it safely.</p>
+
+        <div id="recovery-words-grid" class="recovery-words-grid"></div>
+
+        <div class="action-btn-row" style="display: flex; gap: 12px; margin-top: 20px;">
+          <button id="copy-rk-btn" class="btn-secondary" style="flex:1;">Copy</button>
+          <button id="print-rk-btn" class="btn-secondary" style="flex:1;">Print</button>
+          <button id="save-rk-btn" class="btn-secondary" style="flex:1;">Save as File</button>
         </div>
 
-        <button type="submit" id="create-mp-btn" class="btn-primary">Create Vault Key</button>
-      </form>
+        <div id="rk-confirm-section" style="margin-top: 24px; border-top: 1px solid var(--surface-border); padding-top: 20px;">
+          <p class="setup-desc" style="margin-bottom: 12px; color: var(--brass-accent); font-weight: 600;">Confirm Word Backup</p>
+          <div id="rk-verify-inputs" class="form-group" style="display: flex; gap: 12px;"></div>
+          <div id="rk-error-text" class="error-text" style="margin-bottom: 12px;">Incorrect word verification. Please check your backup.</div>
+          <button id="verify-rk-btn" class="btn-primary">Verify & Proceed</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Recovery Key Modal (Phase 3) -->
-  <div id="recovery-key-modal">
-    <div class="setup-card" style="max-width: 620px;">
-      <h2 class="setup-title">24-Word Recovery Phrase</h2>
-      <p class="setup-desc">This is the only way to recover your vault if you forget your master password. VantaLock cannot assist if lost. Write it down, print it, or save it safely.</p>
-
-      <div id="recovery-words-grid" class="recovery-words-grid"></div>
-
-      <div class="action-btn-row">
-        <button id="copy-rk-btn" class="btn-secondary">Copy</button>
-        <button id="print-rk-btn" class="btn-secondary">Print</button>
-        <button id="save-rk-btn" class="btn-secondary">Save as File</button>
-      </div>
-
-      <div id="rk-confirm-section" style="margin-top: 24px; border-top: 1px solid var(--surface-border); padding-top: 20px;">
-        <p class="setup-desc" style="margin-bottom: 12px; color: var(--brass-accent); font-weight: 600;">Confirm Word Backup</p>
-        <div id="rk-verify-inputs" class="form-group" style="display: flex; gap: 12px;"></div>
-        <div id="rk-error-text" class="error-text" style="margin-bottom: 12px;">Incorrect word verification. Please check your backup.</div>
-        <button id="verify-rk-btn" class="btn-primary">Verify & Proceed</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add Entry Modal (Phase 4) -->
-  <div id="add-entry-modal" class="modal-overlay">
+  <!-- Add Entry Modal -->
+  <div id="add-entry-modal" class="modal-overlay hidden">
     <div class="setup-card" style="max-width: 650px; max-height: 85vh; overflow-y: auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h2 class="setup-title" style="margin: 0;">Add Vault Entry</h2>
@@ -158,20 +154,15 @@
           <textarea id="entry-notes-input" class="input-field" rows="3" placeholder="Optional private notes..."></textarea>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Encrypted Attachments</label>
-          <input type="file" id="entry-attachment-input" class="input-field" multiple />
-        </div>
-
         <button type="submit" class="btn-primary" style="margin-top: 16px;">Save Encrypted Entry</button>
       </form>
     </div>
   </div>
 
-  <!-- App Main Layout Shell -->
-  <div class="app-container">
+  <!-- App Main Layout Shell (Dashboard View) -->
+  <div id="dashboard-view-container" class="app-container hidden">
     <nav class="vault-nav">
-      <div class="nav-section-title">Vaults</div>
+      <div class="nav-section-title">Vault Compartments</div>
 
       <button class="vault-tab-btn active" data-vault="financial">
         <div class="dial-container">

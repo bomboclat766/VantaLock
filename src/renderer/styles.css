@@ -160,20 +160,24 @@ html, body {
   margin-bottom: 24px;
 }
 
+.black-ore-logo svg {
+  animation: pulseLogoGlow 2.5s infinite ease-in-out;
+}
+
 .ore-polygon {
   fill: #0d0d0d;
   stroke: var(--brass-accent);
-  stroke-width: 1.5;
-  filter: drop-shadow(0 0 12px var(--brass-glow));
-  animation: pulseOre 3s infinite ease-in-out;
+  stroke-width: 2;
 }
 
-@keyframes pulseOre {
+@keyframes pulseLogoGlow {
   0%, 100% {
-    filter: drop-shadow(0 0 10px rgba(201, 162, 74, 0.4)) drop-shadow(0 0 20px rgba(201, 162, 74, 0.2));
+    opacity: 0.85;
+    transform: scale(0.98);
   }
   50% {
-    filter: drop-shadow(0 0 25px rgba(201, 162, 74, 0.8)) drop-shadow(0 0 40px rgba(201, 162, 74, 0.4));
+    opacity: 1;
+    transform: scale(1.03);
   }
 }
 

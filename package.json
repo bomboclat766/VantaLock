@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "jest",
-    "dist": "electron-builder --linux tar.gz"
+    "dist": "electron-builder --linux tar.gz",
+    "build": "electron-builder"
   },
   "repository": {
     "type": "git",

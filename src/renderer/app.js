@@ -416,9 +416,55 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Stats counter helper
+  function updateSidebarStats() {
+    const statVaultSize = document.getElementById('stat-vault-size');
+    const statEntryCount = document.getElementById('stat-entry-count');
+    const totalEntries = vaultEntries.length;
+    if (statEntryCount) {
+      statEntryCount.textContent = `Entries: ${totalEntries} total`;
+    }
+    if (statVaultSize) {
+      const approxBytes = JSON.stringify(vaultEntries).length;
+      const sizeKb = (approxBytes / 1024).toFixed(1);
+      statVaultSize.textContent = `Vault Size: ${sizeKb} KB`;
+    }
+  }
+
+  // Tool metadata definitions
+  const toolMetadata = {
+    security: {
+      title: 'Security Center',
+      desc: 'Change master password, re-confirm recovery seed, and configure auto-lock timeouts.'
+    },
+    seed: {
+      title: 'Recovery Seed',
+      desc: 'Re-display your 24-word recovery phrase. Gated behind master password confirmation.'
+    },
+    export: {
+      title: 'Backup & Export',
+      desc: 'Export your encrypted local JSON vault backup.'
+    },
+    import: {
+      title: 'Import Vault',
+      desc: 'Import and decrypt an existing JSON vault backup.'
+    },
+    activity: {
+      title: 'Activity Log',
+      desc: 'Read-only log of unlocks, entry modifications, and export/import operations.'
+    },
+    about: {
+      title: 'About VantaLock',
+      desc: 'App Version: 1.0.17 | License: Activated | Zero-Cloud Encryption'
+    }
+  };
+
+  const toolTabs = document.querySelectorAll('.tool-tab-btn');
+
   vaultTabs.forEach(tab => {
     tab.addEventListener('click', () => {
       vaultTabs.forEach(t => t.classList.remove('active'));
+      toolTabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
 
       activeVault = tab.getAttribute('data-vault');
@@ -429,4 +475,27 @@ document.addEventListener('DOMContentLoaded', () => {
       renderVaultEntries();
     });
   });
+
+  toolTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      vaultTabs.forEach(t => t.classList.remove('active'));
+      toolTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const toolKey = tab.getAttribute('data-tool');
+      if (toolMetadata[toolKey]) {
+        vaultTitle.textContent = toolMetadata[toolKey].title;
+        vaultDesc.textContent = toolMetadata[toolKey].desc;
+      }
+
+      entryListContainer.innerHTML = `
+        <div class="empty-vault-card">
+          <div class="empty-title">${toolMetadata[toolKey] ? toolMetadata[toolKey].title : 'Tool'} Placeholder</div>
+          <div class="empty-sub">${toolMetadata[toolKey] ? toolMetadata[toolKey].desc : 'Functionality placeholder.'}</div>
+        </div>
+      `;
+    });
+  });
+
+  updateSidebarStats();
 });

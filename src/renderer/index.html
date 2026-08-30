@@ -188,6 +188,67 @@
         </div>
         <span class="tab-label">Personal</span>
       </button>
+
+      <hr class="nav-divider" style="border: none; border-top: 1px solid var(--surface-border); margin: 12px 0;" />
+
+      <div class="nav-section-title">Tools</div>
+
+      <button class="vault-tab-btn tool-tab-btn" data-tool="security">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <span class="tab-label">Security Center</span>
+      </button>
+
+      <button class="vault-tab-btn tool-tab-btn" data-tool="seed">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 2l-2 2m-2-2l2 2m2 0l-2-2m-3 7a5 5 0 1 1-7-7 5 5 0 0 1 7 7zm-5 0l-8 8v3h3l2-2h2v-2l2-2z"/>
+        </svg>
+        <span class="tab-label">Recovery Seed</span>
+      </button>
+
+      <button class="vault-tab-btn tool-tab-btn" data-tool="export">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span class="tab-label">Backup & Export</span>
+      </button>
+
+      <button class="vault-tab-btn tool-tab-btn" data-tool="import">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span class="tab-label">Import</span>
+      </button>
+
+      <button class="vault-tab-btn tool-tab-btn" data-tool="activity">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="tab-label">Activity Log</span>
+      </button>
+
+      <div class="nav-bottom-group" style="margin-top: auto; padding-top: 12px; border-top: 1px solid var(--surface-border);">
+        <button class="vault-tab-btn tool-tab-btn" data-tool="about">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <span class="tab-label">About</span>
+        </button>
+
+        <div class="nav-footer-stats" style="padding: 8px; font-size: 11px; color: var(--text-secondary); margin-top: 8px;">
+          <div id="stat-vault-size">Vault Size: --</div>
+          <div id="stat-entry-count">Entries: 0 total</div>
+        </div>
+      </div>
     </nav>
 
     <main class="main-content">

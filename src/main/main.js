@@ -4,12 +4,16 @@ const path = require('path');
 let mainWindow;
 
 function createWindow() {
+  const { Menu } = require('electron');
+  Menu.setApplicationMenu(null);
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#000000',
+    autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

@@ -141,8 +141,24 @@ body {
   opacity: 0.8;
 }
 
-/* Onboarding Q&A Modal Overlay */
-#onboarding-container, #master-password-modal {
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brass-accent);
+}
+
+/* Modal Overlays & Onboarding Containers */
+#onboarding-container, #master-password-modal, #recovery-key-modal, .modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.92);
@@ -152,17 +168,21 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 40px 20px;
+  overflow-y: auto;
 }
 
 .onboarding-card, .setup-card {
   width: 100%;
-  max-width: 540px;
+  max-width: 640px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
   background: var(--surface-card);
   border: 1px solid var(--surface-border);
   border-radius: 12px;
   padding: 32px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+  margin: auto;
 }
 
 .onboarding-title, .setup-title {

@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       splashOverlay.style.pointerEvents = 'none';
       setTimeout(() => {
         splashOverlay.style.display = 'none';
-        if (!localStorage.getItem('vantalock_activated')) {
+        if (false) { // License check bypassed
           if (activationModal) activationModal.style.display = 'flex';
         } else if (!localStorage.getItem('vantalock_onboarded')) {
           if (onboardingContainer) onboardingContainer.style.display = 'flex';

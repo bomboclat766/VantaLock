@@ -1,4 +1,4 @@
-const { calculatePasswordStrength, encryptData } = require('../crypto/vaultCrypto');
+const { calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier } = require('../crypto/vaultCrypto');
 const { generateRecoveryKey } = require('../crypto/recoveryKey');
 const ClipboardManager = require('../crypto/clipboardManager');
 const clipboardMgr = new ClipboardManager(30000);
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onLockCallback: (reason) => {
       logActivity(`VAULT LOCKED: ${reason}`);
       localStorage.removeItem('vantalock_unlocked_session');
-      showScreen('onboarding');
+      showScreen('unlock-vault');
     }
   });
 
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
   });
 
-  // Panic Lock Elements & Keyboard Shortcut (Phase 1)
+  // Panic Lock Elements & Keyboard Shortcut
   const panicLockBtn = document.getElementById('panic-lock-btn');
   const lockStatusText = document.getElementById('lock-status-text');
 
@@ -75,9 +75,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const onboardingContainer = document.getElementById('onboarding-container');
   const masterPasswordModal = document.getElementById('master-password-modal');
+  const unlockVaultView = document.getElementById('unlock-vault-view');
+  const unlockVaultForm = document.getElementById('unlock-vault-form');
+  const unlockMpInput = document.getElementById('unlock-mp-input');
+  const unlockErrorText = document.getElementById('unlock-error-text');
+
   const recoveryKeyRevealStep = document.getElementById('recovery-key-reveal-step');
   const recoveryKeyVerifyStep = document.getElementById('recovery-key-verify-step');
-  const addEntryModal = document.getElementById('add-entry-modal');
+
+  const viewFileModal = document.getElementById('view-file-modal');
+  const fileModalTitle = document.getElementById('file-modal-title');
+  const fileModalPreviewContainer = document.getElementById('file-modal-preview-container');
+  const fileModalNotes = document.getElementById('file-modal-notes');
+  const fileModalDownloadLink = document.getElementById('file-modal-download-link');
+  const closeViewFileModalBtn = document.getElementById('close-view-file-modal-btn');
 
   const addFileBtn = document.getElementById('add-file-btn');
   const addEntryBtn = document.getElementById('add-entry-btn');
@@ -107,6 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const toolTabs = document.querySelectorAll('.tool-tab-btn');
   const vaultTitle = document.getElementById('current-vault-title');
   const vaultDesc = document.getElementById('current-vault-desc');
+  const addEntryModal = document.getElementById('add-entry-modal');
   const closeEntryModalBtn = document.getElementById('close-entry-modal-btn');
   const typeChipsGrid = document.getElementById('type-chips-grid');
   const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
@@ -117,7 +129,27 @@ document.addEventListener('DOMContentLoaded', () => {
   let verificationIndices = [];
   let activeVault = 'financial';
   let activeEntryType = null;
-  let vaultEntries = [];
+
+  // Persistent Vault Storage
+  function loadSavedVaultEntries() {
+    try {
+      const raw = localStorage.getItem('vantalock_entries_store');
+      return raw ? JSON.parse(raw) : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function saveVaultEntriesToStorage() {
+    try {
+      localStorage.setItem('vantalock_entries_store', JSON.stringify(vaultEntries));
+      updateSidebarStats();
+    } catch (err) {
+      console.error('Storage error:', err);
+    }
+  }
+
+  let vaultEntries = loadSavedVaultEntries();
 
   const vaultMetadata = {
     financial: {
@@ -173,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: 'App Version: 1.0.17 | License: Activated | Zero-Cloud Encryption'
+      desc: 'App Version: 1.0.23 | License: Activated | Zero-Cloud Encryption'
     }
   };
 
@@ -198,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
       if (lockStatusText) lockStatusText.textContent = 'VAULT UNLOCKED';
       lockMgr.recordSuccessfulUnlock();
+      localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
     } else {
       if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
@@ -205,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (onboardingContainer) onboardingContainer.classList.add('hidden');
       if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
+      if (unlockVaultView) unlockVaultView.classList.add('hidden');
       if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
       if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
 
@@ -212,6 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (onboardingContainer) onboardingContainer.classList.remove('hidden');
       } else if (screen === 'master-password') {
         if (masterPasswordModal) masterPasswordModal.classList.remove('hidden');
+      } else if (screen === 'unlock-vault') {
+        if (unlockVaultView) unlockVaultView.classList.remove('hidden');
+        if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
       } else if (screen === 'recovery-key-reveal') {
         if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.remove('hidden');
       } else if (screen === 'recovery-key-verify') {
@@ -231,8 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('onboarding');
       } else if (!localStorage.getItem('vantalock_vault_salt')) {
         showScreen('master-password');
-      } else {
+      } else if (localStorage.getItem('vantalock_unlocked_session') === 'true') {
         showScreen('dashboard');
+      } else {
+        showScreen('unlock-vault');
       }
     };
 
@@ -248,11 +287,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  setTimeout(dismissSplash, 1200);
-  setTimeout(dismissSplash, 2500);
+  setTimeout(dismissSplash, 1000);
+  setTimeout(dismissSplash, 2000);
 
   if (splashOverlay) {
     splashOverlay.addEventListener('click', dismissSplash);
+  }
+
+  // Vault Unlock Form Handler
+  if (unlockVaultForm) {
+    unlockVaultForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pwdVal = unlockMpInput.value;
+      const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+      const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+
+      if (storedSaltHex && storedVerifier) {
+        const salt = Buffer.from(storedSaltHex, 'hex');
+        const currDerivedKey = await deriveKey(pwdVal, salt);
+
+        if (!verifyKey(currDerivedKey, storedVerifier)) {
+          if (unlockErrorText) unlockErrorText.style.display = 'block';
+          logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
+          return;
+        }
+      }
+
+      if (unlockErrorText) unlockErrorText.style.display = 'none';
+      unlockVaultForm.reset();
+      showScreen('dashboard');
+    });
   }
 
   if (getStartedBtn) {
@@ -287,7 +351,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       mpErrorText.style.display = 'none';
 
-      const { generateSalt, deriveKey, createVerifier } = require('../crypto/vaultCrypto');
       const salt = generateSalt();
       const derivedKey = await deriveKey(pwd, salt);
       const verifier = createVerifier(derivedKey);
@@ -300,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Phase 2: 24-Word Recovery Phrase Screen (Step 1: Reveal)
   function setupRecoveryKeyScreen() {
     const rawPhrase = generateRecoveryKey();
     activeRecoveryKeyWords = rawPhrase.trim().split(/\s+/);
@@ -353,7 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Phase 2: 24-Word Recovery Phrase Screen (Step 2: Verification)
   function setupRecoveryVerification() {
     const indices = [];
     while (indices.length < 4) {
@@ -407,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Phase 4: Add File Button Flow
+  // Add File Button Flow & Media Attachment Storage
   if (addFileBtn) {
     addFileBtn.addEventListener('click', () => {
       if (addFileModal) addFileModal.classList.remove('hidden');
@@ -430,28 +491,72 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = filePicker.files[0];
       if (!file) return;
 
-      const newFileEntry = {
-        id: Date.now().toString(),
-        vault: activeVault,
-        type: 'file',
-        typeName: 'Encrypted File',
-        title: titleInput.value.trim(),
-        notes: notesInput.value.trim(),
-        fields: {
-          filename: file.name,
-          filesize: `${(file.size / 1024).toFixed(1)} KB`,
-          filetype: file.type || 'binary'
-        },
-        createdAt: new Date().toISOString()
-      };
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const dataUrl = evt.target.result;
+        const newFileEntry = {
+          id: Date.now().toString(),
+          vault: activeVault,
+          type: 'file',
+          typeName: 'Encrypted File',
+          title: titleInput.value.trim(),
+          notes: notesInput.value.trim(),
+          fileDataUrl: dataUrl,
+          fields: {
+            filename: file.name,
+            filesize: `${(file.size / 1024).toFixed(1)} KB`,
+            filetype: file.type || 'binary'
+          },
+          createdAt: new Date().toISOString()
+        };
 
-      vaultEntries.push(newFileEntry);
-      logActivity(`VAULT FILE ADDED: attached ${file.name} to ${activeVault} vault.`);
-      if (addFileModal) addFileModal.classList.add('hidden');
-      fileUploadForm.reset();
-      renderVaultEntries();
-      updateSidebarStats();
+        vaultEntries.push(newFileEntry);
+        saveVaultEntriesToStorage();
+        logActivity(`VAULT FILE ADDED: attached ${file.name} to ${activeVault} vault.`);
+        if (addFileModal) addFileModal.classList.add('hidden');
+        fileUploadForm.reset();
+        renderVaultEntries();
+      };
+      reader.readAsDataURL(file);
     });
+  }
+
+  // View File Modal Event Handlers
+  if (closeViewFileModalBtn) {
+    closeViewFileModalBtn.addEventListener('click', () => {
+      if (viewFileModal) viewFileModal.classList.add('hidden');
+    });
+  }
+
+  function openFileViewer(entry) {
+    if (!viewFileModal) return;
+
+    fileModalTitle.textContent = entry.title || 'File View';
+    fileModalNotes.textContent = entry.notes ? `Notes: ${entry.notes}` : '';
+
+    fileModalPreviewContainer.innerHTML = '';
+
+    const mime = entry.fields ? entry.fields.filetype : '';
+    if (entry.fileDataUrl) {
+      if (mime.startsWith('image/')) {
+        fileModalPreviewContainer.innerHTML = `<img src="${entry.fileDataUrl}" style="max-width: 100%; max-height: 300px; border-radius: 6px;" />`;
+      } else if (mime.startsWith('video/')) {
+        fileModalPreviewContainer.innerHTML = `<video src="${entry.fileDataUrl}" controls style="max-width: 100%; max-height: 300px; border-radius: 6px;"></video>`;
+      } else {
+        fileModalPreviewContainer.innerHTML = `
+          <div style="font-size: 14px; color: var(--text-primary);">
+            📄 ${entry.fields.filename || 'File Document'} (${entry.fields.filesize})
+          </div>
+        `;
+      }
+
+      fileModalDownloadLink.href = entry.fileDataUrl;
+      fileModalDownloadLink.download = (entry.fields && entry.fields.filename) ? entry.fields.filename : 'vault-file';
+    } else {
+      fileModalPreviewContainer.innerHTML = '<div style="color: var(--text-secondary);">No file preview payload found.</div>';
+    }
+
+    viewFileModal.classList.remove('hidden');
   }
 
   // Entry Modals & Dynamic Form Rendering
@@ -530,11 +635,11 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       vaultEntries.push(newEntry);
+      saveVaultEntriesToStorage();
       logActivity(`VAULT ENTRY ADDED: ${title} in ${activeVault} vault.`);
       addEntryModal.classList.add('hidden');
       entryDynamicForm.reset();
       renderVaultEntries();
-      updateSidebarStats();
     });
   }
 
@@ -569,7 +674,9 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      const fileBadgeIcon = entry.type === 'file' ? '📁 ' : '';
+      const isFile = entry.type === 'file';
+      const fileBadgeIcon = isFile ? '📁 ' : '';
+      const viewFileBtnHtml = isFile ? `<button class="btn-secondary view-file-btn" data-id="${entry.id}">View / Open File</button>` : '';
 
       card.innerHTML = `
         <div class="entry-header">
@@ -578,20 +685,31 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="entry-fields-grid">${fieldsHtml}</div>
         ${entry.notes ? `<div style="font-size:12px; color: var(--text-secondary); margin-top: 6px;"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
-        <div class="entry-actions">
+        <div class="entry-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
+          ${viewFileBtnHtml}
           <button class="btn-danger delete-entry-btn" data-id="${entry.id}">Delete</button>
         </div>
       `;
       entryListContainer.appendChild(card);
     });
 
+    document.querySelectorAll('.view-file-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const fileEntry = vaultEntries.find(e => e.id === id);
+        if (fileEntry) {
+          openFileViewer(fileEntry);
+        }
+      });
+    });
+
     document.querySelectorAll('.delete-entry-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
         vaultEntries = vaultEntries.filter(e => e.id !== id);
+        saveVaultEntriesToStorage();
         logActivity(`VAULT ITEM DELETED: ID ${id}`);
         renderVaultEntries();
-        updateSidebarStats();
       });
     });
   }
@@ -735,7 +853,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
           if (storedSaltHex && storedVerifier) {
-            const { deriveKey, verifyKey, generateSalt, createVerifier } = require('../crypto/vaultCrypto');
             const salt = Buffer.from(storedSaltHex, 'hex');
             const currDerivedKey = await deriveKey(currPwd, salt);
 
@@ -836,7 +953,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
           if (storedSaltHex && storedVerifier) {
-            const { deriveKey, verifyKey } = require('../crypto/vaultCrypto');
             const salt = Buffer.from(storedSaltHex, 'hex');
             const currDerivedKey = await deriveKey(pwdVal, salt);
 
@@ -964,10 +1080,10 @@ document.addEventListener('DOMContentLoaded', () => {
               const mockKey = Buffer.alloc(32, 'a');
               const importedEntries = importEncryptedVault(e.target.result, mockKey);
               vaultEntries = vaultEntries.concat(importedEntries);
+              saveVaultEntriesToStorage();
               importMsg.style.color = '#10b981';
               importMsg.textContent = `Successfully imported ${importedEntries.length} entries!`;
               logActivity(`IMPORT: Imported ${importedEntries.length} entries from ${file.name}.`);
-              updateSidebarStats();
             } catch (err) {
               importMsg.style.color = '#ef4444';
               importMsg.textContent = 'Import error: Invalid or corrupted backup file.';

@@ -85,6 +85,27 @@
       </div>
     </div>
 
+        <!-- Vault Unlock Screen (For Lock / Return users) -->
+    <div id="unlock-vault-view" class="setup-card-wrap hidden">
+      <div class="setup-card">
+        <h2 class="setup-title">Unlock VantaLock Vault</h2>
+        <p class="setup-desc">Enter your master password to decrypt and open your local vault.</p>
+
+        <form id="unlock-vault-form">
+          <div class="form-group">
+            <label class="form-label" for="unlock-mp-input">Master Password</label>
+            <div style="position: relative;">
+              <input type="password" id="unlock-mp-input" class="input-field" placeholder="Enter master password..." required />
+              <button type="button" class="pwd-toggle-btn" data-target="unlock-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+            </div>
+            <div id="unlock-error-text" class="error-text">Incorrect master password. Please try again.</div>
+          </div>
+
+          <button type="submit" id="unlock-btn" class="btn-primary">Unlock Vault</button>
+        </form>
+      </div>
+    </div>
+
     <!-- Master Password Setup View -->
     <div id="master-password-modal" class="setup-card-wrap hidden">
       <div class="setup-card">
@@ -147,6 +168,24 @@
     </div>
   </div>
 
+
+
+  <!-- View File Attachment Modal -->
+  <div id="view-file-modal" class="modal-overlay hidden">
+    <div class="setup-card" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 id="file-modal-title" class="setup-title" style="margin: 0;">Attached File View</h2>
+        <button id="close-view-file-modal-btn" class="btn-secondary" style="width: auto; padding: 4px 12px;">✕</button>
+      </div>
+
+      <div id="file-modal-preview-container" style="text-align: center; margin-bottom: 20px; background: var(--bg-secondary); padding: 16px; border-radius: 8px; border: 1px solid var(--surface-border); min-height: 150px; display: flex; align-items: center; justify-content: center;">
+      </div>
+
+      <div id="file-modal-notes" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;"></div>
+
+      <a id="file-modal-download-link" class="btn-primary" style="display: inline-block; text-decoration: none; text-align: center;" download>Download File</a>
+    </div>
+  </div>
 
   <!-- Add File Modal (Phase 4) -->
   <div id="add-file-modal" class="modal-overlay hidden">

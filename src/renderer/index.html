@@ -28,6 +28,13 @@
           <option value="theme-midnight">Midnight Sapphire</option>
         </select>
       </div>
+      <button id="panic-lock-btn" class="btn-danger" style="padding: 4px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Lock Vault
+      </button>
       <div class="status-indicator">
         <span class="status-dot"></span>
         <span id="lock-status-text">VAULT SECURED</span>
@@ -105,27 +112,68 @@
       </div>
     </div>
 
-    <!-- Recovery Key View -->
-    <div id="recovery-key-modal" class="setup-card-wrap hidden">
+    <!-- Recovery Key Step 1: Reveal Words -->
+    <div id="recovery-key-reveal-step" class="setup-card-wrap hidden">
       <div class="setup-card" style="max-width: 720px;">
         <h2 class="setup-title">24-Word Recovery Phrase</h2>
-        <p class="setup-desc">This is the only way to recover your vault if you forget your master password. VantaLock cannot assist if lost. Write it down, print it, or save it safely.</p>
+        <p class="setup-desc">Record these 24 words in order and store them in a secure physical location. On the next screen, you will be prompted to re-enter specific words from this phrase to confirm your backup.</p>
 
         <div id="recovery-words-grid" class="recovery-words-grid"></div>
 
-        <div class="action-btn-row" style="display: flex; gap: 12px; margin-top: 20px;">
+        <div class="action-btn-row" style="display: flex; gap: 12px; margin-top: 16px; margin-bottom: 20px;">
           <button id="copy-rk-btn" class="btn-secondary" style="flex:1;">Copy</button>
           <button id="print-rk-btn" class="btn-secondary" style="flex:1;">Print</button>
           <button id="save-rk-btn" class="btn-secondary" style="flex:1;">Save as File</button>
         </div>
 
-        <div id="rk-confirm-section" style="margin-top: 24px; border-top: 1px solid var(--surface-border); padding-top: 20px;">
-          <p class="setup-desc" style="margin-bottom: 12px; color: var(--brass-accent); font-weight: 600;">Confirm Word Backup</p>
-          <div id="rk-verify-inputs" class="form-group" style="display: flex; gap: 12px;"></div>
-          <div id="rk-error-text" class="error-text" style="margin-bottom: 12px;">Incorrect word verification. Please check your backup.</div>
-          <button id="verify-rk-btn" class="btn-primary">Verify & Proceed</button>
+        <button id="proceed-to-verify-rk-btn" class="btn-primary">I Have Saved My Seed → Continue to Verification</button>
+      </div>
+    </div>
+
+    <!-- Recovery Key Step 2: Verification -->
+    <div id="recovery-key-verify-step" class="setup-card-wrap hidden">
+      <div class="setup-card" style="max-width: 600px;">
+        <h2 class="setup-title">Confirm Recovery Phrase Backup</h2>
+        <p class="setup-desc">Please re-enter the specified words from your 24-word recovery phrase to verify your backup.</p>
+
+        <div id="rk-verify-inputs" class="form-group" style="display: flex; flex-direction: column; gap: 16px;"></div>
+        <div id="rk-error-text" class="error-text" style="margin-bottom: 12px;">Incorrect word verification. Please check your recovery phrase and try again.</div>
+
+        <div style="display: flex; gap: 12px; margin-top: 20px;">
+          <button id="back-to-seed-btn" class="btn-secondary" style="flex:1;">← Back to Phrase</button>
+          <button id="verify-rk-btn" class="btn-primary" style="flex:2;">Verify & Unlock Vault</button>
         </div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- Add File Modal (Phase 4) -->
+  <div id="add-file-modal" class="modal-overlay hidden">
+    <div class="setup-card" style="max-width: 600px; max-height: 85vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 class="setup-title" style="margin: 0;">Add Encrypted File Entry</h2>
+        <button id="close-file-modal-btn" class="btn-secondary" style="width: auto; padding: 4px 12px;">✕</button>
+      </div>
+
+      <form id="file-upload-form">
+        <div class="form-group">
+          <label class="form-label">Choose File</label>
+          <input type="file" id="file-picker-input" class="input-field" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Title of File</label>
+          <input type="text" id="file-title-input" class="input-field" placeholder="e.g. Passport Scan / Deed Document" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="file-notes-input" class="input-field" rows="3" placeholder="Optional notes..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top: 16px;">Encrypt & Attach File</button>
+      </form>
     </div>
   </div>
 
@@ -257,7 +305,10 @@
           <h1 id="current-vault-title">Financial Vault</h1>
           <p id="current-vault-desc">Manage bank accounts, payment cards, crypto wallets, and loans.</p>
         </div>
-        <button id="add-entry-btn" class="btn-primary" style="width: auto;">+ Add Entry</button>
+        <div class="header-action-group" style="display: flex; gap: 10px;">
+          <button id="add-file-btn" class="btn-secondary" style="width: auto; padding: 10px 16px;">+ Add File</button>
+          <button id="add-entry-btn" class="btn-primary" style="width: auto;">+ Add Entry</button>
+        </div>
       </header>
 
       <div id="entry-list-container" class="entry-list-container">

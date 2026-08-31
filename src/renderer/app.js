@@ -7,7 +7,7 @@ const LockManager = require('../crypto/lockManager');
 
 // Application Activity Logging System
 const appActivityLogs = [
-  `[${new.Date().toISOString()}] SYSTEM: VantaLock engine initialized.`
+  `[${new Date().toISOString()}] SYSTEM: VantaLock engine initialized.`
 ];
 
 function logActivity(eventMessage) {

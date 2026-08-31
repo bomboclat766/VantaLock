@@ -15,13 +15,21 @@ function logActivity(eventMessage) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Lock Manager Instance
+  // Lock Manager Instance & User Inactivity Listeners
+  const savedAutoLockMin = parseInt(localStorage.getItem('vantalock_autolock') || '5', 10);
   const lockMgr = new LockManager({
+    autoLockMinutes: savedAutoLockMin,
     onLockCallback: (reason) => {
       logActivity(`VAULT LOCKED: ${reason}`);
       localStorage.removeItem('vantalock_unlocked_session');
       showScreen('onboarding');
     }
+  });
+
+  ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
+    document.addEventListener(evt, () => {
+      lockMgr.resetInactivityTimer();
+    }, { passive: true });
   });
 
   // Panic Lock Elements & Keyboard Shortcut (Phase 1)
@@ -718,14 +726,44 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (changeForm) {
-        changeForm.addEventListener('submit', (e) => {
+        changeForm.addEventListener('submit', async (e) => {
           e.preventDefault();
-          msgDiv.style.color = '#10b981';
-          msgDiv.textContent = 'Master password updated successfully.';
-          logActivity('SECURITY: Master password changed.');
-          changeForm.reset();
-          secUpdateBtn.disabled = true;
-          secUpdateBtn.style.opacity = '0.5';
+          const currPwd = document.getElementById('current-mp-input').value;
+          const newPwd = secNewInp.value;
+
+          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+          const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+
+          if (storedSaltHex && storedVerifier) {
+            const { deriveKey, verifyKey, generateSalt, createVerifier } = require('../crypto/vaultCrypto');
+            const salt = Buffer.from(storedSaltHex, 'hex');
+            const currDerivedKey = await deriveKey(currPwd, salt);
+
+            if (!verifyKey(currDerivedKey, storedVerifier)) {
+              msgDiv.style.color = '#ef4444';
+              msgDiv.textContent = 'Incorrect current master password.';
+              logActivity('SECURITY WARNING: Failed master password verification during password change.');
+              return;
+            }
+
+            const newSalt = generateSalt();
+            const newDerivedKey = await deriveKey(newPwd, newSalt);
+            const newVerifier = createVerifier(newDerivedKey);
+
+            localStorage.setItem('vantalock_vault_salt', newSalt.toString('hex'));
+            localStorage.setItem('vantalock_vault_verifier', newVerifier);
+
+            msgDiv.style.color = '#10b981';
+            msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
+            logActivity('SECURITY: Master password changed and key re-derived.');
+            changeForm.reset();
+            secUpdateBtn.disabled = true;
+            secUpdateBtn.style.opacity = '0.5';
+          } else {
+            msgDiv.style.color = '#10b981';
+            msgDiv.textContent = 'Master password updated.';
+            changeForm.reset();
+          }
         });
       }
 
@@ -789,11 +827,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const copyMsg = document.getElementById('seed-copy-msg');
 
       if (gateForm) {
-        gateForm.addEventListener('submit', (e) => {
+        gateForm.addEventListener('submit', async (e) => {
           e.preventDefault();
+          const pwdInp = document.getElementById('seed-mp-confirm');
+          const pwdVal = pwdInp ? pwdInp.value : '';
+
+          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+          const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+
+          if (storedSaltHex && storedVerifier) {
+            const { deriveKey, verifyKey } = require('../crypto/vaultCrypto');
+            const salt = Buffer.from(storedSaltHex, 'hex');
+            const currDerivedKey = await deriveKey(pwdVal, salt);
+
+            if (!verifyKey(currDerivedKey, storedVerifier)) {
+              alert('Incorrect master password. Access denied.');
+              logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
+              return;
+            }
+          }
+
           gateView.classList.add('hidden');
           contentView.classList.remove('hidden');
-          logActivity('SECURITY: Recovery seed revealed following password confirmation.');
+          logActivity('SECURITY: Recovery seed revealed following valid password verification.');
 
           if (activeRecoveryKeyWords && activeRecoveryKeyWords.length === 24) {
             wordsMask.innerHTML = '';

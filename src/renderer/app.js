@@ -86,6 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const mpForm = document.getElementById('master-password-form');
 
   const recoveryWordsGrid = document.getElementById('recovery-words-grid');
+  const copyRkBtn = document.getElementById('copy-rk-btn');
+  const printRkBtn = document.getElementById('print-rk-btn');
+  const saveRkBtn = document.getElementById('save-rk-btn');
   const proceedToVerifyRkBtn = document.getElementById('proceed-to-verify-rk-btn');
   const backToSeedBtn = document.getElementById('back-to-seed-btn');
   const rkVerifyInputs = document.getElementById('rk-verify-inputs');
@@ -304,6 +307,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     logActivity('SECURITY: 24-word recovery phrase generated.');
     showScreen('recovery-key-reveal');
+  }
+
+  if (copyRkBtn) {
+    copyRkBtn.addEventListener('click', () => {
+      if (activeRecoveryKeyWords && activeRecoveryKeyWords.length > 0) {
+        clipboardMgr.copySensitiveText(activeRecoveryKeyWords.join(' '));
+        copyRkBtn.textContent = 'Copied!';
+        setTimeout(() => copyRkBtn.textContent = 'Copy', 2000);
+      }
+    });
+  }
+
+  if (printRkBtn) {
+    printRkBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  if (saveRkBtn) {
+    saveRkBtn.addEventListener('click', () => {
+      if (activeRecoveryKeyWords && activeRecoveryKeyWords.length > 0) {
+        const blob = new Blob([activeRecoveryKeyWords.join(' ')], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vantalock-recovery-phrase.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
   }
 
   if (proceedToVerifyRkBtn) {

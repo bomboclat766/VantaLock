@@ -60,7 +60,7 @@
   <!-- Setup Views Container (Single Page Routing Screen) -->
   <div id="setup-view-container" class="full-view-screen">
     <!-- Onboarding View -->
-    <div id="onboarding-container" class="setup-card-wrap">
+    <div id="onboarding-container" class="setup-card-wrap hidden">
       <div class="onboarding-card">
         <div style="margin-bottom: 12px; font-size: 13px; color: var(--brass-accent); font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px;">Welcome & Greeting</div>
         <h2 class="onboarding-title">Welcome to VantaLock Encrypted Vault</h2>
@@ -102,6 +102,9 @@
           </div>
 
           <button type="submit" id="unlock-btn" class="btn-primary">Unlock Vault</button>
+          <div style="text-align: center; margin-top: 14px;">
+            <button type="button" id="forgot-pwd-btn" class="btn-secondary" style="border: none; background: none; color: var(--brass-accent); font-size: 12px; cursor: pointer; text-decoration: underline;">Forgot Master Password? Recover via Seed</button>
+          </div>
         </form>
       </div>
     </div>

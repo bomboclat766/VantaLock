@@ -231,6 +231,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Helper function to switch views cleanly
   function showScreen(screen) {
     setupPasswordToggles();
+
+    if (screen === 'dashboard' || screen === 'unlock-vault') {
+      if (panicLockBtn) panicLockBtn.style.display = screen === 'dashboard' ? 'flex' : 'none';
+    } else {
+      if (panicLockBtn) panicLockBtn.style.display = 'none';
+    }
+
     if (screen === 'dashboard') {
       if (setupViewContainer) setupViewContainer.classList.add('hidden');
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
@@ -471,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (backToSeedBtn) {
     backToSeedBtn.addEventListener('click', () => {
-      showScreen('recovery-key-reveal');
+      showScreen('unlock-vault');
     });
   }
 

@@ -154,30 +154,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const vaultMetadata = {
     financial: {
       title: 'Financial Vault',
-      desc: 'Manage bank accounts, payment cards, crypto wallets, and loans.',
+      desc: 'Manage bank accounts, payment cards, crypto wallets, loans, tax documents, and property deeds.',
       types: [
-        { id: 'bank', label: 'Bank Account', fields: ['Bank Name', 'Account Number', 'Routing Number'] },
-        { id: 'card', label: 'Payment Card', fields: ['Card Name', 'Card Number', 'Expiry Date', 'CVV'] },
-        { id: 'crypto', label: 'Crypto Wallet', fields: ['Wallet Name', 'Public Address', 'Private Key / Seed'] }
+        { id: 'bank', label: 'Bank Account', fields: ['Bank Name', 'Account Number', 'Routing Number', 'Account Holder'] },
+        { id: 'card', label: 'Payment Card', fields: ['Card Name', 'Card Number', 'Expiry Date', 'CVV', 'PIN'] },
+        { id: 'crypto', label: 'Crypto Wallet', fields: ['Wallet Name', 'Public Address', 'Private Key / Seed Phrase'] },
+        { id: 'loan', label: 'Loan & Mortgage', fields: ['Lender Name', 'Account Number', 'Principal Amount', 'Interest Rate'] },
+        { id: 'tax', label: 'Tax Document', fields: ['Tax Year', 'Document Type (W2/1099/1040)', 'Filing Status'] }
       ]
     },
     legal: {
       title: 'Legal Vault',
-      desc: 'Store passport details, identification numbers, and legal contracts.',
+      desc: 'Store passport details, identification numbers, legal contracts, property deeds, and wills.',
       types: [
-        { id: 'passport', label: 'Passport', fields: ['Country', 'Passport Number', 'Expiration Date'] },
-        { id: 'ssn', label: 'Identity / SSN', fields: ['Full Name', 'SSN / ID Number'] },
-        { id: 'contract', label: 'Legal Contract', fields: ['Document Title', 'Parties Involved', 'Key Terms'] }
+        { id: 'passport', label: 'Passport', fields: ['Country', 'Passport Number', 'Expiration Date', 'Full Legal Name'] },
+        { id: 'ssn', label: 'Identity / SSN / ID', fields: ['Full Legal Name', 'SSN / National ID Number', 'Date of Birth'] },
+        { id: 'contract', label: 'Legal Contract', fields: ['Document Title', 'Parties Involved', 'Effective Date', 'Key Terms'] },
+        { id: 'deed', label: 'Property Deed / Title', fields: ['Property Address', 'Parcel / Registry ID', 'Owner Names'] },
+        { id: 'will', label: 'Will & Estate Plan', fields: ['Document Name', 'Executor Name', 'Attorney Contact'] }
       ]
     },
     personal: {
       title: 'Personal Vault',
-      desc: 'Keep private logins, personal notes, medical info, and emergency instructions.',
+      desc: 'Keep private logins, personal notes, medical info, emergency instructions, and confidential records.',
       types: [
-        { id: 'login', label: 'Login / Password', fields: ['Site/App Name', 'Username', 'Password'] },
-        { id: 'note', label: 'Note', fields: ['Title', 'Freeform Text'] },
-        { id: 'medical', label: 'Medical Info', fields: ['Type (Allergy/Condition)', 'Details'] },
-        { id: 'emergency', label: 'Emergency Instruction', fields: ['Title', 'Instructions', 'Who to Notify'] }
+        { id: 'login', label: 'Login / Password', fields: ['Site/App Name', 'Username / Email', 'Password', '2FA Backup Codes'] },
+        { id: 'note', label: 'Secure Note', fields: ['Title', 'Freeform Text'] },
+        { id: 'medical', label: 'Medical & Prescription Info', fields: ['Condition / Prescription', 'Doctor Name', 'Dosage / Instructions'] },
+        { id: 'emergency', label: 'Emergency Instruction', fields: ['Title', 'Instructions', 'Who to Notify', 'Contact Phone'] },
+        { id: 'confidential', label: 'Confidential Record', fields: ['Record Title', 'Category', 'Details'] }
       ]
     }
   };
@@ -225,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper function to switch views cleanly
   function showScreen(screen) {
+    setupPasswordToggles();
     if (screen === 'dashboard') {
       if (setupViewContainer) setupViewContainer.classList.add('hidden');
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
@@ -232,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
       lockMgr.recordSuccessfulUnlock();
       localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
+      renderVaultEntries(); // INSTANTLY render entries on entering dashboard
     } else {
       if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
       if (setupViewContainer) setupViewContainer.classList.remove('hidden');
@@ -257,6 +264,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Global password toggle button binding helper
+  function setupPasswordToggles() {
+    document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
+      btn.replaceWith(btn.cloneNode(true));
+    });
+    document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = btn.getAttribute('data-target');
+        const targetInput = document.getElementById(targetId);
+        if (targetInput) {
+          const isPwd = targetInput.type === 'password';
+          targetInput.type = isPwd ? 'text' : 'password';
+          btn.textContent = isPwd ? '🙈' : '👁️';
+        }
+      });
+    });
+  }
+
   // Initial View Determination after splash dismiss
   let splashDismissed = false;
   function dismissSplash() {
@@ -268,9 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showScreen('onboarding');
       } else if (!localStorage.getItem('vantalock_vault_salt')) {
         showScreen('master-password');
-      } else if (localStorage.getItem('vantalock_unlocked_session') === 'true') {
-        showScreen('dashboard');
       } else {
+        // ALWAYS prompt for Unlock Vault screen explicitly after onboarding setup
         showScreen('unlock-vault');
       }
     };
@@ -295,6 +320,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Vault Unlock Form Handler
+  const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
+  if (forgotPwdBtn) {
+    forgotPwdBtn.addEventListener('click', () => {
+      setupRecoveryVerification();
+    });
+  }
+
   if (unlockVaultForm) {
     unlockVaultForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1151,16 +1183,20 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
+      const pkg = require('../../package.json');
+      const currentVerTag = `v${pkg.version || '1.0.0'}`;
       const localVerSpan = document.getElementById('about-local-ver');
       const latestVerSpan = document.getElementById('about-latest-ver');
       const updateBanner = document.getElementById('about-update-banner');
+
+      if (localVerSpan) localVerSpan.textContent = currentVerTag;
 
       fetch('https://api.github.com/repos/bomboclat766/VantaLock/releases/latest')
         .then(res => res.json())
         .then(data => {
           if (data && data.tag_name) {
             latestVerSpan.textContent = data.tag_name;
-            if (data.tag_name !== 'v1.0.23') {
+            if (data.tag_name !== currentVerTag) {
               updateBanner.style.color = '#10b981';
               updateBanner.textContent = `⚡ Update available! (${data.tag_name})`;
             } else {
@@ -1168,11 +1204,11 @@ document.addEventListener('DOMContentLoaded', () => {
               updateBanner.textContent = '✓ You are running the latest release.';
             }
           } else {
-            latestVerSpan.textContent = 'v1.0.23 (Offline fallback)';
+            latestVerSpan.textContent = `${currentVerTag} (Offline fallback)`;
           }
         })
         .catch(err => {
-          if (latestVerSpan) latestVerSpan.textContent = 'v1.0.23 (Offline fallback)';
+          if (latestVerSpan) latestVerSpan.textContent = `${currentVerTag} (Offline fallback)`;
         });
     }
   }

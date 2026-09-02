@@ -334,9 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Vault Unlock Form Handler
+  let isVerificationFromUnlock = false;
+
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
   if (forgotPwdBtn) {
     forgotPwdBtn.addEventListener('click', () => {
+      isVerificationFromUnlock = true;
       setupRecoveryVerification();
     });
   }
@@ -457,6 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (proceedToVerifyRkBtn) {
     proceedToVerifyRkBtn.addEventListener('click', () => {
+      isVerificationFromUnlock = false;
       setupRecoveryVerification();
     });
   }
@@ -485,7 +489,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (backToSeedBtn) {
     backToSeedBtn.addEventListener('click', () => {
-      showScreen('unlock-vault');
+      if (isVerificationFromUnlock) {
+        showScreen('unlock-vault');
+      } else {
+        showScreen('recovery-key-reveal');
+      }
     });
   }
 

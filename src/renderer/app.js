@@ -228,47 +228,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Helper function to switch views cleanly
-  function showScreen(screen) {
+  // Centralized setActiveView view manager
+  function setActiveView(targetView) {
     setupPasswordToggles();
 
-    if (screen === 'dashboard' || screen === 'unlock-vault') {
-      if (panicLockBtn) panicLockBtn.style.display = screen === 'dashboard' ? 'flex' : 'none';
-    } else {
-      if (panicLockBtn) panicLockBtn.style.display = 'none';
+    // 1. Hide all main containers and setup steps first
+    if (setupViewContainer) setupViewContainer.classList.add('hidden');
+    if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
+
+    if (onboardingContainer) onboardingContainer.classList.add('hidden');
+    if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
+    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
+    if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
+
+    // 2. Panic Lock Visibility Guard: Only display on unlocked dashboard
+    if (panicLockBtn) {
+      panicLockBtn.style.display = targetView === 'dashboard' ? 'flex' : 'none';
     }
 
-    if (screen === 'dashboard') {
-      if (setupViewContainer) setupViewContainer.classList.add('hidden');
+    // 3. Reveal target view
+    if (targetView === 'dashboard') {
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
       if (lockStatusText) lockStatusText.textContent = 'VAULT UNLOCKED';
       lockMgr.recordSuccessfulUnlock();
       localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
-      renderVaultEntries(); // INSTANTLY render entries on entering dashboard
+      renderVaultEntries();
     } else {
-      if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
       if (setupViewContainer) setupViewContainer.classList.remove('hidden');
 
-      if (onboardingContainer) onboardingContainer.classList.add('hidden');
-      if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
-      if (unlockVaultView) unlockVaultView.classList.add('hidden');
-      if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
-      if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
-
-      if (screen === 'onboarding') {
+      if (targetView === 'onboarding') {
         if (onboardingContainer) onboardingContainer.classList.remove('hidden');
-      } else if (screen === 'master-password') {
+      } else if (targetView === 'master-password') {
         if (masterPasswordModal) masterPasswordModal.classList.remove('hidden');
-      } else if (screen === 'unlock-vault') {
+      } else if (targetView === 'unlock-vault') {
         if (unlockVaultView) unlockVaultView.classList.remove('hidden');
         if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
-      } else if (screen === 'recovery-key-reveal') {
+      } else if (targetView === 'recovery-key-reveal') {
         if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.remove('hidden');
-      } else if (screen === 'recovery-key-verify') {
+      } else if (targetView === 'recovery-key-verify') {
         if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.remove('hidden');
       }
     }
+  }
+
+  // Alias for backward compatibility
+  function showScreen(screen) {
+    setActiveView(screen);
   }
 
   // Global password toggle button binding helper

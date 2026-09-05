@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: 'App Version: 1.0.23 | License: Activated | Zero-Cloud Encryption'
+      desc: `App Version: ${require('../../package.json').version || '1.1.29'} | License: Activated | Zero-Cloud Encryption`
     }
   };
 

@@ -1,6 +1,6 @@
 {
   "name": "vantalock",
-  "version": "1.1.29",
+  "version": "1.1.30",
   "description": "VantaLock - Zero-Cloud Encrypted Personal Vault",
   "main": "src/main/main.js",
   "scripts": {

@@ -304,12 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
     splashDismissed = true;
 
     const navigateToNextScreen = () => {
-      if (!localStorage.getItem('vantalock_onboarded')) {
+      const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
+      if (!isFullySetup) {
         showScreen('onboarding');
-      } else if (!localStorage.getItem('vantalock_vault_salt')) {
-        showScreen('master-password');
       } else {
-        // ALWAYS prompt for Unlock Vault screen explicitly after onboarding setup
         showScreen('unlock-vault');
       }
     };
@@ -517,6 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       rkErrorText.style.display = 'none';
+      localStorage.setItem('vantalock_setup_complete', 'true');
       logActivity('SECURITY: 24-word recovery phrase backup verified.');
       showScreen('dashboard');
     });

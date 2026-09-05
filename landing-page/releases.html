@@ -86,7 +86,14 @@
     .page-subtitle {
       color: var(--muted);
       font-size: 15px;
+      margin-bottom: 12px;
+    }
+
+    .tracking-note {
+      color: var(--muted);
+      font-size: 13px;
       margin-bottom: 30px;
+      font-style: italic;
     }
 
     .version-check-banner {
@@ -317,6 +324,7 @@
   <div class="container">
     <h1>Releases & Changelog</h1>
     <p class="page-subtitle">Track security patches, features, SHA-256 checksums, and known issues across all production builds.</p>
+    <p class="tracking-note">Structured release notes and verified checksums begin at v1.1.29. Earlier builds were part of our early development process and weren't individually documented.</p>
 
     <div id="version-banner" class="version-check-banner"></div>
 
@@ -354,8 +362,8 @@
         }
 
         releases.forEach((rel, index) => {
-          const isTargetAnchor = currentAnchor === `v${rel.version}` || currentAnchor === rel.version;
-          const isExpanded = index === 0 || isTargetAnchor;
+          const isTargetAnchor = Boolean(currentAnchor) && (currentAnchor === `v${rel.version}` || currentAnchor === rel.version);
+          const isExpanded = isTargetAnchor;
 
           const card = document.createElement('div');
           card.className = `release-card ${isExpanded ? 'expanded' : ''} ${isTargetAnchor ? 'active-target' : ''}`;

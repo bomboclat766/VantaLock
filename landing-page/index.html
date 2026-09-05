@@ -642,7 +642,7 @@
     <h2 class="section-title">Platform Specifications</h2>
     <p class="section-subtitle">Lightweight, standalone desktop software engineered for minimal system footprint.</p>
 
-    <div class="content-box" style="padding: 0; overflow: hidden;">
+    <div class="content-box" style="padding: 0; overflow: hidden; margin-bottom: 0;">
       <table class="specs-table">
         <thead>
           <tr>
@@ -678,10 +678,17 @@
         </tbody>
       </table>
     </div>
+  </section>
 
-    <div class="content-box" style="margin-top: 48px; padding: 30px;">
-      <h3>Hardware & Kernel Memory Isolation</h3>
-      <p>VantaLock's runtime engine enforces low-level operating system protection mechanisms across all desktop platforms to maintain absolute data integrity and prevent unauthorized memory inspection:</p>
+  <!-- Section: Hardware & Kernel Memory Isolation -->
+  <section class="section-container">
+    <h2 class="section-title">Hardware & Kernel Memory Isolation</h2>
+    <p class="section-subtitle">Low-level OS protection mechanisms enforcing zero-trace memory security.</p>
+
+    <div class="content-box" style="padding: 30px;">
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        VantaLock's runtime engine enforces low-level operating system protection mechanisms across all desktop platforms to maintain absolute data integrity and prevent unauthorized memory inspection:
+      </p>
       <ul class="tech-list">
         <li><strong>RAM Memory Lockdown (mlock / VirtualLock):</strong> Key derivation buffers created via Argon2id are explicitly pinned in physical RAM memory using system calls to prevent sensitive cryptographic material from being written to unencrypted swap space or paging files.</li>
         <li><strong>Zero-Trace RAM Scrubbing:</strong> Master keys and temporary AES-256-GCM cipher contexts are active strictly during operation and are deterministically overwritten with cryptographically random bytes before memory deallocation.</li>

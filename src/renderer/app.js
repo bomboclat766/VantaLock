@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: 'App Version: 1.0.23 | License: Activated | Zero-Cloud Encryption'
+      desc: `App Version: ${require('../../package.json').version || '1.1.29'} | License: Activated | Zero-Cloud Encryption`
     }
   };
 
@@ -228,40 +228,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Helper function to switch views cleanly
-  function showScreen(screen) {
+  // Centralized setActiveView view manager
+  function setActiveView(targetView) {
     setupPasswordToggles();
-    if (screen === 'dashboard') {
-      if (setupViewContainer) setupViewContainer.classList.add('hidden');
+
+    // 1. Hide all main containers and setup steps first
+    if (setupViewContainer) setupViewContainer.classList.add('hidden');
+    if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
+
+    if (onboardingContainer) onboardingContainer.classList.add('hidden');
+    if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
+    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
+    if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
+
+    // 2. Panic Lock Visibility Guard: Only display on unlocked dashboard
+    if (panicLockBtn) {
+      panicLockBtn.style.display = targetView === 'dashboard' ? 'flex' : 'none';
+    }
+
+    // 3. Reveal target view
+    if (targetView === 'dashboard') {
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
       if (lockStatusText) lockStatusText.textContent = 'VAULT UNLOCKED';
       lockMgr.recordSuccessfulUnlock();
       localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
-      renderVaultEntries(); // INSTANTLY render entries on entering dashboard
+      renderVaultEntries();
     } else {
-      if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
       if (setupViewContainer) setupViewContainer.classList.remove('hidden');
 
-      if (onboardingContainer) onboardingContainer.classList.add('hidden');
-      if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
-      if (unlockVaultView) unlockVaultView.classList.add('hidden');
-      if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
-      if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
-
-      if (screen === 'onboarding') {
+      if (targetView === 'onboarding') {
         if (onboardingContainer) onboardingContainer.classList.remove('hidden');
-      } else if (screen === 'master-password') {
+      } else if (targetView === 'master-password') {
         if (masterPasswordModal) masterPasswordModal.classList.remove('hidden');
-      } else if (screen === 'unlock-vault') {
+      } else if (targetView === 'unlock-vault') {
         if (unlockVaultView) unlockVaultView.classList.remove('hidden');
         if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
-      } else if (screen === 'recovery-key-reveal') {
+      } else if (targetView === 'recovery-key-reveal') {
         if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.remove('hidden');
-      } else if (screen === 'recovery-key-verify') {
+      } else if (targetView === 'recovery-key-verify') {
         if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.remove('hidden');
       }
     }
+  }
+
+  // Alias for backward compatibility
+  function showScreen(screen) {
+    setActiveView(screen);
   }
 
   // Global password toggle button binding helper
@@ -290,12 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
     splashDismissed = true;
 
     const navigateToNextScreen = () => {
-      if (!localStorage.getItem('vantalock_onboarded')) {
+      const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
+      if (!isFullySetup) {
         showScreen('onboarding');
-      } else if (!localStorage.getItem('vantalock_vault_salt')) {
-        showScreen('master-password');
       } else {
-        // ALWAYS prompt for Unlock Vault screen explicitly after onboarding setup
         showScreen('unlock-vault');
       }
     };
@@ -320,9 +332,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Vault Unlock Form Handler
+  let isVerificationFromUnlock = false;
+
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
   if (forgotPwdBtn) {
     forgotPwdBtn.addEventListener('click', () => {
+      isVerificationFromUnlock = true;
       setupRecoveryVerification();
     });
   }
@@ -443,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (proceedToVerifyRkBtn) {
     proceedToVerifyRkBtn.addEventListener('click', () => {
+      isVerificationFromUnlock = false;
       setupRecoveryVerification();
     });
   }
@@ -471,7 +487,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (backToSeedBtn) {
     backToSeedBtn.addEventListener('click', () => {
-      showScreen('recovery-key-reveal');
+      if (isVerificationFromUnlock) {
+        showScreen('unlock-vault');
+      } else {
+        showScreen('recovery-key-reveal');
+      }
     });
   }
 
@@ -495,6 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       rkErrorText.style.display = 'none';
+      localStorage.setItem('vantalock_setup_complete', 'true');
       logActivity('SECURITY: 24-word recovery phrase backup verified.');
       showScreen('dashboard');
     });

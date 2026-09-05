@@ -731,23 +731,46 @@
     <p class="section-subtitle">Clear answers about security, storage, recovery, and platform operations.</p>
 
     <div class="faq-item">
-      <div class="faq-q">Recovery & Loss: What happens if I lose my seed phrase or master key?</div>
-      <div class="faq-a">Because VantaLock uses zero-cloud local AES-256-GCM encryption, there is no remote server, no backdoors, and no administrative password reset option. Before storing critical items like SSNs or property deeds in the Legal Vault, confirm you have securely saved your 24-word recovery seed offline. Without the seed or password, data recovery is mathematically impossible.</div>
+      <div class="faq-q">What happens if I lose my master password or recovery seed?</div>
+      <div class="faq-a">Because VantaLock uses zero-cloud local AES-256-GCM encryption, there is no remote server, no backdoors, and no administrative password reset option. Before storing critical items like SSNs or property deeds in the Legal Vault, confirm you have securely saved your 24-word recovery seed offline. You must use the 24-word BIP-39 recovery seed phrase generated during initial setup to restore access. Without the seed or password, data recovery is mathematically impossible.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">Where is my encrypted vault file stored on my disk?</div>
-      <div class="faq-a">VantaLock stores your encrypted vault in your operating system's standard application data directory. On Windows, this is `%APPDATA%\vantalock`; on macOS, `~/Library/Application Support/vantalock`; and on Linux, `~/.config/vantalock`.</div>
-    </div>
-
-    <div class="faq-item">
-      <div class="faq-q">What happens if I lose my Master Password?</div>
-      <div class="faq-a">Because VantaLock is zero-knowledge and zero-cloud, there are no "Forgot Password" email reset buttons. You must use the 24-word BIP-39 recovery seed phrase generated during initial setup to restore access.</div>
+      <div class="faq-a">VantaLock stores your encrypted vault in your operating system's standard application data directory. On Windows, this is <code>%APPDATA%\vantalock</code>; on macOS, <code>~/Library/Application Support/vantalock</code>; and on Linux, <code>~/.config/vantalock</code>.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">Can VantaLock run completely offline?</div>
       <div class="faq-a">Yes. Beyond the brief 1-time license activation check upon initial launch, VantaLock requires zero internet connectivity and can operate indefinitely in air-gapped environments.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I use my license on multiple devices?</div>
+      <div class="faq-a">No. Each license key is strictly bound to a single device hardware installation at a time. To run VantaLock on a different computer, you must transfer your license. Attempting concurrent activation on multiple machines will invalidate the key.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What happens if I reinstall VantaLock or switch computers?</div>
+      <div class="faq-a">
+        Reinstalling VantaLock on the same machine does not affect your stored data because your encrypted vault file lives independently in local operating system application storage. To switch computers, follow these steps:
+        <ul class="tech-list" style="margin-top: 10px;">
+          <li>Copy the vault file from the old computer's local storage (see storage location FAQ above) to a USB drive or external storage</li>
+          <li>Install VantaLock fresh on the new computer</li>
+          <li>Place the vault file in the new computer's equivalent storage location</li>
+          <li>Deactivate the license on the old device and activate it on the new one via the Lemon Squeezy portal</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What information does the license activation check send?</div>
+      <div class="faq-a">The initial 1-time activation check transmits only your purchased license key string and an anonymous hardware device fingerprint. No personal identity details, vault contents, passwords, or telemetry data are collected or transmitted. This check connects directly to Lemon Squeezy's secure API.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I export or migrate my data to another password manager?</div>
+      <div class="faq-a">VantaLock includes an encrypted local JSON backup export and import feature to preserve full data backups on your own offline media. However, because VantaLock uses a proprietary zero-knowledge vault schema and AES-256-GCM payload structure, exports are designed specifically for VantaLock restoration rather than direct third-party password manager import.</div>
     </div>
   </section>
 

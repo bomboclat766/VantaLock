@@ -431,7 +431,7 @@
 </head>
 <body>
 
-  <header>
+  <header style="display: flex; justify-content: space-between; align-items: center;">
     <div class="brand">
       <svg class="brand-logo" viewBox="0 0 100 100">
         <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
@@ -440,9 +440,12 @@
       </svg>
       VANTALOCK
     </div>
-    <a href="releases.html" class="release-badge" style="background: rgba(201, 162, 74, 0.1); border: 1px solid var(--brass); color: var(--brass); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; font-family: Georgia, serif; letter-spacing: 0.5px; text-decoration: none; cursor: pointer; transition: opacity 0.2s;">
-      Release v1.1.30
-    </a>
+    <nav style="display: flex; gap: 20px; align-items: center;">
+      <a href="#about" style="color: var(--brass); text-decoration: none; font-size: 14px; font-weight: 600;">About & Contact</a>
+      <a href="releases.html" class="release-badge" style="background: rgba(201, 162, 74, 0.1); border: 1px solid var(--brass); color: var(--brass); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; font-family: Georgia, serif; letter-spacing: 0.5px; text-decoration: none; cursor: pointer; transition: opacity 0.2s;">
+        Release v1.1.30
+      </a>
+    </nav>
   </header>
 
   <main class="hero">
@@ -690,6 +693,34 @@
     </div>
   </section>
 
+  <!-- Section: About & Contact Transparency -->
+  <section id="about" class="section-container">
+    <h2 class="section-title">About VantaLock</h2>
+    <p class="section-subtitle">Local-First, Zero-Cloud Data Sovereignty</p>
+
+    <div class="content-box" style="padding: 30px; margin-bottom: 24px; text-align: left;">
+      <h3 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">What is VantaLock?</h3>
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        VantaLock is an independently developed desktop vault application engineered to give individuals complete ownership over their sensitive data. Built on a strict zero-cloud architecture, VantaLock ensures that your files, credentials, and encrypted compartments reside exclusively on your local hardware.
+      </p>
+
+      <h3 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Our Philosophy & Architecture</h3>
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        Modern cloud services expose private data to third-party server breaches, forced updates, and continuous telemetry tracking. VantaLock eliminates these vulnerabilities by running completely offline. All vault encryption is performed locally using military-grade primitives—including AES-256-GCM authenticated encryption, Argon2id password hashing, and standard 256-bit BIP-39 mnemonic key generation.
+      </p>
+
+      <h3 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Operator & Development</h3>
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        VantaLock is engineered, maintained, and operated by an individual developer as an independent software security project dedicated to user privacy and digital sovereignty. The codebase is open for public inspection on GitHub, ensuring full cryptographic transparency without hidden tracking scripts, remote backdoors, or analytics collection.
+      </p>
+
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; color: var(--brass);">
+        <strong>Direct Developer Support Email:</strong>
+        <a href="mailto:support@vantalocksecure.com" style="color: var(--brass); font-weight: bold; text-decoration: underline; margin-left: 8px;">support@vantalocksecure.com</a>
+      </div>
+    </div>
+  </section>
+
   <!-- Section 5: Frequently Asked Questions -->
   <section class="section-container">
     <h2 class="section-title">Frequently Asked Questions</h2>
@@ -716,8 +747,15 @@
     </div>
   </section>
 
-  <footer>
-    &copy; VantaLock. Sovereign Encrypted Storage. Pure Black Edition.
+  <footer style="margin-top: 60px; padding: 40px 20px; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 13px;">
+    <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap;">
+      <a href="#about" style="color: var(--brass); text-decoration: none;">About & Contact</a>
+      <a href="privacy.html" style="color: var(--brass); text-decoration: none;">Privacy Policy</a>
+      <a href="terms.html" style="color: var(--brass); text-decoration: none;">Terms of Service</a>
+      <a href="https://github.com/bomboclat766/VantaLock" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: none;">GitHub Repository</a>
+      <a href="mailto:support@vantalocksecure.com" style="color: var(--brass); text-decoration: none;">support@vantalocksecure.com</a>
+    </div>
+    <div>&copy; VantaLock. Sovereign Encrypted Storage. Pure Black Edition. All rights reserved.</div>
   </footer>
 
   <script>

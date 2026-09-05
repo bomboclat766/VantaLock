@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>VantaLock — Terms of Service</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
+      --brass: #c9a24a;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
+      --muted: #888888;
+      --font-heading: Georgia, serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .brand {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    .back-link {
+      color: var(--brass);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover { opacity: 0.8; }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 34px;
+      font-weight: 300;
+      color: var(--brass);
+      margin-bottom: 10px;
+    }
+
+    .last-updated {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      color: var(--brass);
+      margin-top: 28px;
+      margin-bottom: 12px;
+    }
+
+    p, ul {
+      color: #cccccc;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+
+    ul {
+      margin-left: 20px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    a {
+      color: var(--brass);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
+      </svg>
+      VANTALOCK
+    </a>
+    <a href="index.html" class="back-link">← Back to Home</a>
+  </header>
+
+  <div class="container">
+    <h1>Terms of Service</h1>
+    <p class="last-updated">Effective Date: August 30, 2026</p>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>By downloading, installing, or using VantaLock, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not install or use the software.</p>
+
+    <h2>2. Software License</h2>
+    <p>VantaLock grants you a non-exclusive, non-transferable license to use the application on compatible desktop personal computers in accordance with your license purchase.</p>
+
+    <h2>3. User Responsibility & Key Loss</h2>
+    <p>VantaLock operates strictly on local zero-knowledge cryptography. Because VantaLock stores zero customer data or master key backups on remote servers, <strong>you are solely responsible for maintaining the confidentiality and safety of your Master Password and BIP-39 24-word recovery seed phrase</strong>. If you lose both your Master Password and recovery seed phrase, VantaLock developers cannot recover or decrypt your vault contents under any circumstances.</p>
+
+    <h2>4. Warranty Disclaimer</h2>
+    <p>VantaLock is provided "AS IS" without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement. In no event shall the author or copyright holders be liable for any claim, damages, or other liability arising from your use of the software.</p>
+
+    <h2>5. Governing Law & Contact</h2>
+    <p>These terms shall be governed in accordance with standard international software development practices. For support or legal inquiries, please contact <a href="mailto:support@vantalocksecure.com">support@vantalocksecure.com</a>.</p>
+  </div>
+
+  <footer>
+    &copy; VantaLock. Sovereign Encrypted Storage. Terms of Service.
+  </footer>
+
+</body>
+</html>

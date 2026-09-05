@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>VantaLock — Releases & Changelog</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
+      --brass: #c9a24a;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
+      --muted: #888888;
+      --font-heading: Georgia, serif;
+      --font-mono: monospace;
+      --tag-security: #ef4444;
+      --tag-new: #10b981;
+      --tag-fixed: #3b82f6;
+      --tag-changed: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .brand {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    .back-link {
+      color: var(--brass);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover { opacity: 0.8; }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 38px;
+      font-weight: 300;
+      color: var(--brass);
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 30px;
+    }
+
+    .version-check-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--brass);
+      padding: 14px 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* Release Accordion Cards */
+    .release-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .release-card.active-target {
+      border-color: var(--brass);
+      box-shadow: 0 0 15px var(--brass-glow);
+    }
+
+    .release-header {
+      padding: 20px 24px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      background: #0d0d0d;
+    }
+
+    .release-header:hover {
+      background: #141414;
+    }
+
+    .release-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .release-version {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      font-weight: 600;
+    }
+
+    .channel-badge {
+      background: rgba(201, 162, 74, 0.15);
+      color: var(--brass);
+      border: 1px solid var(--brass);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .release-date {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .release-summary {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .accordion-icon {
+      color: var(--brass);
+      font-size: 18px;
+      transition: transform 0.3s;
+    }
+
+    .release-card.expanded .accordion-icon {
+      transform: rotate(180deg);
+    }
+
+    .release-body {
+      padding: 24px;
+      display: none;
+      border-top: 1px solid var(--border);
+    }
+
+    .release-card.expanded .release-body {
+      display: block;
+    }
+
+    .section-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--brass);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    /* Change Item List */
+    .changes-list {
+      list-style: none;
+      margin-bottom: 24px;
+    }
+
+    .change-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .pill-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #000000;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .pill-Security { background: var(--tag-security); color: #fff; }
+    .pill-New { background: var(--tag-new); }
+    .pill-Fixed { background: var(--tag-fixed); color: #fff; }
+    .pill-Changed { background: var(--tag-changed); }
+
+    /* Checksums List */
+    .checksum-box {
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .checksum-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .checksum-row:last-child { margin-bottom: 0; }
+
+    .checksum-label {
+      color: var(--brass);
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .checksum-hash {
+      color: var(--muted);
+      word-break: break-all;
+      background: #080808;
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid #141414;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .copy-hash-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--brass);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-hash-btn:hover {
+      border-color: var(--brass);
+      background: rgba(201, 162, 74, 0.1);
+    }
+
+    /* Known Issues */
+    .known-issues-box {
+      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 6px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: #f87171;
+    }
+
+    .known-issues-box ul {
+      margin-left: 20px;
+      margin-top: 6px;
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
+      </svg>
+      VANTALOCK
+    </a>
+    <a href="index.html" class="back-link">← Back to Overview</a>
+  </header>
+
+  <div class="container">
+    <h1>Releases & Changelog</h1>
+    <p class="page-subtitle">Track security patches, features, SHA-256 checksums, and known issues across all production builds.</p>
+
+    <div id="version-banner" class="version-check-banner"></div>
+
+    <div id="releases-accordion"></div>
+  </div>
+
+  <footer>
+    &copy; VantaLock. Sovereign Encrypted Storage. Releases Portal.
+  </footer>
+
+  <script>
+    async function initReleases() {
+      const container = document.getElementById('releases-accordion');
+      const banner = document.getElementById('version-banner');
+      const urlParams = new URLSearchParams(window.location.search);
+      const userVersion = urlParams.get('v');
+      const currentAnchor = window.location.hash.replace('#', '');
+
+      try {
+        const response = await fetch('releases.json');
+        const releases = await response.json();
+
+        if (userVersion && releases.length > 0) {
+          const latest = releases[0].version;
+          banner.style.display = 'block';
+          if (userVersion === latest || `v${userVersion}` === latest || userVersion === `v${latest}`) {
+            banner.innerHTML = `✓ Your installed app version (v${userVersion.replace('v','')}) is up to date!`;
+            banner.style.borderColor = '#10b981';
+            banner.style.color = '#10b981';
+          } else {
+            banner.innerHTML = `⚡ Update available! You are running v${userVersion.replace('v','')}. Latest version is v${latest}.`;
+            banner.style.borderColor = '#f59e0b';
+            banner.style.color = '#f59e0b';
+          }
+        }
+
+        releases.forEach((rel, index) => {
+          const isTargetAnchor = currentAnchor === `v${rel.version}` || currentAnchor === rel.version;
+          const isExpanded = index === 0 || isTargetAnchor;
+
+          const card = document.createElement('div');
+          card.className = `release-card ${isExpanded ? 'expanded' : ''} ${isTargetAnchor ? 'active-target' : ''}`;
+          card.id = `v${rel.version}`;
+
+          let changesHtml = '';
+          (rel.changes || []).forEach(ch => {
+            changesHtml += `
+              <li class="change-item">
+                <span class="pill-tag pill-${ch.type}">${ch.type}</span>
+                <span>${ch.text}</span>
+              </li>
+            `;
+          });
+
+          let checksumsHtml = '';
+          (rel.checksums || []).forEach(cs => {
+            checksumsHtml += `
+              <div class="checksum-row">
+                <span class="checksum-label">${cs.platform} — ${cs.file}</span>
+                <div class="checksum-hash">
+                  <code>${cs.sha256}</code>
+                  <button class="copy-hash-btn" onclick="copyHash('${cs.sha256}', this)">Copy</button>
+                </div>
+              </div>
+            `;
+          });
+
+          let knownIssuesHtml = '';
+          if (rel.knownIssues && rel.knownIssues.length > 0) {
+            knownIssuesHtml = `
+              <div class="section-label">Known Issues (Beta)</div>
+              <div class="known-issues-box">
+                <ul>
+                  ${rel.knownIssues.map(issue => `<li>${issue}</li>`).join('')}
+                </ul>
+              </div>
+            `;
+          }
+
+          card.innerHTML = `
+            <div class="release-header" onclick="toggleRelease('v${rel.version}')">
+              <div>
+                <div class="release-title-group">
+                  <span class="release-version">v${rel.version}</span>
+                  <span class="channel-badge">${rel.channel || 'Stable'}</span>
+                  <span class="release-date">${rel.date}</span>
+                </div>
+                <div class="release-summary">${rel.summary}</div>
+              </div>
+              <div class="accordion-icon">▼</div>
+            </div>
+            <div class="release-body">
+              <div class="section-label">Changelog Details</div>
+              <ul class="changes-list">${changesHtml}</ul>
+
+              <div class="section-label">SHA-256 Binary Checksums</div>
+              <div class="checksum-box">${checksumsHtml}</div>
+
+              ${knownIssuesHtml}
+            </div>
+          `;
+
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        container.innerHTML = '<div style="color: #ef4444;">Failed to load releases data.</div>';
+      }
+    }
+
+    function toggleRelease(id) {
+      const card = document.getElementById(id);
+      if (card) {
+        card.classList.toggle('expanded');
+      }
+    }
+
+    function copyHash(hash, btn) {
+      navigator.clipboard.writeText(hash);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+
+    document.addEventListener('DOMContentLoaded', initReleases);
+  </script>
+</body>
+</html>

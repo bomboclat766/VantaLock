@@ -1,0 +1,42 @@
+[
+  {
+    "version": "1.1.30",
+    "date": "2026-08-30",
+    "summary": "Stabilized release with onboarding state checks, UI button label refinements, and enhanced Security Center options.",
+    "channel": "Beta",
+    "changes": [
+      { "type": "Security", "text": "Enforced cryptographic master password verification across all vault password input forms." },
+      { "type": "New", "text": "Added support for encrypted file attachments across Financial, Legal, and Personal vault compartments." },
+      { "type": "Fixed", "text": "Resolved onboarding state persistence check to route incomplete setups directly to onboarding." },
+      { "type": "Changed", "text": "Updated release download URLs and badges to version v1.1.30." }
+    ],
+    "checksums": [
+      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.30.exe", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.30-arm64.dmg", "sha256": "f4c9c1b7528e1003f0b2f56708304918a2d1d0728c89b708d7718e219712b322" },
+      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.30.AppImage", "sha256": "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969" }
+    ],
+    "knownIssues": [
+      "Hardware biometrics integration currently requires manual SafeStorage entitlement configuration on some Linux distros."
+    ]
+  },
+  {
+    "version": "1.1.29",
+    "date": "2026-08-29",
+    "summary": "Full layout refactor, 24-word recovery phrase grid, dark theme selector, and automated CI/CD workflow build.",
+    "channel": "Beta",
+    "changes": [
+      { "type": "New", "text": "Integrated 4 dark themes: Pure Black, Obsidian Gold, Cyber Emerald, and Midnight Sapphire." },
+      { "type": "New", "text": "Added Panic Lock button and Ctrl+Shift+L global keyboard shortcut." },
+      { "type": "Fixed", "text": "Eliminated startup splash screen animation hang with defensive pointer event handling." },
+      { "type": "Changed", "text": "Automated GitHub Actions installer package builds for Windows, macOS, and Linux." }
+    ],
+    "checksums": [
+      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.29.exe", "sha256": "8a31c5d0e2e9c20a8c2f1f0a20398711e741c881c1c9811b7a2e8c20108d1e22" },
+      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.29-arm64.dmg", "sha256": "a980e10f1c30a2f9b1c09e3a7a6e1d2110c9b0e1d8a1c028e200192809118e23" },
+      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.29.AppImage", "sha256": "771b9c020f1e81a0293108c12a819b120c9101088219a1c210811e721a921820" }
+    ],
+    "knownIssues": [
+      "Initial setup onboarding greeting modal can briefly flash prior to JavaScript view initialization."
+    ]
+  }
+]

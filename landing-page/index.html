@@ -731,13 +731,20 @@
     <p class="section-subtitle">Clear answers about security, storage, recovery, and platform operations.</p>
 
     <div class="faq-item">
-      <div class="faq-q">What happens if I lose my master password or recovery seed?</div>
-      <div class="faq-a">Because VantaLock uses zero-cloud local AES-256-GCM encryption, there is no remote server, no backdoors, and no administrative password reset option. Before storing critical items like SSNs or property deeds in the Legal Vault, confirm you have securely saved your 24-word recovery seed offline. You must use the 24-word BIP-39 recovery seed phrase generated during initial setup to restore access. Without the seed or password, data recovery is mathematically impossible.</div>
+      <div class="faq-q">What if I lose my password or recovery seed?</div>
+      <div class="faq-a">If you lose both your master password and your 24-word recovery seed, your data is permanently lost. Because VantaLock runs completely offline on your device, there are no password reset links, backdoors, or support overrides to help you regain access. Always save your 24-word recovery seed offline before storing sensitive files.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">Where is my encrypted vault file stored on my disk?</div>
-      <div class="faq-a">VantaLock stores your encrypted vault in your operating system's standard application data directory. On Windows, this is <code>%APPDATA%\vantalock</code>; on macOS, <code>~/Library/Application Support/vantalock</code>; and on Linux, <code>~/.config/vantalock</code>.</div>
+      <div class="faq-a">
+        VantaLock stores your encrypted vault file locally in your operating system's standard application data directory. The file operates completely independent of the application, meaning updating or reinstalling VantaLock will never overwrite or erase your data. You can open your local vault directory quickly using OS keyboard shortcuts:
+        <ul class="tech-list" style="margin-top: 10px;">
+          <li><strong>Windows:</strong> Press <code>Win + R</code>, paste <code>%APPDATA%\vantalock</code>, and press Enter.</li>
+          <li><strong>macOS:</strong> Open Finder, press <code>Cmd + Shift + G</code>, paste <code>~/Library/Application Support/vantalock</code>, and press Enter.</li>
+          <li><strong>Linux:</strong> Press <code>Ctrl + Alt + T</code> to open terminal, then run <code>cd ~/.config/vantalock</code> or open file manager to <code>~/.config/vantalock</code>.</li>
+        </ul>
+      </div>
     </div>
 
     <div class="faq-item">
@@ -770,7 +777,7 @@
 
     <div class="faq-item">
       <div class="faq-q">Can I export or migrate my data to another password manager?</div>
-      <div class="faq-a">VantaLock includes an encrypted local JSON backup export and import feature to preserve full data backups on your own offline media. However, because VantaLock uses a proprietary zero-knowledge vault schema and AES-256-GCM payload structure, exports are designed specifically for VantaLock restoration rather than direct third-party password manager import.</div>
+      <div class="faq-a">No. VantaLock exports encrypted local JSON backups specifically for restoring VantaLock vaults. Due to custom zero-knowledge AES-256-GCM encryption and specialized multi-vault compartment schemas, exports are not directly compatible with third-party password managers like 1Password or Bitwarden.</div>
     </div>
   </section>
 

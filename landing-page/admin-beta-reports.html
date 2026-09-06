@@ -97,7 +97,7 @@
       margin-bottom: 8px;
     }
 
-    input[type="password"] {
+    input[type="password"], input[type="text"], textarea {
       width: 100%;
       background: #000;
       border: 1px solid var(--border);
@@ -105,6 +105,12 @@
       padding: 10px 14px;
       color: #fff;
       outline: none;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
     }
 
     .btn-action {
@@ -115,6 +121,39 @@
       border-radius: 6px;
       font-weight: 700;
       cursor: pointer;
+    }
+
+    /* Create Link Box */
+    .create-link-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+
+    .generated-link-display {
+      background: #000000;
+      border: 1px solid var(--brass);
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--brass);
+      color: var(--brass);
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 12px;
     }
 
     /* Reports Table */
@@ -144,6 +183,19 @@
     }
 
     td { color: #ccc; }
+
+    .status-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .status-pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; }
+    .status-signed { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; }
 
     .toggle-btn {
       background: transparent;
@@ -197,14 +249,36 @@
 
     <div id="dashboard">
       <h1>Beta Report Moderation Dashboard</h1>
-      <p class="page-subtitle">Toggle reports featured status to publish or unpublish them on the public trust portal.</p>
+      <p class="page-subtitle">Generate custom signing links for beta testers, and toggle reports featured status to publish or unpublish them on the public trust portal.</p>
 
+      <!-- Create Signing Link Box -->
+      <div class="create-link-box">
+        <h2 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 16px;">Create Shareable Signing Link</h2>
+        <div class="form-group">
+          <label for="new-handle">Tester Handle / Identifier</label>
+          <input type="text" id="new-handle" placeholder="e.g. @sec_researcher">
+        </div>
+        <div class="form-group">
+          <label for="new-text">Approved Report Text</label>
+          <textarea id="new-text" placeholder="Enter approved report text to be signed..."></textarea>
+        </div>
+        <button class="btn-action" onclick="createSigningLink()">Create Signing Link</button>
+
+        <div id="generated-link-container" style="display: none;">
+          <div class="generated-link-display">
+            <span id="link-text-val" style="font-family: var(--font-mono); font-size: 13px; color: var(--brass);"></span>
+            <button class="copy-btn" onclick="copyLink()">Copy Link</button>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="color: var(--brass); font-family: var(--font-heading); font-size: 20px; margin-bottom: 16px;">All Beta Reports</h2>
       <table>
         <thead>
           <tr>
             <th>Tester Handle</th>
             <th>Report Text</th>
-            <th>Date Signed</th>
+            <th>Status / Date</th>
             <th>Featured Status</th>
           </tr>
         </thead>
@@ -245,6 +319,46 @@
       }
     }
 
+    async function createSigningLink() {
+      const handle = document.getElementById('new-handle').value.trim();
+      const text = document.getElementById('new-text').value.trim();
+      if (!handle || !text) {
+        alert('Please enter both handle and report text.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/create-pending-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: currentAdminPass,
+            tester_handle: handle,
+            report_text: text
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('link-text-val').textContent = data.link;
+          document.getElementById('generated-link-container').style.display = 'block';
+          document.getElementById('new-handle').value = '';
+          document.getElementById('new-text').value = '';
+          loadDashboardReports();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (err) {
+        alert('Failed to create link: ' + err.message);
+      }
+    }
+
+    function copyLink() {
+      const linkText = document.getElementById('link-text-val').textContent;
+      navigator.clipboard.writeText(linkText);
+      alert('Signing link copied to clipboard!');
+    }
+
     async function loadDashboardReports() {
       const tbody = document.getElementById('reports-table-body');
       try {
@@ -258,13 +372,19 @@
         tbody.innerHTML = '';
 
         reports.forEach(r => {
+          const isSigned = Boolean(r.signature && r.public_key);
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td><strong>${r.tester_handle}</strong></td>
             <td>${r.report_text}</td>
-            <td>${r.date_signed}</td>
             <td>
-              <button class="toggle-btn ${r.featured ? 'featured' : ''}" onclick="toggleFeatured('${r.id}', ${!r.featured}, this)">
+              <span class="status-badge ${isSigned ? 'status-signed' : 'status-pending'}">
+                ${isSigned ? 'Signed' : 'Pending Signature'}
+              </span><br>
+              <span style="color: var(--muted); font-size: 12px;">${r.date_signed || 'Not signed yet'}</span>
+            </td>
+            <td>
+              <button class="toggle-btn ${r.featured ? 'featured' : ''}" ${!isSigned ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="toggleFeatured('${r.id}', ${!r.featured}, this)">
                 ${r.featured ? '✓ Featured (Public)' : 'Hidden (Private)'}
               </button>
             </td>

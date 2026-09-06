@@ -10,16 +10,15 @@ const client = createClient({
   authToken,
 });
 
-// Auto-migrate / create table if sqlite local file
 if (url.startsWith('file:')) {
   client.execute(`
     CREATE TABLE IF NOT EXISTS beta_reports (
       id TEXT PRIMARY KEY,
       tester_handle TEXT NOT NULL,
       report_text TEXT NOT NULL,
-      public_key TEXT NOT NULL,
-      signature TEXT NOT NULL,
-      date_signed TEXT NOT NULL,
+      public_key TEXT,
+      signature TEXT,
+      date_signed TEXT,
       featured INTEGER NOT NULL DEFAULT 0
     );
   `).catch(err => console.error('Migration error:', err));

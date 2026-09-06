@@ -57,16 +57,6 @@
       height: 28px;
     }
 
-    .back-link {
-      color: var(--brass);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      transition: opacity 0.2s;
-    }
-
-    .back-link:hover { opacity: 0.8; }
-
     .container {
       width: 100%;
       max-width: 900px;
@@ -104,26 +94,16 @@
       margin-bottom: 8px;
     }
 
-    input, textarea {
+    .read-only-box {
       width: 100%;
       background: #000000;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 12px 16px;
+      padding: 14px 16px;
       color: #ffffff;
       font-size: 14px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input:focus, textarea:focus {
-      border-color: var(--brass);
-    }
-
-    textarea {
-      min-height: 140px;
-      resize: vertical;
+      line-height: 1.6;
+      white-space: pre-wrap;
     }
 
     .canonical-box {
@@ -161,6 +141,20 @@
       font-weight: 600;
     }
 
+    /* Plain expired / invalid message view */
+    #expired-view {
+      display: none;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 18px;
+      font-family: var(--font-heading);
+    }
+
+    #signing-content {
+      display: none;
+    }
+
     footer {
       margin-top: 60px;
       text-align: center;
@@ -180,32 +174,37 @@
       </svg>
       VANTALOCK
     </a>
-    <a href="beta-testers.html" class="back-link">← Verified Testers</a>
   </header>
 
   <div class="container">
-    <h1>Cryptographic Beta Report Signing</h1>
-    <p class="page-subtitle">Your client generates an ephemeral Ed25519 keypair locally in memory. The canonical report string is signed entirely in-browser, and the private key is permanently discarded.</p>
+    <div id="expired-view">
+      This link is invalid or has expired
+    </div>
 
-    <form id="sign-form">
-      <div class="form-group">
-        <label for="tester-handle">Tester Handle / Identifier</label>
-        <input type="text" id="tester-handle" placeholder="e.g. @sec_researcher" required>
-      </div>
+    <div id="signing-content">
+      <h1>Cryptographic Beta Report Signing</h1>
+      <p class="page-subtitle">Your browser generates an ephemeral Ed25519 keypair locally in memory. The canonical report string below is signed in-browser, and the private key is permanently discarded.</p>
 
-      <div class="form-group">
-        <label for="report-text">Canonical Report Text</label>
-        <textarea id="report-text" placeholder="Enter approved audit / report text..." required></textarea>
-      </div>
+      <form id="sign-form">
+        <div class="form-group">
+          <label>Tester Handle / Identifier</label>
+          <div id="display-handle" class="read-only-box"></div>
+        </div>
 
-      <div class="form-group">
-        <label>Canonical String to be Signed</label>
-        <div id="canonical-preview" class="canonical-box">Assembling canonical payload...</div>
-      </div>
+        <div class="form-group">
+          <label>Approved Canonical Report Text</label>
+          <div id="display-text" class="read-only-box"></div>
+        </div>
 
-      <button type="submit" id="submit-btn" class="btn-submit">Sign & Submit Report</button>
-      <div id="status-msg" class="status-msg"></div>
-    </form>
+        <div class="form-group">
+          <label>Canonical String to be Signed</label>
+          <div id="canonical-preview" class="canonical-box"></div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-submit">Confirm & Sign Report</button>
+        <div id="status-msg" class="status-msg"></div>
+      </form>
+    </div>
   </div>
 
   <footer>
@@ -213,7 +212,6 @@
   </footer>
 
   <script>
-    // Helper bytes <-> hex
     function buf2hex(buffer) {
       return Array.from(new Uint8Array(buffer))
         .map(b => b.toString(16).padStart(2, '0'))
@@ -224,38 +222,64 @@
       return `VANTALOCK_BETA_REPORT|HANDLE:${handle.trim()}|DATE:${dateStr}|TEXT:${text.trim()}`;
     }
 
-    const handleInput = document.getElementById('tester-handle');
-    const textInput = document.getElementById('report-text');
+    const expiredView = document.getElementById('expired-view');
+    const signingContent = document.getElementById('signing-content');
+    const displayHandle = document.getElementById('display-handle');
+    const displayText = document.getElementById('display-text');
     const previewBox = document.getElementById('canonical-preview');
     const statusMsg = document.getElementById('status-msg');
-    let fixedDateStr = new Date().toISOString().slice(0, 10);
 
-    // Read URL params if provided
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('handle')) handleInput.value = urlParams.get('handle');
-    if (urlParams.get('text')) textInput.value = urlParams.get('text');
+    const reportId = urlParams.get('id');
+    const fixedDateStr = new Date().toISOString().slice(0, 10);
 
-    function updatePreview() {
-      const handle = handleInput.value || 'YOUR_HANDLE';
-      const text = textInput.value || 'YOUR_REPORT_TEXT';
-      previewBox.textContent = getCanonicalString(handle, text, fixedDateStr);
+    let activeReportData = null;
+
+    async function initSigningPage() {
+      if (!reportId) {
+        showExpired();
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/beta-reports/pending/${encodeURIComponent(reportId)}`);
+        if (!res.ok) {
+          showExpired();
+          return;
+        }
+
+        activeReportData = await res.json();
+        if (!activeReportData || !activeReportData.id) {
+          showExpired();
+          return;
+        }
+
+        displayHandle.textContent = activeReportData.tester_handle;
+        displayText.textContent = activeReportData.report_text;
+        previewBox.textContent = getCanonicalString(activeReportData.tester_handle, activeReportData.report_text, fixedDateStr);
+
+        signingContent.style.display = 'block';
+      } catch (err) {
+        showExpired();
+      }
     }
 
-    handleInput.addEventListener('input', updatePreview);
-    textInput.addEventListener('input', updatePreview);
-    updatePreview();
+    function showExpired() {
+      signingContent.style.display = 'none';
+      expiredView.style.display = 'block';
+    }
 
     document.getElementById('sign-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!activeReportData) return;
+
       statusMsg.textContent = 'Generating client-side Ed25519 keypair...';
       statusMsg.style.color = 'var(--brass)';
 
       try {
-        const handle = handleInput.value.trim();
-        const text = textInput.value.trim();
-        const canonical = getCanonicalString(handle, text, fixedDateStr);
+        const canonical = getCanonicalString(activeReportData.tester_handle, activeReportData.report_text, fixedDateStr);
 
-        // 1. Generate Ed25519 keypair in browser
+        // 1. Generate Ed25519 keypair
         const keyPair = await window.crypto.subtle.generateKey(
           { name: 'Ed25519' },
           true,
@@ -277,13 +301,12 @@
 
         statusMsg.textContent = 'Submitting signature and discarding private key...';
 
-        // 4. Submit to backend
-        const res = await fetch('/api/beta-reports', {
+        // 4. Submit signature
+        const res = await fetch('/api/beta-reports/sign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            tester_handle: handle,
-            report_text: text,
+            id: activeReportData.id,
             public_key: pubKeyHex,
             signature: sigHex,
             date_signed: fixedDateStr
@@ -293,18 +316,18 @@
         const data = await res.json();
         if (res.ok) {
           statusMsg.style.color = '#10b981';
-          statusMsg.textContent = '✓ Report signed & submitted successfully! Private key discarded.';
-          handleInput.value = '';
-          textInput.value = '';
-          updatePreview();
+          statusMsg.textContent = '✓ Report signed successfully! Private key discarded.';
+          setTimeout(() => showExpired(), 2000);
         } else {
-          throw new Error(data.error || 'Submission failed');
+          throw new Error(data.error || 'Signing failed');
         }
       } catch (err) {
         statusMsg.style.color = '#ef4444';
         statusMsg.textContent = 'Error: ' + err.message;
       }
     });
+
+    document.addEventListener('DOMContentLoaded', initSigningPage);
   </script>
 </body>
 </html>

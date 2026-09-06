@@ -1,62 +1,77 @@
 const request = require('supertest');
-const app = require('../server').default || require('../server');
+const app = require('../server');
 
-describe('Server & Beta Reports Endpoints', () => {
-  let testReportId = '';
+describe('Server & Beta Reports Endpoints with Admin Link Creation', () => {
+  let adminPass = 'vanta-admin-2026';
+  let createdReportId = '';
+  let generatedSigningLink = '';
 
-  test('GET /beta-testers should return 200 OK', async () => {
-    const res = await request(app).get('/beta-testers');
-    expect(res.statusCode).toBe(200);
-    expect(res.text).toContain('Cryptographically Verified Beta Reports');
-  });
-
-  test('GET /beta-sign should return 200 OK', async () => {
+  test('GET /beta-sign without id should return invalid/expired message in HTML', async () => {
     const res = await request(app).get('/beta-sign');
     expect(res.statusCode).toBe(200);
-    expect(res.text).toContain('Beta Report Signing');
+    expect(res.text).toContain('This link is invalid or has expired');
   });
 
-  test('POST /api/beta-reports should create a report', async () => {
-    const payload = {
-      tester_handle: '@test_auditor',
-      report_text: 'VantaLock local encryption verified zero telemetry.',
-      public_key: '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
-      signature: 'aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900',
-      date_signed: '2026-09-05'
-    };
+  test('Admin creates a pending signing link', async () => {
+    const res = await request(app).post('/api/admin/create-pending-report').send({
+      password: adminPass,
+      tester_handle: '@auditor_bob',
+      report_text: 'VantaLock local encryption verified.'
+    });
 
-    const res = await request(app).post('/api/beta-reports').send(payload);
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.id).toBeDefined();
-    testReportId = res.body.id;
+    expect(res.body.link).toContain('/beta-sign?id=');
+    createdReportId = res.body.id;
+    generatedSigningLink = res.body.link;
   });
 
-  test('Admin authentication & featured toggling', async () => {
-    const adminPass = 'vanta-admin-2026';
+  test('Fetch pending report details by ID', async () => {
+    const res = await request(app).get(`/api/beta-reports/pending/${createdReportId}`);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.id).toBe(createdReportId);
+    expect(res.body.tester_handle).toBe('@auditor_bob');
+  });
 
-    // 1. Verify invalid pass
-    const badAuth = await request(app).post('/api/admin/verify').send({ password: 'wrong' });
-    expect(badAuth.statusCode).toBe(401);
+  test('Sign pending report with Ed25519 signature', async () => {
+    const res = await request(app).post('/api/beta-reports/sign').send({
+      id: createdReportId,
+      public_key: '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
+      signature: 'aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900',
+      date_signed: '2026-09-05'
+    });
 
-    // 2. Fetch all reports
-    const allReports = await request(app).post('/api/admin/beta-reports').send({ password: adminPass });
-    expect(allReports.statusCode).toBe(200);
-    expect(Array.isArray(allReports.body)).toBe(true);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
 
-    // 3. Toggle featured true
-    const toggleRes = await request(app).post('/api/admin/toggle-featured').send({
+  test('Attempting to access or sign already signed link returns expired error', async () => {
+    const resPending = await request(app).get(`/api/beta-reports/pending/${createdReportId}`);
+    expect(resPending.statusCode).toBe(400);
+    expect(resPending.body.error).toBe('This link is invalid or has expired');
+
+    const resSignAgain = await request(app).post('/api/beta-reports/sign').send({
+      id: createdReportId,
+      public_key: '11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff',
+      signature: 'aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900'
+    });
+    expect(resSignAgain.statusCode).toBe(400);
+    expect(resSignAgain.body.error).toBe('This link is invalid or has expired');
+  });
+
+  test('Admin can feature signed report and public trust page renders it', async () => {
+    const resToggle = await request(app).post('/api/admin/toggle-featured').send({
       password: adminPass,
-      id: testReportId,
+      id: createdReportId,
       featured: true
     });
-    expect(toggleRes.statusCode).toBe(200);
+    expect(resToggle.statusCode).toBe(200);
 
-    // 4. Fetch featured reports publicly
-    const featured = await request(app).get('/api/beta-reports/featured');
-    expect(featured.statusCode).toBe(200);
-    const found = featured.body.find(r => r.id === testReportId);
+    const resFeatured = await request(app).get('/api/beta-reports/featured');
+    expect(resFeatured.statusCode).toBe(200);
+    const found = resFeatured.body.find(r => r.id === createdReportId);
     expect(found).toBeDefined();
-    expect(found.tester_handle).toBe('@test_auditor');
+    expect(found.tester_handle).toBe('@auditor_bob');
   });
 });

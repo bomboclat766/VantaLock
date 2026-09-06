@@ -185,7 +185,7 @@
       </svg>
       VANTALOCK
     </a>
-    <a href="beta-sign.html" class="back-link">+ Submit Signed Report</a>
+    <a href="index.html" class="back-link">← Back to Overview</a>
   </header>
 
   <div class="container">
@@ -223,7 +223,7 @@
         const res = await fetch('/api/beta-reports/featured');
         const reports = await res.json();
 
-        if (reports.length === 0) {
+        if (!reports || reports.length === 0) {
           container.innerHTML = '<div style="color: var(--muted); font-style: italic;">No featured beta reports published yet.</div>';
           return;
         }

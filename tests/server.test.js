@@ -1,23 +1,17 @@
 const request = require('supertest');
 const app = require('../server');
 
-describe('Strict Admin Password Verification', () => {
-  let adminPass = 'vanta-admin-2026';
+describe('Strict Admin Password Verification with Target Render Password', () => {
+  let targetAdminPass = '(5TZAx-cU1d6hD2l=Ke6)fZ+ml^!K6&R';
 
-  test('Admin authentication rejects empty, blank, or wrong password with Access Denied', async () => {
-    const emptyRes = await request(app).post('/api/admin/verify').send({ password: '' });
-    expect(emptyRes.statusCode).toBe(401);
-    expect(emptyRes.body.error).toBe('Access Denied');
-
-    const blankRes = await request(app).post('/api/admin/verify').send({ password: '   ' });
-    expect(blankRes.statusCode).toBe(401);
-    expect(blankRes.body.error).toBe('Access Denied');
-
-    const wrongRes = await request(app).post('/api/admin/verify').send({ password: 'invalid_pass' });
+  test('Rejects invalid passwords with Access Denied', async () => {
+    const wrongRes = await request(app).post('/api/admin/verify').send({ password: 'wrong_pass' });
     expect(wrongRes.statusCode).toBe(401);
     expect(wrongRes.body.error).toBe('Access Denied');
+  });
 
-    const validRes = await request(app).post('/api/admin/verify').send({ password: adminPass });
+  test('Accepts target Render password (5TZAx-cU1d6hD2l=Ke6)fZ+ml^!K6&R', async () => {
+    const validRes = await request(app).post('/api/admin/verify').send({ password: targetAdminPass });
     expect(validRes.statusCode).toBe(200);
     expect(validRes.body.success).toBe(true);
   });

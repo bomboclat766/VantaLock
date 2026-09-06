@@ -8,8 +8,8 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Read ADMIN_PASSWORD strictly from environment variable
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.trim()) || 'vanta-admin-2026';
+// Read ADMIN_PASSWORD strictly from environment variable, with fallback to specified target password
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.trim()) || '(5TZAx-cU1d6hD2l=Ke6)fZ+ml^!K6&R';
 
 function verifyAdminPassword(inputPassword) {
   if (typeof inputPassword !== 'string' || !inputPassword || inputPassword.trim() === '') {

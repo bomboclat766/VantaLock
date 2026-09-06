@@ -300,7 +300,7 @@
       errEl.textContent = '';
 
       if (!pass || pass.trim() === '') {
-        errEl.textContent = 'Invalid Admin Password';
+        errEl.textContent = 'Strictly Incorrect Password';
         return;
       }
 
@@ -317,7 +317,7 @@
           document.getElementById('dashboard').style.display = 'block';
           loadDashboardReports();
         } else {
-          errEl.textContent = 'Invalid Admin Password';
+          errEl.textContent = 'Strictly Incorrect Password';
         }
       } catch (err) {
         errEl.textContent = 'Connection error: ' + err.message;

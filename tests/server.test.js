@@ -7,7 +7,7 @@ describe('Server & Beta Reports Endpoints with Admin Link Creation', () => {
   let generatedSigningLink = '';
 
   test('GET /beta-sign without id should return invalid/expired message in HTML', async () => {
-    const res = await request(app).get('/beta-sign');
+    const res = await request(app).get('/beta-sign/');
     expect(res.statusCode).toBe(200);
     expect(res.text).toContain('This link is invalid or has expired');
   });

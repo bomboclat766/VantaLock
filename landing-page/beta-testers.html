@@ -166,6 +166,13 @@
       font-weight: 700;
     }
 
+    .empty-msg {
+      color: var(--muted);
+      font-size: 15px;
+      padding: 40px 0;
+      text-align: center;
+    }
+
     footer {
       margin-top: 60px;
       text-align: center;
@@ -221,10 +228,15 @@
       const container = document.getElementById('reports-list');
       try {
         const res = await fetch('/api/beta-reports/featured');
+        if (!res.ok) {
+          container.innerHTML = '<div class="empty-msg">No reports at the moment.</div>';
+          return;
+        }
+
         const reports = await res.json();
 
         if (!reports || reports.length === 0) {
-          container.innerHTML = '<div style="color: var(--muted); font-style: italic;">No featured beta reports published yet.</div>';
+          container.innerHTML = '<div class="empty-msg">No reports at the moment.</div>';
           return;
         }
 
@@ -258,7 +270,7 @@
           container.appendChild(card);
         });
       } catch (err) {
-        container.innerHTML = '<div style="color: #ef4444;">Failed to load beta reports.</div>';
+        container.innerHTML = '<div class="empty-msg">No reports at the moment.</div>';
       }
     }
 

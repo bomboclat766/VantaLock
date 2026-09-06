@@ -141,14 +141,31 @@
       font-weight: 600;
     }
 
-    /* Plain expired / invalid message view */
+    /* Softened inactive / expired state view */
     #expired-view {
       display: none;
       text-align: center;
       padding: 60px 20px;
-      color: var(--muted);
-      font-size: 18px;
+    }
+
+    .shield-icon {
+      width: 48px;
+      height: 48px;
+      color: var(--brass);
+      margin-bottom: 16px;
+    }
+
+    .expired-title {
+      color: var(--text);
+      font-size: 22px;
       font-family: var(--font-heading);
+      font-weight: 300;
+      margin-bottom: 8px;
+    }
+
+    .expired-desc {
+      color: var(--muted);
+      font-size: 14px;
     }
 
     #signing-content {
@@ -178,7 +195,12 @@
 
   <div class="container">
     <div id="expired-view">
-      This link is invalid or has expired
+      <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M12 8v4m0 4h.01"/>
+      </svg>
+      <div class="expired-title">This signing link isn't active</div>
+      <div class="expired-desc">Beta signing links are sent individually by the VantaLock team.</div>
     </div>
 
     <div id="signing-content">

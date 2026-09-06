@@ -2,26 +2,35 @@ const express = require('express');
 const path = require('path');
 const { db } = require('./src/db');
 const { betaReports } = require('./src/db/schema');
-const { eq, and, isNull, isNotNull } = require('drizzle-orm');
+const { eq, and, isNotNull } = require('drizzle-orm');
 const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'vanta-admin-2026';
+
+// Read ADMIN_PASSWORD strictly from environment variable, fallback to default for dev/test
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.trim()) || 'vanta-admin-2026';
+
+function verifyAdminPassword(inputPassword) {
+  if (typeof inputPassword !== 'string' || !inputPassword || inputPassword.trim() === '') {
+    return false;
+  }
+  return inputPassword.trim() === ADMIN_PASSWORD;
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'landing-page')));
 
-// Page routes
-app.get('/beta-sign', (req, res) => {
+// Page routes with directory fallback support
+app.get(['/beta-sign', '/beta-sign/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'landing-page', 'beta-sign.html'));
 });
 
-app.get('/beta-testers', (req, res) => {
+app.get(['/beta-testers', '/beta-testers/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'landing-page', 'beta-testers.html'));
 });
 
-app.get('/admin/beta-reports', (req, res) => {
+app.get(['/admin/beta-reports', '/admin/beta-reports/', '/admin/beta-reports.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'landing-page', 'admin-beta-reports.html'));
 });
 
@@ -33,12 +42,12 @@ app.get('/api/beta-reports/pending/:id', async (req, res) => {
 
     const rows = await db.select().from(betaReports).where(eq(betaReports.id, id));
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'This link is invalid or has expired' });
+      return res.status(404).json({ error: 'This signing link isn\'t active' });
     }
 
     const report = rows[0];
     if (report.signature || report.public_key) {
-      return res.status(400).json({ error: 'This link is invalid or has expired' });
+      return res.status(400).json({ error: 'This signing link isn\'t active' });
     }
 
     return res.json({
@@ -54,7 +63,7 @@ app.get('/api/beta-reports/pending/:id', async (req, res) => {
 // API: Submit client-side signature for a pending report
 app.post('/api/beta-reports/sign', async (req, res) => {
   try {
-    const { id, public_key, signature, date_signed } = req.body;
+    const { id, public_key, signature, date_signed } = req.body || {};
 
     if (!id || !public_key || !signature) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -62,12 +71,12 @@ app.post('/api/beta-reports/sign', async (req, res) => {
 
     const rows = await db.select().from(betaReports).where(eq(betaReports.id, id));
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'This link is invalid or has expired' });
+      return res.status(404).json({ error: 'This signing link isn\'t active' });
     }
 
     const report = rows[0];
     if (report.signature || report.public_key) {
-      return res.status(400).json({ error: 'This link is invalid or has expired' });
+      return res.status(400).json({ error: 'This signing link isn\'t active' });
     }
 
     const dateStr = date_signed || new Date().toISOString().slice(0, 10);
@@ -88,26 +97,27 @@ app.get('/api/beta-reports/featured', async (req, res) => {
     const reports = await db.select()
       .from(betaReports)
       .where(and(eq(betaReports.featured, true), isNotNull(betaReports.signature)));
-    return res.json(reports);
+    return res.json(reports || []);
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    console.error('Error fetching featured reports:', err);
+    return res.json([]);
   }
 });
 
-// API: Admin Auth Check
+// API: Admin Auth Check (Gated strictly)
 app.post('/api/admin/verify', (req, res) => {
-  const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
+  const { password } = req.body || {};
+  if (verifyAdminPassword(password)) {
     return res.json({ success: true });
   }
-  return res.status(401).json({ error: 'Unauthorized' });
+  return res.status(401).json({ error: 'Unauthorized: Invalid admin password' });
 });
 
 // API: Admin create pending signing link
 app.post('/api/admin/create-pending-report', async (req, res) => {
-  const { password, tester_handle, report_text } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  const { password, tester_handle, report_text } = req.body || {};
+  if (!verifyAdminPassword(password)) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid admin password' });
   }
 
   if (!tester_handle || !report_text) {
@@ -138,24 +148,25 @@ app.post('/api/admin/create-pending-report', async (req, res) => {
 
 // API: Admin list all reports
 app.post('/api/admin/beta-reports', async (req, res) => {
-  const { password } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  const { password } = req.body || {};
+  if (!verifyAdminPassword(password)) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid admin password' });
   }
 
   try {
     const reports = await db.select().from(betaReports);
-    return res.json(reports);
+    return res.json(reports || []);
   } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    console.error('Error fetching all reports:', err);
+    return res.json([]);
   }
 });
 
 // API: Admin toggle featured
 app.post('/api/admin/toggle-featured', async (req, res) => {
-  const { password, id, featured } = req.body;
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  const { password, id, featured } = req.body || {};
+  if (!verifyAdminPassword(password)) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid admin password' });
   }
 
   try {

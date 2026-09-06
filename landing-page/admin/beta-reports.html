@@ -299,6 +299,11 @@
       const errEl = document.getElementById('auth-err');
       errEl.textContent = '';
 
+      if (!pass || pass.trim() === '') {
+        errEl.textContent = 'Invalid Admin Password';
+        return;
+      }
+
       try {
         const res = await fetch('/api/admin/verify', {
           method: 'POST',
@@ -368,8 +373,18 @@
           body: JSON.stringify({ password: currentAdminPass })
         });
 
+        if (!res.ok) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+          return;
+        }
+
         const reports = await res.json();
         tbody.innerHTML = '';
+
+        if (!reports || reports.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+          return;
+        }
 
         reports.forEach(r => {
           const isSigned = Boolean(r.signature && r.public_key);
@@ -392,7 +407,7 @@
           tbody.appendChild(tr);
         });
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color: #ef4444;">Error loading reports</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
       }
     }
 

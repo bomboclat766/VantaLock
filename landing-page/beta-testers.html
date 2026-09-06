@@ -197,7 +197,7 @@
 
   <div class="container">
     <h1>Cryptographically Verified Beta Reports</h1>
-    <p class="page-subtitle">Every report listed below has been signed client-side by an independent security researcher or beta tester using an Ed25519 keypair. Click "Verify signature" to mathematically validate the payload in your browser.</p>
+    <p class="page-subtitle">Every report below is signed using <a href="https://ed25519.cr.yp.to/" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: underline;">Ed25519</a> — a modern, widely trusted signature algorithm used in SSH keys and Signal's encryption. (<a href="https://ed25519.com/blog/what-is-ed25519/" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: underline;">Plain-English explainer here</a>.) Each signature is generated in the reporter's own browser using a private key only they hold, then verified independently using their public key. We never touch the private key, and we never sign anything ourselves. Click 'Verify Signature' to confirm it, right in your own browser.</p>
 
     <div id="reports-list"></div>
   </div>

@@ -123,6 +123,14 @@
       cursor: pointer;
     }
 
+    /* Clean Normal Text Error Message */
+    #auth-err {
+      color: var(--muted);
+      margin-top: 12px;
+      font-size: 14px;
+      font-weight: normal;
+    }
+
     /* Create Link Box */
     .create-link-box {
       background: var(--card-bg);
@@ -244,7 +252,7 @@
         <input type="password" id="admin-pass" placeholder="Enter ADMIN_PASSWORD...">
       </div>
       <button class="btn-action" onclick="login()">Login</button>
-      <div id="auth-err" style="color: #ef4444; margin-top: 10px; font-size: 13px;"></div>
+      <div id="auth-err"></div>
     </div>
 
     <div id="dashboard">
@@ -304,7 +312,7 @@
       errEl.textContent = '';
 
       if (!pass || pass.trim() === '') {
-        errEl.textContent = 'INVALID CREDENTIALS.';
+        errEl.textContent = 'Access Denied';
         dashboard.style.display = 'none';
         authBox.style.display = 'block';
         return;
@@ -329,11 +337,11 @@
           }
         }
 
-        errEl.textContent = 'INVALID CREDENTIALS.';
+        errEl.textContent = 'Access Denied';
         dashboard.style.display = 'none';
         authBox.style.display = 'block';
       } catch (err) {
-        errEl.textContent = 'INVALID CREDENTIALS.';
+        errEl.textContent = 'Access Denied';
         dashboard.style.display = 'none';
         authBox.style.display = 'block';
       }
@@ -370,9 +378,9 @@
             return;
           }
         }
-        alert('INVALID CREDENTIALS.');
+        alert('Access Denied');
       } catch (err) {
-        alert('INVALID CREDENTIALS.');
+        alert('Access Denied');
       }
     }
 
@@ -399,7 +407,7 @@
         if (!res.ok || !contentType.includes('application/json')) {
           dashboard.style.display = 'none';
           authBox.style.display = 'block';
-          errEl.textContent = 'INVALID CREDENTIALS.';
+          errEl.textContent = 'Access Denied';
           return;
         }
 
@@ -407,7 +415,7 @@
         if (!Array.isArray(reports)) {
           dashboard.style.display = 'none';
           authBox.style.display = 'block';
-          errEl.textContent = 'INVALID CREDENTIALS.';
+          errEl.textContent = 'Access Denied';
           return;
         }
 
@@ -441,7 +449,7 @@
       } catch (err) {
         dashboard.style.display = 'none';
         authBox.style.display = 'block';
-        errEl.textContent = 'INVALID CREDENTIALS.';
+        errEl.textContent = 'Access Denied';
       }
     }
 
@@ -462,7 +470,7 @@
         if (res.ok && contentType.includes('application/json')) {
           loadDashboardReports();
         } else {
-          alert('INVALID CREDENTIALS.');
+          alert('Access Denied');
         }
       } catch (err) {
         alert('Toggle failed');

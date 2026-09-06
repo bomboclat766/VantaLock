@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Read ADMIN_PASSWORD strictly from environment variable, fallback to default for dev/test
+// Read ADMIN_PASSWORD strictly from environment variable
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.trim()) || 'vanta-admin-2026';
 
 function verifyAdminPassword(inputPassword) {
@@ -42,12 +42,12 @@ app.get('/api/beta-reports/pending/:id', async (req, res) => {
 
     const rows = await db.select().from(betaReports).where(eq(betaReports.id, id));
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'This signing link isn\'t active' });
+      return res.status(404).json({ error: "This signing link isn't active" });
     }
 
     const report = rows[0];
     if (report.signature || report.public_key) {
-      return res.status(400).json({ error: 'This signing link isn\'t active' });
+      return res.status(400).json({ error: "This signing link isn't active" });
     }
 
     return res.json({
@@ -71,12 +71,12 @@ app.post('/api/beta-reports/sign', async (req, res) => {
 
     const rows = await db.select().from(betaReports).where(eq(betaReports.id, id));
     if (rows.length === 0) {
-      return res.status(404).json({ error: 'This signing link isn\'t active' });
+      return res.status(404).json({ error: "This signing link isn't active" });
     }
 
     const report = rows[0];
     if (report.signature || report.public_key) {
-      return res.status(400).json({ error: 'This signing link isn\'t active' });
+      return res.status(400).json({ error: "This signing link isn't active" });
     }
 
     const dateStr = date_signed || new Date().toISOString().slice(0, 10);
@@ -104,20 +104,20 @@ app.get('/api/beta-reports/featured', async (req, res) => {
   }
 });
 
-// API: Admin Auth Check (Gated strictly)
+// API: Admin Auth Check (Gated strictly against process.env.ADMIN_PASSWORD)
 app.post('/api/admin/verify', (req, res) => {
   const { password } = req.body || {};
   if (verifyAdminPassword(password)) {
     return res.json({ success: true });
   }
-  return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
+  return res.status(401).json({ error: 'Access Denied' });
 });
 
 // API: Admin create pending signing link
 app.post('/api/admin/create-pending-report', async (req, res) => {
   const { password, tester_handle, report_text } = req.body || {};
   if (!verifyAdminPassword(password)) {
-    return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
+    return res.status(401).json({ error: 'Access Denied' });
   }
 
   if (!tester_handle || !report_text) {
@@ -150,7 +150,7 @@ app.post('/api/admin/create-pending-report', async (req, res) => {
 app.post('/api/admin/beta-reports', async (req, res) => {
   const { password } = req.body || {};
   if (!verifyAdminPassword(password)) {
-    return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
+    return res.status(401).json({ error: 'Access Denied' });
   }
 
   try {
@@ -166,7 +166,7 @@ app.post('/api/admin/beta-reports', async (req, res) => {
 app.post('/api/admin/toggle-featured', async (req, res) => {
   const { password, id, featured } = req.body || {};
   if (!verifyAdminPassword(password)) {
-    return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
+    return res.status(401).json({ error: 'Access Denied' });
   }
 
   try {

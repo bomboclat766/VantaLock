@@ -738,7 +738,7 @@
     <div class="faq-item">
       <div class="faq-q">Where is my encrypted vault file stored on my disk?</div>
       <div class="faq-a">
-        VantaLock stores your encrypted vault file locally in your operating system's standard application data directory. The file operates completely independent of the application, meaning updating or reinstalling VantaLock will never overwrite or erase your data. You can open your local vault directory quickly using OS keyboard shortcuts:
+        VantaLock stores your encrypted vault file locally in your operating system's standard application data directory. You can open your local vault directory quickly using OS keyboard shortcuts:
         <ul class="tech-list" style="margin-top: 10px;">
           <li><strong>Windows:</strong> Press <code>Win + R</code>, paste <code>%APPDATA%\vantalock</code>, and press Enter.</li>
           <li><strong>macOS:</strong> Open Finder, press <code>Cmd + Shift + G</code>, paste <code>~/Library/Application Support/vantalock</code>, and press Enter.</li>
@@ -778,6 +778,19 @@
     <div class="faq-item">
       <div class="faq-q">Can I export or migrate my data to another password manager?</div>
       <div class="faq-a">No. VantaLock exports encrypted local JSON backups specifically for restoring VantaLock vaults. Due to custom zero-knowledge AES-256-GCM encryption and specialized multi-vault compartment schemas, exports are not directly compatible with third-party password managers like 1Password or Bitwarden.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How do I update VantaLock?</div>
+      <div class="faq-a">
+        Updating VantaLock is simple and preserves your existing encrypted local vault data. Follow these steps:
+        <ul class="tech-list" style="margin-top: 10px;">
+          <li>Download the latest installer package for your operating system from our landing page or <a href="releases.html" style="color: var(--brass); text-decoration: underline;">Releases & Changelog page</a></li>
+          <li>Completely close any running instance of VantaLock on your desktop</li>
+          <li>Run the new installer executable (.exe on Windows, drag new .dmg to Applications on macOS, or overwrite .AppImage on Linux)</li>
+          <li>Launch VantaLock — your existing local vault and license setup will automatically load</li>
+        </ul>
+      </div>
     </div>
   </section>
 

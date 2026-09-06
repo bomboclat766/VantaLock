@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>VantaLock — Beta Report Signing Portal</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
+      --brass: #c9a24a;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
+      --muted: #888888;
+      --font-heading: Georgia, serif;
+      --font-mono: monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .brand {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    .back-link {
+      color: var(--brass);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover { opacity: 0.8; }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 34px;
+      font-weight: 300;
+      color: var(--brass);
+      margin-bottom: 10px;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      color: var(--brass);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: #ffffff;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--brass);
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    .canonical-box {
+      background: #050505;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+      margin-top: 8px;
+    }
+
+    .btn-submit {
+      background: var(--brass);
+      color: #000000;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-submit:hover {
+      background: #d4b055;
+      box-shadow: 0 0 15px var(--brass-glow);
+    }
+
+    .status-msg {
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
+      </svg>
+      VANTALOCK
+    </a>
+    <a href="beta-testers.html" class="back-link">← Verified Testers</a>
+  </header>
+
+  <div class="container">
+    <h1>Cryptographic Beta Report Signing</h1>
+    <p class="page-subtitle">Your client generates an ephemeral Ed25519 keypair locally in memory. The canonical report string is signed entirely in-browser, and the private key is permanently discarded.</p>
+
+    <form id="sign-form">
+      <div class="form-group">
+        <label for="tester-handle">Tester Handle / Identifier</label>
+        <input type="text" id="tester-handle" placeholder="e.g. @sec_researcher" required>
+      </div>
+
+      <div class="form-group">
+        <label for="report-text">Canonical Report Text</label>
+        <textarea id="report-text" placeholder="Enter approved audit / report text..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Canonical String to be Signed</label>
+        <div id="canonical-preview" class="canonical-box">Assembling canonical payload...</div>
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-submit">Sign & Submit Report</button>
+      <div id="status-msg" class="status-msg"></div>
+    </form>
+  </div>
+
+  <footer>
+    &copy; VantaLock. Sovereign Encrypted Storage. Beta Signing Portal.
+  </footer>
+
+  <script>
+    // Helper bytes <-> hex
+    function buf2hex(buffer) {
+      return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    function getCanonicalString(handle, text, dateStr) {
+      return `VANTALOCK_BETA_REPORT|HANDLE:${handle.trim()}|DATE:${dateStr}|TEXT:${text.trim()}`;
+    }
+
+    const handleInput = document.getElementById('tester-handle');
+    const textInput = document.getElementById('report-text');
+    const previewBox = document.getElementById('canonical-preview');
+    const statusMsg = document.getElementById('status-msg');
+    let fixedDateStr = new Date().toISOString().slice(0, 10);
+
+    // Read URL params if provided
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('handle')) handleInput.value = urlParams.get('handle');
+    if (urlParams.get('text')) textInput.value = urlParams.get('text');
+
+    function updatePreview() {
+      const handle = handleInput.value || 'YOUR_HANDLE';
+      const text = textInput.value || 'YOUR_REPORT_TEXT';
+      previewBox.textContent = getCanonicalString(handle, text, fixedDateStr);
+    }
+
+    handleInput.addEventListener('input', updatePreview);
+    textInput.addEventListener('input', updatePreview);
+    updatePreview();
+
+    document.getElementById('sign-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusMsg.textContent = 'Generating client-side Ed25519 keypair...';
+      statusMsg.style.color = 'var(--brass)';
+
+      try {
+        const handle = handleInput.value.trim();
+        const text = textInput.value.trim();
+        const canonical = getCanonicalString(handle, text, fixedDateStr);
+
+        // 1. Generate Ed25519 keypair in browser
+        const keyPair = await window.crypto.subtle.generateKey(
+          { name: 'Ed25519' },
+          true,
+          ['sign', 'verify']
+        );
+
+        // 2. Export public key as hex
+        const pubKeyBuf = await window.crypto.subtle.exportKey('raw', keyPair.publicKey);
+        const pubKeyHex = buf2hex(pubKeyBuf);
+
+        // 3. Sign canonical string
+        const encoder = new TextEncoder();
+        const sigBuf = await window.crypto.subtle.sign(
+          { name: 'Ed25519' },
+          keyPair.privateKey,
+          encoder.encode(canonical)
+        );
+        const sigHex = buf2hex(sigBuf);
+
+        statusMsg.textContent = 'Submitting signature and discarding private key...';
+
+        // 4. Submit to backend
+        const res = await fetch('/api/beta-reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tester_handle: handle,
+            report_text: text,
+            public_key: pubKeyHex,
+            signature: sigHex,
+            date_signed: fixedDateStr
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          statusMsg.style.color = '#10b981';
+          statusMsg.textContent = '✓ Report signed & submitted successfully! Private key discarded.';
+          handleInput.value = '';
+          textInput.value = '';
+          updatePreview();
+        } else {
+          throw new Error(data.error || 'Submission failed');
+        }
+      } catch (err) {
+        statusMsg.style.color = '#ef4444';
+        statusMsg.textContent = 'Error: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>VantaLock — Admin Beta Reports</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
+      --brass: #c9a24a;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
+      --muted: #888888;
+      --font-heading: Georgia, serif;
+      --font-mono: monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    header {
+      width: 100%;
+      max-width: 1000px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .brand {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 34px;
+      font-weight: 300;
+      color: var(--brass);
+      margin-bottom: 10px;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+
+    /* Auth modal */
+    #auth-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 30px;
+      max-width: 400px;
+      margin: 40px auto;
+    }
+
+    .form-group { margin-bottom: 20px; }
+
+    label {
+      display: block;
+      color: var(--brass);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #fff;
+      outline: none;
+    }
+
+    .btn-action {
+      background: var(--brass);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Reports Table */
+    #dashboard { display: none; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    th {
+      background: #0d0d0d;
+      color: var(--brass);
+      font-family: var(--font-heading);
+      font-weight: 600;
+    }
+
+    td { color: #ccc; }
+
+    .toggle-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .toggle-btn.featured {
+      border-color: #10b981;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
+      </svg>
+      VANTALOCK ADMIN
+    </a>
+  </header>
+
+  <div class="container">
+    <div id="auth-box">
+      <h2 style="color: var(--brass); font-family: var(--font-heading); font-size: 20px; margin-bottom: 16px;">Admin Authentication</h2>
+      <div class="form-group">
+        <label for="admin-pass">Admin Password</label>
+        <input type="password" id="admin-pass" placeholder="Enter ADMIN_PASSWORD...">
+      </div>
+      <button class="btn-action" onclick="login()">Login</button>
+      <div id="auth-err" style="color: #ef4444; margin-top: 10px; font-size: 13px;"></div>
+    </div>
+
+    <div id="dashboard">
+      <h1>Beta Report Moderation Dashboard</h1>
+      <p class="page-subtitle">Toggle reports featured status to publish or unpublish them on the public trust portal.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tester Handle</th>
+            <th>Report Text</th>
+            <th>Date Signed</th>
+            <th>Featured Status</th>
+          </tr>
+        </thead>
+        <tbody id="reports-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    &copy; VantaLock. Sovereign Encrypted Storage. Admin Portal.
+  </footer>
+
+  <script>
+    let currentAdminPass = '';
+
+    async function login() {
+      const pass = document.getElementById('admin-pass').value;
+      const errEl = document.getElementById('auth-err');
+      errEl.textContent = '';
+
+      try {
+        const res = await fetch('/api/admin/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pass })
+        });
+
+        if (res.ok) {
+          currentAdminPass = pass;
+          document.getElementById('auth-box').style.display = 'none';
+          document.getElementById('dashboard').style.display = 'block';
+          loadDashboardReports();
+        } else {
+          errEl.textContent = 'Invalid Admin Password';
+        }
+      } catch (err) {
+        errEl.textContent = 'Connection error: ' + err.message;
+      }
+    }
+
+    async function loadDashboardReports() {
+      const tbody = document.getElementById('reports-table-body');
+      try {
+        const res = await fetch('/api/admin/beta-reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: currentAdminPass })
+        });
+
+        const reports = await res.json();
+        tbody.innerHTML = '';
+
+        reports.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${r.tester_handle}</strong></td>
+            <td>${r.report_text}</td>
+            <td>${r.date_signed}</td>
+            <td>
+              <button class="toggle-btn ${r.featured ? 'featured' : ''}" onclick="toggleFeatured('${r.id}', ${!r.featured}, this)">
+                ${r.featured ? '✓ Featured (Public)' : 'Hidden (Private)'}
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color: #ef4444;">Error loading reports</td></tr>';
+      }
+    }
+
+    async function toggleFeatured(id, newStatus, btn) {
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/admin/toggle-featured', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: currentAdminPass,
+            id: id,
+            featured: newStatus
+          })
+        });
+
+        if (res.ok) {
+          loadDashboardReports();
+        }
+      } catch (err) {
+        alert('Toggle failed: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -110,14 +110,14 @@ app.post('/api/admin/verify', (req, res) => {
   if (verifyAdminPassword(password)) {
     return res.json({ success: true });
   }
-  return res.status(401).json({ error: 'Strictly Incorrect Password' });
+  return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
 });
 
 // API: Admin create pending signing link
 app.post('/api/admin/create-pending-report', async (req, res) => {
   const { password, tester_handle, report_text } = req.body || {};
   if (!verifyAdminPassword(password)) {
-    return res.status(401).json({ error: 'Strictly Incorrect Password' });
+    return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
   }
 
   if (!tester_handle || !report_text) {
@@ -150,7 +150,7 @@ app.post('/api/admin/create-pending-report', async (req, res) => {
 app.post('/api/admin/beta-reports', async (req, res) => {
   const { password } = req.body || {};
   if (!verifyAdminPassword(password)) {
-    return res.status(401).json({ error: 'Strictly Incorrect Password' });
+    return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
   }
 
   try {
@@ -166,7 +166,7 @@ app.post('/api/admin/beta-reports', async (req, res) => {
 app.post('/api/admin/toggle-featured', async (req, res) => {
   const { password, id, featured } = req.body || {};
   if (!verifyAdminPassword(password)) {
-    return res.status(401).json({ error: 'Strictly Incorrect Password' });
+    return res.status(401).json({ error: 'INVALID CREDENTIALS.' });
   }
 
   try {

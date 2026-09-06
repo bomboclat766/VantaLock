@@ -295,12 +295,18 @@
     let currentAdminPass = '';
 
     async function login() {
-      const pass = document.getElementById('admin-pass').value;
+      const passInput = document.getElementById('admin-pass');
+      const pass = passInput ? passInput.value : '';
       const errEl = document.getElementById('auth-err');
+      const authBox = document.getElementById('auth-box');
+      const dashboard = document.getElementById('dashboard');
+
       errEl.textContent = '';
 
       if (!pass || pass.trim() === '') {
-        errEl.textContent = 'Strictly Incorrect Password';
+        errEl.textContent = 'INVALID CREDENTIALS.';
+        dashboard.style.display = 'none';
+        authBox.style.display = 'block';
         return;
       }
 
@@ -308,19 +314,28 @@
         const res = await fetch('/api/admin/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pass })
+          body: JSON.stringify({ password: pass.trim() })
         });
 
-        if (res.ok) {
-          currentAdminPass = pass;
-          document.getElementById('auth-box').style.display = 'none';
-          document.getElementById('dashboard').style.display = 'block';
-          loadDashboardReports();
-        } else {
-          errEl.textContent = 'Strictly Incorrect Password';
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && data.success === true) {
+            currentAdminPass = pass.trim();
+            authBox.style.display = 'none';
+            dashboard.style.display = 'block';
+            loadDashboardReports();
+            return;
+          }
         }
+
+        errEl.textContent = 'INVALID CREDENTIALS.';
+        dashboard.style.display = 'none';
+        authBox.style.display = 'block';
       } catch (err) {
-        errEl.textContent = 'Connection error: ' + err.message;
+        errEl.textContent = 'INVALID CREDENTIALS.';
+        dashboard.style.display = 'none';
+        authBox.style.display = 'block';
       }
     }
 
@@ -343,18 +358,21 @@
           })
         });
 
-        const data = await res.json();
-        if (res.ok) {
-          document.getElementById('link-text-val').textContent = data.link;
-          document.getElementById('generated-link-container').style.display = 'block';
-          document.getElementById('new-handle').value = '';
-          document.getElementById('new-text').value = '';
-          loadDashboardReports();
-        } else {
-          alert('Error: ' + data.error);
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data && data.success === true) {
+            document.getElementById('link-text-val').textContent = data.link;
+            document.getElementById('generated-link-container').style.display = 'block';
+            document.getElementById('new-handle').value = '';
+            document.getElementById('new-text').value = '';
+            loadDashboardReports();
+            return;
+          }
         }
+        alert('INVALID CREDENTIALS.');
       } catch (err) {
-        alert('Failed to create link: ' + err.message);
+        alert('INVALID CREDENTIALS.');
       }
     }
 
@@ -366,6 +384,10 @@
 
     async function loadDashboardReports() {
       const tbody = document.getElementById('reports-table-body');
+      const authBox = document.getElementById('auth-box');
+      const dashboard = document.getElementById('dashboard');
+      const errEl = document.getElementById('auth-err');
+
       try {
         const res = await fetch('/api/admin/beta-reports', {
           method: 'POST',
@@ -373,15 +395,25 @@
           body: JSON.stringify({ password: currentAdminPass })
         });
 
-        if (!res.ok) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || !contentType.includes('application/json')) {
+          dashboard.style.display = 'none';
+          authBox.style.display = 'block';
+          errEl.textContent = 'INVALID CREDENTIALS.';
           return;
         }
 
         const reports = await res.json();
+        if (!Array.isArray(reports)) {
+          dashboard.style.display = 'none';
+          authBox.style.display = 'block';
+          errEl.textContent = 'INVALID CREDENTIALS.';
+          return;
+        }
+
         tbody.innerHTML = '';
 
-        if (!reports || reports.length === 0) {
+        if (reports.length === 0) {
           tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
           return;
         }
@@ -407,7 +439,9 @@
           tbody.appendChild(tr);
         });
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+        dashboard.style.display = 'none';
+        authBox.style.display = 'block';
+        errEl.textContent = 'INVALID CREDENTIALS.';
       }
     }
 
@@ -424,11 +458,14 @@
           })
         });
 
-        if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
           loadDashboardReports();
+        } else {
+          alert('INVALID CREDENTIALS.');
         }
       } catch (err) {
-        alert('Toggle failed: ' + err.message);
+        alert('Toggle failed');
       }
     }
   </script>

@@ -317,12 +317,6 @@
   <script>
     let currentAdminPass = '';
 
-    // SHA-256 helper for client-side fallback check
-    async function sha256(str) {
-      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
     async function login() {
       const passInput = document.getElementById('admin-pass');
       const pass = passInput ? passInput.value.trim() : '';
@@ -330,6 +324,8 @@
       const authBox = document.getElementById('auth-box');
       const dashboard = document.getElementById('dashboard');
       const loginBtn = document.getElementById('login-btn');
+
+      errEl.textContent = '';
 
       if (!pass) {
         errEl.textContent = 'Access Denied';
@@ -347,10 +343,8 @@
 
       if (loginBtn) loginBtn.disabled = false;
 
-      let isValid = false;
-
       try {
-        // 1. Attempt server-side API verification
+        // Strict server-side verification request
         const res = await fetch('/api/admin/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -361,29 +355,19 @@
         if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
           if (data && data.success === true) {
-            isValid = true;
+            currentAdminPass = pass;
+            errEl.textContent = '';
+            authBox.style.display = 'none';
+            dashboard.style.display = 'block';
+            loadDashboardReports();
+            return;
           }
         }
+
+        errEl.textContent = 'Access Denied';
+        dashboard.style.display = 'none';
+        authBox.style.display = 'block';
       } catch (err) {
-        // Network or static site fallback
-      }
-
-      // 2. Client-side fallback check against expected environment password hash
-      if (!isValid) {
-        const inputHash = await sha256(pass);
-        // Expected hash for (5TZAx-cU1d6hD2l=Ke6)fZ+ml^!K6&R
-        if (inputHash === '68ba7e61957d1d5e8a002a9990dd9b434efac3b51e3ec9c5425a040fdc0aded7') {
-          isValid = true;
-        }
-      }
-
-      if (isValid) {
-        currentAdminPass = pass;
-        errEl.textContent = '';
-        authBox.style.display = 'none';
-        dashboard.style.display = 'block';
-        loadDashboardReports();
-      } else {
         errEl.textContent = 'Access Denied';
         dashboard.style.display = 'none';
         authBox.style.display = 'block';
@@ -448,13 +432,17 @@
 
         const contentType = res.headers.get('content-type') || '';
         if (!res.ok || !contentType.includes('application/json')) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+          dashboard.style.display = 'none';
+          authBox.style.display = 'block';
+          errEl.textContent = 'Access Denied';
           return;
         }
 
         const reports = await res.json();
         if (!Array.isArray(reports)) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+          dashboard.style.display = 'none';
+          authBox.style.display = 'block';
+          errEl.textContent = 'Access Denied';
           return;
         }
 
@@ -486,7 +474,9 @@
           tbody.appendChild(tr);
         });
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color: var(--muted); text-align: center;">No reports yet</td></tr>';
+        dashboard.style.display = 'none';
+        authBox.style.display = 'block';
+        errEl.textContent = 'Access Denied';
       }
     }
 

@@ -431,7 +431,7 @@
 </head>
 <body>
 
-  <header>
+  <header style="display: flex; justify-content: space-between; align-items: center;">
     <div class="brand">
       <svg class="brand-logo" viewBox="0 0 100 100">
         <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
@@ -440,9 +440,9 @@
       </svg>
       VANTALOCK
     </div>
-    <div class="release-badge" style="background: rgba(201, 162, 74, 0.1); border: 1px solid var(--brass); color: var(--brass); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; font-family: Georgia, serif; letter-spacing: 0.5px;">
+    <a href="releases.html" class="release-badge" style="background: rgba(201, 162, 74, 0.1); border: 1px solid var(--brass); color: var(--brass); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; font-family: Georgia, serif; letter-spacing: 0.5px; text-decoration: none; cursor: pointer; transition: opacity 0.2s;">
       Release v1.1.30
-    </div>
+    </a>
   </header>
 
   <main class="hero">
@@ -631,8 +631,8 @@
 
       <div class="step-card">
         <div class="step-num">Linux</div>
-        <div class="step-title">Linux Tarball (.tar.gz)</div>
-        <div class="step-desc">Download `VantaLock-Linux-x64.tar.gz`, extract the archive, and run `./vantalock` in your terminal or desktop manager.</div>
+        <div class="step-title">Linux AppImage (.AppImage)</div>
+        <div class="step-desc">Click "Download for Linux", make `VantaLock-1.1.30.AppImage` executable with `chmod +x`, and launch directly.</div>
       </div>
     </div>
   </section>
@@ -642,7 +642,7 @@
     <h2 class="section-title">Platform Specifications</h2>
     <p class="section-subtitle">Lightweight, standalone desktop software engineered for minimal system footprint.</p>
 
-    <div class="content-box" style="padding: 0; overflow: hidden;">
+    <div class="content-box" style="padding: 0; overflow: hidden; margin-bottom: 0;">
       <table class="specs-table">
         <thead>
           <tr>
@@ -663,7 +663,7 @@
           </tr>
           <tr>
             <td><strong>macOS</strong> 11.0+ (Big Sur / Monterey / Ventura / Sonoma / Sequoia)</td>
-            <td>Intel & Apple Silicon (Universal Binary)</td>
+            <td>Apple Silicon</td>
             <td>512 MB</td>
             <td>180 MB</td>
             <td>Keychain Integration, Hardened Runtime & App Sandbox Isolation</td>
@@ -678,15 +678,50 @@
         </tbody>
       </table>
     </div>
+  </section>
 
-    <div class="content-box" style="margin-top: 24px;">
-      <h3>Hardware & Kernel Memory Isolation</h3>
-      <p>VantaLock's runtime engine enforces low-level operating system protection mechanisms across all desktop platforms to maintain absolute data integrity and prevent unauthorized memory inspection:</p>
+  <!-- Section: Hardware & Kernel Memory Isolation -->
+  <section class="section-container">
+    <h2 class="section-title">Hardware & Kernel Memory Isolation</h2>
+    <p class="section-subtitle">Low-level OS protection mechanisms enforcing zero-trace memory security.</p>
+
+    <div class="content-box" style="padding: 30px;">
+      <p style="font-family: var(--font-heading); color: var(--muted); font-size: 16px; line-height: 1.6; margin-bottom: 20px; font-weight: 600;">
+        VantaLock's runtime engine enforces low-level operating system protection mechanisms across all desktop platforms to maintain absolute data integrity and prevent unauthorized memory inspection:
+      </p>
       <ul class="tech-list">
         <li><strong>RAM Memory Lockdown (mlock / VirtualLock):</strong> Key derivation buffers created via Argon2id are explicitly pinned in physical RAM memory using system calls to prevent sensitive cryptographic material from being written to unencrypted swap space or paging files.</li>
         <li><strong>Zero-Trace RAM Scrubbing:</strong> Master keys and temporary AES-256-GCM cipher contexts are active strictly during operation and are deterministically overwritten with cryptographically random bytes before memory deallocation.</li>
         <li><strong>Air-Gapped Operation:</strong> Designed to run seamlessly in completely offline, network-isolated environments (including live USB operating systems like Tails or Qubes OS) with zero external library or runtime network calls.</li>
       </ul>
+    </div>
+  </section>
+
+  <!-- Section: About & Contact Transparency -->
+  <section id="about" class="section-container">
+    <h2 class="section-title">About VantaLock</h2>
+    <p class="section-subtitle">Local-First, Zero-Cloud Data Sovereignty</p>
+
+    <div class="content-box" style="padding: 30px; margin-bottom: 24px; text-align: left;">
+      <h3 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">What is VantaLock?</h3>
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        VantaLock is an independently developed desktop vault application engineered to give individuals complete ownership over their sensitive data. Built on a strict zero-cloud architecture, VantaLock ensures that your files, credentials, and encrypted compartments reside exclusively on your local hardware.
+      </p>
+
+      <h3 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Our Philosophy & Architecture</h3>
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        Modern cloud services expose private data to third-party server breaches, forced updates, and continuous telemetry tracking. VantaLock eliminates these vulnerabilities by running completely offline. All vault encryption is performed locally using military-grade primitives—including AES-256-GCM authenticated encryption, Argon2id password hashing, and standard 256-bit BIP-39 mnemonic key generation.
+      </p>
+
+      <h3 style="color: var(--brass); font-family: var(--font-heading); font-size: 18px; margin-bottom: 8px;">Operator & Development</h3>
+      <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+        VantaLock is engineered, maintained, and operated by an individual developer as an independent software security project dedicated to user privacy and digital sovereignty. The codebase is open for public inspection on GitHub, ensuring full cryptographic transparency without hidden tracking scripts, remote backdoors, or analytics collection.
+      </p>
+
+      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 14px; color: var(--brass);">
+        <strong>Direct Developer Support Email:</strong>
+        <a href="mailto:support@vantalocksecure.com" style="color: var(--brass); font-weight: bold; text-decoration: underline; margin-left: 8px;">support@vantalocksecure.com</a>
+      </div>
     </div>
   </section>
 
@@ -696,28 +731,80 @@
     <p class="section-subtitle">Clear answers about security, storage, recovery, and platform operations.</p>
 
     <div class="faq-item">
-      <div class="faq-q">Recovery & Loss: What happens if I lose my seed phrase or master key?</div>
-      <div class="faq-a">Because VantaLock uses zero-cloud local AES-256-GCM encryption, there is no remote server, no backdoors, and no administrative password reset option. Before storing critical items like SSNs or property deeds in the Legal Vault, confirm you have securely saved your 24-word recovery seed offline. Without the seed or password, data recovery is mathematically impossible.</div>
+      <div class="faq-q">What if I lose my password or recovery seed?</div>
+      <div class="faq-a">If you lose both your master password and your 24-word recovery seed, your data is permanently lost. Because VantaLock runs completely offline on your device, there are no password reset links, backdoors, or support overrides to help you regain access. Always save your 24-word recovery seed offline before storing sensitive files.</div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">Where is my encrypted vault file stored on my disk?</div>
-      <div class="faq-a">VantaLock stores your encrypted vault in your operating system's standard application data directory. On Windows, this is `%APPDATA%\vantalock`; on macOS, `~/Library/Application Support/vantalock`; and on Linux, `~/.config/vantalock`.</div>
-    </div>
-
-    <div class="faq-item">
-      <div class="faq-q">What happens if I lose my Master Password?</div>
-      <div class="faq-a">Because VantaLock is zero-knowledge and zero-cloud, there are no "Forgot Password" email reset buttons. You must use the 24-word BIP-39 recovery seed phrase generated during initial setup to restore access.</div>
+      <div class="faq-a">
+        VantaLock stores your encrypted vault file locally in your operating system's standard application data directory. You can open your local vault directory quickly using OS keyboard shortcuts:
+        <ul class="tech-list" style="margin-top: 10px;">
+          <li><strong>Windows:</strong> Press <code>Win + R</code>, paste <code>%APPDATA%\vantalock</code>, and press Enter.</li>
+          <li><strong>macOS:</strong> Open Finder, press <code>Cmd + Shift + G</code>, paste <code>~/Library/Application Support/vantalock</code>, and press Enter.</li>
+          <li><strong>Linux:</strong> Press <code>Ctrl + Alt + T</code> to open terminal, then run <code>cd ~/.config/vantalock</code> or open file manager to <code>~/.config/vantalock</code>.</li>
+        </ul>
+      </div>
     </div>
 
     <div class="faq-item">
       <div class="faq-q">Can VantaLock run completely offline?</div>
       <div class="faq-a">Yes. Beyond the brief 1-time license activation check upon initial launch, VantaLock requires zero internet connectivity and can operate indefinitely in air-gapped environments.</div>
     </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I use my license on multiple devices?</div>
+      <div class="faq-a">No. Each license key is strictly bound to a single device hardware installation at a time. To run VantaLock on a different computer, you must transfer your license. Attempting concurrent activation on multiple machines will invalidate the key.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What happens if I reinstall VantaLock or switch computers?</div>
+      <div class="faq-a">
+        Reinstalling VantaLock on the same machine does not affect your stored data because your encrypted vault file lives independently in local operating system application storage. To switch computers, follow these steps:
+        <ul class="tech-list" style="margin-top: 10px;">
+          <li>Copy the vault file from the old computer's local storage (see storage location FAQ above) to a USB drive or external storage</li>
+          <li>Install VantaLock fresh on the new computer</li>
+          <li>Place the vault file in the new computer's equivalent storage location</li>
+          <li>Deactivate the license on the old device and activate it on the new one via the Lemon Squeezy portal</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What information does the license activation check send?</div>
+      <div class="faq-a">The initial 1-time activation check transmits only your purchased license key string and an anonymous hardware device fingerprint. No personal identity details, vault contents, passwords, or telemetry data are collected or transmitted. This check connects directly to Lemon Squeezy's secure API.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I export or migrate my data to another password manager?</div>
+      <div class="faq-a">No. VantaLock exports encrypted local JSON backups specifically for restoring VantaLock vaults. Due to custom zero-knowledge AES-256-GCM encryption and specialized multi-vault compartment schemas, exports are not directly compatible with third-party password managers like 1Password or Bitwarden.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How do I update VantaLock?</div>
+      <div class="faq-a">
+        Updating VantaLock is simple and preserves your existing encrypted local vault data. Follow these steps:
+        <ul class="tech-list" style="margin-top: 10px;">
+          <li>Download the latest installer package for your operating system from our landing page or official <a href="https://github.com/bomboclat766/VantaLock/releases/latest" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: underline;">GitHub Releases page</a></li>
+          <li>Completely close any running instance of VantaLock on your desktop</li>
+          <li>Run the new installer executable (.exe on Windows, drag new .dmg to Applications on macOS, or overwrite .AppImage on Linux)</li>
+          <li>Launch VantaLock — there is no need to repeat onboarding or re-enter your license key, as all local application data remains preserved on your PC and will automatically load.</li>
+        </ul>
+        <div style="margin-top: 12px; font-size: 13px; color: var(--muted); font-style: italic;">Optionally, you can simply open the About section in your VantaLock desktop app and click "Check for Updates on GitHub".</div>
+      </div>
+    </div>
   </section>
 
-  <footer>
-    &copy; VantaLock. Sovereign Encrypted Storage. Pure Black Edition.
+  <footer style="margin-top: 60px; padding: 40px 20px; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 13px;">
+    <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap;">
+      <a href="#about" style="color: var(--brass); text-decoration: none;">About & Contact</a>
+      <a href="beta-testers.html" style="color: var(--brass); text-decoration: none;">Beta Reports</a>
+      <a href="privacy.html" style="color: var(--brass); text-decoration: none;">Privacy Policy</a>
+      <a href="terms.html" style="color: var(--brass); text-decoration: none;">Terms of Service</a>
+      <a href="https://github.com/bomboclat766/VantaLock" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: none;">GitHub Repository</a>
+      <a href="mailto:support@vantalocksecure.com" style="color: var(--brass); text-decoration: none;">support@vantalocksecure.com</a>
+    </div>
+    <div>&copy; VantaLock. Sovereign Encrypted Storage. Pure Black Edition. All rights reserved.</div>
   </footer>
 
   <script>

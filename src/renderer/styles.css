@@ -648,3 +648,59 @@ html, body {
   background: var(--danger-red);
   color: #ffffff;
 }
+
+/* Field Container Boxes */
+.field-container-box {
+  background: #1a1a1a;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-box-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brass-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-box-value-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-box-text {
+  font-size: 14px;
+  color: #ffffff;
+  word-break: break-all;
+  font-family: var(--font-mono, monospace);
+}
+
+.field-box-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.field-eye-btn, .field-copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.field-eye-btn:hover, .field-copy-btn:hover {
+  color: var(--brass-accent);
+  background: rgba(201, 162, 74, 0.1);
+}

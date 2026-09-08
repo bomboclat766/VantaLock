@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>VantaLock — Verified Beta Tester Reports</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
+      --brass: #c9a24a;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
+      --muted: #888888;
+      --font-heading: Georgia, serif;
+      --font-mono: monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .brand {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    .back-link {
+      color: var(--brass);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover { opacity: 0.8; }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 38px;
+      font-weight: 300;
+      color: var(--brass);
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 40px;
+      line-height: 1.6;
+    }
+
+    .report-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tester-handle {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      color: var(--brass);
+    }
+
+    .report-date {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .report-body {
+      color: #cccccc;
+      font-size: 15px;
+      margin-bottom: 20px;
+      white-space: pre-wrap;
+    }
+
+    .crypto-meta {
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .crypto-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .crypto-row:last-child { margin-bottom: 0; }
+
+    .crypto-label { color: var(--brass); }
+
+    .btn-verify {
+      background: transparent;
+      border: 1px solid var(--brass);
+      color: var(--brass);
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-verify:hover {
+      background: rgba(201, 162, 74, 0.1);
+      box-shadow: 0 0 10px var(--brass-glow);
+    }
+
+    .verify-result {
+      display: inline-block;
+      margin-left: 14px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .empty-msg {
+      color: var(--muted);
+      font-size: 15px;
+      padding: 0 0 20px 0;
+      text-align: left;
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
+      </svg>
+      VANTALOCK
+    </a>
+    <a href="index.html" class="back-link">← Back to Overview</a>
+  </header>
+
+  <div class="container">
+    <h1>Cryptographically Verified Beta Reports</h1>
+    <p class="page-subtitle">Every report below is signed using <a href="https://ed25519.cr.yp.to/" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: underline;">Ed25519</a> — a modern, widely trusted signature algorithm used in SSH keys and Signal's encryption. (<a href="https://ed25519.com/blog/what-is-ed25519/" target="_blank" rel="noopener" style="color: var(--brass); text-decoration: underline;">Plain-English explainer here</a>.) Each signature is generated in the reporter's own browser using a private key only they hold, then verified independently using their public key. We never touch the private key, and we never sign anything ourselves. Click 'Verify Signature' to confirm it, right in your own browser.</p>
+
+    <div id="reports-list"></div>
+  </div>
+
+  <footer>
+    &copy; VantaLock. Sovereign Encrypted Storage. Verified Beta Trust Portal.
+  </footer>
+
+  <script>
+    function hex2buf(hex) {
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+      }
+      return bytes.buffer;
+    }
+
+    function truncateHex(hex) {
+      if (!hex || hex.length < 16) return hex;
+      return hex.slice(0, 8) + '...' + hex.slice(-8);
+    }
+
+    function getCanonicalString(handle, text, dateStr) {
+      return `VANTALOCK_BETA_REPORT|HANDLE:${handle.trim()}|DATE:${dateStr}|TEXT:${text.trim()}`;
+    }
+
+    async function loadReports() {
+      const container = document.getElementById('reports-list');
+      try {
+        const res = await fetch('/api/beta-reports/featured');
+        if (!res.ok) {
+          container.innerHTML = '<div class="empty-msg">No reports at the moment.</div>';
+          return;
+        }
+
+        const reports = await res.json();
+
+        if (!reports || reports.length === 0) {
+          container.innerHTML = '<div class="empty-msg">No reports at the moment.</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        reports.forEach(report => {
+          const card = document.createElement('div');
+          card.className = 'report-card';
+
+          card.innerHTML = `
+            <div class="report-header">
+              <span class="tester-handle">${report.tester_handle}</span>
+              <span class="report-date">${report.date_signed}</span>
+            </div>
+            <div class="report-body">${report.report_text}</div>
+            <div class="crypto-meta">
+              <div class="crypto-row">
+                <span class="crypto-label">Public Key (Ed25519):</span>
+                <span>${truncateHex(report.public_key)}</span>
+              </div>
+              <div class="crypto-row">
+                <span class="crypto-label">Signature:</span>
+                <span>${truncateHex(report.signature)}</span>
+              </div>
+            </div>
+            <div>
+              <button class="btn-verify" onclick="verifyReport('${report.id}', '${encodeURIComponent(report.tester_handle)}', '${encodeURIComponent(report.report_text)}', '${report.date_signed}', '${report.public_key}', '${report.signature}', this)">Verify Signature</button>
+              <span id="result-${report.id}" class="verify-result"></span>
+            </div>
+          `;
+
+          container.appendChild(card);
+        });
+      } catch (err) {
+        container.innerHTML = '<div class="empty-msg">No reports at the moment.</div>';
+      }
+    }
+
+    async function verifyReport(id, handleEnc, textEnc, dateStr, pubKeyHex, sigHex, btn) {
+      const resultEl = document.getElementById(`result-${id}`);
+      resultEl.textContent = 'Verifying...';
+      resultEl.style.color = 'var(--brass)';
+
+      try {
+        const handle = decodeURIComponent(handleEnc);
+        const text = decodeURIComponent(textEnc);
+        const canonical = getCanonicalString(handle, text, dateStr);
+
+        // 1. Import Public Key
+        const pubKeyKey = await window.crypto.subtle.importKey(
+          'raw',
+          hex2buf(pubKeyHex),
+          { name: 'Ed25519' },
+          true,
+          ['verify']
+        );
+
+        // 2. Verify signature
+        const encoder = new TextEncoder();
+        const isValid = await window.crypto.subtle.verify(
+          { name: 'Ed25519' },
+          pubKeyKey,
+          hex2buf(sigHex),
+          encoder.encode(canonical)
+        );
+
+        if (isValid) {
+          resultEl.textContent = '✓ PASS: Signature mathematically valid';
+          resultEl.style.color = '#10b981';
+        } else {
+          resultEl.textContent = '✗ FAIL: Invalid signature payload';
+          resultEl.style.color = '#ef4444';
+        }
+      } catch (err) {
+        resultEl.textContent = '✗ FAIL: ' + err.message;
+        resultEl.style.color = '#ef4444';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadReports);
+  </script>
+</body>
+</html>

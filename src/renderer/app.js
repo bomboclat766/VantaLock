@@ -151,38 +151,201 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let vaultEntries = loadSavedVaultEntries();
 
-  const vaultMetadata = {
+    const vaultMetadata = {
     financial: {
       title: 'Financial Vault',
       desc: 'Manage bank accounts, payment cards, crypto wallets, loans, tax documents, and property deeds.',
       types: [
-        { id: 'bank', label: 'Bank Account', fields: ['Bank Name', 'Account Number', 'Routing Number', 'Account Holder'] },
-        { id: 'card', label: 'Payment Card', fields: ['Card Name', 'Card Number', 'Expiry Date', 'CVV', 'PIN'] },
-        { id: 'crypto', label: 'Crypto Wallet', fields: ['Wallet Name', 'Public Address', 'Private Key / Seed Phrase'] },
-        { id: 'loan', label: 'Loan & Mortgage', fields: ['Lender Name', 'Account Number', 'Principal Amount', 'Interest Rate'] },
-        { id: 'tax', label: 'Tax Document', fields: ['Tax Year', 'Document Type (W2/1099/1040)', 'Filing Status'] }
+        {
+          id: 'bank',
+          label: 'Bank Account',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 7H3l9-7z"/></svg>`,
+          fields: [
+            { name: 'Bank Name', key: 'bank_name', type: 'text' },
+            { name: 'Account Type', key: 'account_type', type: 'select', options: ['Checking', 'Savings', 'Business', 'Investment'] },
+            { name: 'Account Number', key: 'account_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Routing / ABA Number', key: 'routing_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'SWIFT / IBAN', key: 'swift_iban', type: 'text', sensitive: true },
+            { name: 'PIN / Password', key: 'pin_password', type: 'password', sensitive: true },
+            { name: 'Branch / Notes', key: 'branch_notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'card',
+          label: 'Payment Card',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+          fields: [
+            { name: 'Card Title / Nickname', key: 'card_title', type: 'text' },
+            { name: 'Cardholder Name', key: 'cardholder_name', type: 'text' },
+            { name: 'Card Number', key: 'card_number', type: 'text', sensitive: true, maskType: 'card' },
+            { name: 'Expiry Date (MM/YY)', key: 'expiry_date', type: 'text' },
+            { name: 'CVV / CVC', key: 'cvv', type: 'password', sensitive: true },
+            { name: 'PIN', key: 'pin', type: 'password', sensitive: true },
+            { name: 'Billing Zip Code', key: 'zip_code', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'crypto',
+          label: 'Crypto Wallet',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5a2.5 2.5 0 0 0-5 0c0 2 5 2.5 5 4.5a2.5 2.5 0 0 1-5 0"/></svg>`,
+          fields: [
+            { name: 'Wallet Name', key: 'wallet_name', type: 'text' },
+            { name: 'Network / Asset', key: 'network', type: 'text' },
+            { name: 'Public Address', key: 'public_address', type: 'text' },
+            { name: 'Private Key', key: 'private_key', type: 'textarea', sensitive: true },
+            { name: 'Recovery Seed Phrase (12/24 words)', key: 'seed_phrase', type: 'textarea', sensitive: true },
+            { name: 'Passphrase / PIN', key: 'wallet_pin', type: 'password', sensitive: true },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'loan',
+          label: 'Loan & Mortgage',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 7H3l9-7z"/></svg>`,
+          fields: [
+            { name: 'Lender Name', key: 'lender_name', type: 'text' },
+            { name: 'Account / Loan Number', key: 'account_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Principal Amount', key: 'principal_amount', type: 'text' },
+            { name: 'Interest Rate (%)', key: 'interest_rate', type: 'text' },
+            { name: 'Monthly Payment', key: 'monthly_payment', type: 'text' },
+            { name: 'Due Date', key: 'due_date', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'tax',
+          label: 'Tax Document',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+          fields: [
+            { name: 'Tax Year', key: 'tax_year', type: 'text' },
+            { name: 'Document Type (W2/1099/1040)', key: 'document_type', type: 'text' },
+            { name: 'Filing Status', key: 'filing_status', type: 'text' },
+            { name: 'SSN / EIN Number', key: 'ssn_ein', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        }
       ]
     },
     legal: {
       title: 'Legal Vault',
       desc: 'Store passport details, identification numbers, legal contracts, property deeds, and wills.',
       types: [
-        { id: 'passport', label: 'Passport', fields: ['Country', 'Passport Number', 'Expiration Date', 'Full Legal Name'] },
-        { id: 'ssn', label: 'Identity / SSN / ID', fields: ['Full Legal Name', 'SSN / National ID Number', 'Date of Birth'] },
-        { id: 'contract', label: 'Legal Contract', fields: ['Document Title', 'Parties Involved', 'Effective Date', 'Key Terms'] },
-        { id: 'deed', label: 'Property Deed / Title', fields: ['Property Address', 'Parcel / Registry ID', 'Owner Names'] },
-        { id: 'will', label: 'Will & Estate Plan', fields: ['Document Name', 'Executor Name', 'Attorney Contact'] }
+        {
+          id: 'passport',
+          label: 'Passport',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 17c0-2 2.5-3 5-3s5 1 5 3"/></svg>`,
+          fields: [
+            { name: 'Country / Issuing Authority', key: 'country', type: 'text' },
+            { name: 'Passport Number', key: 'passport_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Full Legal Name', key: 'full_name', type: 'text' },
+            { name: 'Issue Date', key: 'issue_date', type: 'text' },
+            { name: 'Expiration Date', key: 'expiration_date', type: 'text' },
+            { name: 'Place of Birth / DOB', key: 'dob', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'ssn',
+          label: 'Identity / SSN / ID',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+          fields: [
+            { name: 'Full Legal Name', key: 'full_name', type: 'text' },
+            { name: 'SSN / National ID Number', key: 'ssn_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Date of Birth', key: 'dob', type: 'text' },
+            { name: 'Issuing State / Authority', key: 'issuing_authority', type: 'text' },
+            { name: 'Expiration Date', key: 'expiration_date', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'contract',
+          label: 'Legal Contract',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+          fields: [
+            { name: 'Document Title', key: 'document_title', type: 'text' },
+            { name: 'Contract ID / Reference', key: 'contract_id', type: 'text' },
+            { name: 'Parties Involved', key: 'parties', type: 'text' },
+            { name: 'Effective Date', key: 'effective_date', type: 'text' },
+            { name: 'Expiration Date', key: 'expiration_date', type: 'text' },
+            { name: 'Key Terms / Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'deed',
+          label: 'Property Deed / Title',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+          fields: [
+            { name: 'Property Address', key: 'property_address', type: 'text' },
+            { name: 'Parcel / Registry ID', key: 'parcel_id', type: 'text' },
+            { name: 'Owner Names', key: 'owner_names', type: 'text' },
+            { name: 'Recording Date', key: 'recording_date', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'will',
+          label: 'Will & Estate Plan',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+          fields: [
+            { name: 'Document Name', key: 'document_name', type: 'text' },
+            { name: 'Executor Name', key: 'executor_name', type: 'text' },
+            { name: 'Attorney Contact', key: 'attorney_contact', type: 'text' },
+            { name: 'Physical Storage Location', key: 'physical_location', type: 'text' },
+            { name: 'Notes / Beneficiaries', key: 'notes', type: 'textarea' }
+          ]
+        }
       ]
     },
     personal: {
       title: 'Personal Vault',
       desc: 'Keep private logins, personal notes, medical info, emergency instructions, and confidential records.',
       types: [
-        { id: 'login', label: 'Login / Password', fields: ['Site/App Name', 'Username / Email', 'Password', '2FA Backup Codes'] },
-        { id: 'note', label: 'Secure Note', fields: ['Title', 'Freeform Text'] },
-        { id: 'medical', label: 'Medical & Prescription Info', fields: ['Condition / Prescription', 'Doctor Name', 'Dosage / Instructions'] },
-        { id: 'emergency', label: 'Emergency Instruction', fields: ['Title', 'Instructions', 'Who to Notify', 'Contact Phone'] },
-        { id: 'confidential', label: 'Confidential Record', fields: ['Record Title', 'Category', 'Details'] }
+        {
+          id: 'login',
+          label: 'Login / Password',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+          fields: [
+            { name: 'Site / App Name', key: 'site_name', type: 'text' },
+            { name: 'URL / Web Address', key: 'url', type: 'text' },
+            { name: 'Username / Email', key: 'username', type: 'text' },
+            { name: 'Password', key: 'password', type: 'password', sensitive: true },
+            { name: '2FA Backup Codes', key: '2fa_codes', type: 'textarea', sensitive: true },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'note',
+          label: 'Secure Note',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+          fields: [
+            { name: 'Title', key: 'title', type: 'text' },
+            { name: 'Freeform Text Content', key: 'content', type: 'textarea', sensitive: true }
+          ]
+        },
+        {
+          id: 'medical',
+          label: 'Medical & Prescription Info',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
+          fields: [
+            { name: 'Condition / Prescription Name', key: 'condition_name', type: 'text' },
+            { name: 'Doctor Name / Clinic', key: 'doctor_name', type: 'text' },
+            { name: 'Dosage / Usage Instructions', key: 'dosage', type: 'text' },
+            { name: 'Rx Number / Insurance ID', key: 'rx_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'emergency',
+          label: 'Emergency Instruction',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+          fields: [
+            { name: 'Title', key: 'title', type: 'text' },
+            { name: 'Who to Notify', key: 'who_to_notify', type: 'text' },
+            { name: 'Contact Phone / Email', key: 'contact_phone', type: 'text' },
+            { name: 'Action Instructions', key: 'instructions', type: 'textarea', sensitive: true }
+          ]
+        }
       ]
     }
   };
@@ -230,6 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Centralized setActiveView view manager
   function setActiveView(targetView) {
+    const titlebarControls = document.getElementById('titlebar-right-controls');
+    if (titlebarControls) {
+      titlebarControls.style.visibility = 'visible';
+      titlebarControls.style.opacity = '1';
+    }
     setupPasswordToggles();
 
     // 1. Hide all main containers and setup steps first
@@ -612,6 +780,8 @@ document.addEventListener('DOMContentLoaded', () => {
     viewFileModal.classList.remove('hidden');
   }
 
+    let editingEntryId = null;
+
   // Entry Modals & Dynamic Form Rendering
   if (addEntryBtn) {
     addEntryBtn.addEventListener('click', () => {
@@ -625,75 +795,157 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function openAddEntryModal() {
+  function openAddEntryModal(entryToEdit = null) {
     typeChipsGrid.innerHTML = '';
+    const modalTitleEl = addEntryModal.querySelector('.setup-title');
     const availableTypes = vaultMetadata[activeVault].types;
 
-    availableTypes.forEach((tConfig, idx) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = `type-chip ${idx === 0 ? 'selected' : ''}`;
-      chip.textContent = tConfig.label;
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
-        chip.classList.add('selected');
-        renderDynamicFormFields(tConfig);
-      });
-      typeChipsGrid.appendChild(chip);
-    });
+    if (entryToEdit) {
+      editingEntryId = entryToEdit.id;
+      if (modalTitleEl) modalTitleEl.textContent = 'Edit Vault Entry';
+      document.getElementById('entry-title-input').value = entryToEdit.title || '';
+      document.getElementById('entry-notes-input').value = entryToEdit.notes || '';
 
-    if (availableTypes.length > 0) {
-      renderDynamicFormFields(availableTypes[0]);
+      const targetType = availableTypes.find(t => t.id === entryToEdit.type) || availableTypes[0];
+      activeEntryType = targetType;
+
+      availableTypes.forEach((tConfig) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `type-chip ${tConfig.id === targetType.id ? 'selected' : ''}`;
+        chip.textContent = tConfig.label;
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          renderDynamicFormFields(tConfig, entryToEdit.fields || {});
+        });
+        typeChipsGrid.appendChild(chip);
+      });
+
+      renderDynamicFormFields(targetType, entryToEdit.fields || {});
+    } else {
+      editingEntryId = null;
+      if (modalTitleEl) modalTitleEl.textContent = 'Add Vault Entry';
+      if (entryDynamicForm) entryDynamicForm.reset();
+
+      availableTypes.forEach((tConfig, idx) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `type-chip ${idx === 0 ? 'selected' : ''}`;
+        chip.textContent = tConfig.label;
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          renderDynamicFormFields(tConfig);
+        });
+        typeChipsGrid.appendChild(chip);
+      });
+
+      if (availableTypes.length > 0) {
+        renderDynamicFormFields(availableTypes[0]);
+      }
     }
 
     addEntryModal.classList.remove('hidden');
   }
 
-  function renderDynamicFormFields(typeConfig) {
+  function renderDynamicFormFields(typeConfig, existingFields = {}) {
     activeEntryType = typeConfig;
     dynamicFieldsContainer.innerHTML = '';
 
-    typeConfig.fields.forEach(fName => {
-      const fKey = fName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    typeConfig.fields.forEach(fDef => {
       const fg = document.createElement('div');
       fg.className = 'form-group';
+      const val = existingFields[fDef.key] || '';
+
+      let inputHtml = '';
+      if (fDef.type === 'select') {
+        const opts = (fDef.options || []).map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('');
+        inputHtml = `<select class="input-field dynamic-field-input" data-key="${fDef.key}">${opts}</select>`;
+      } else if (fDef.type === 'textarea') {
+        inputHtml = `<textarea class="input-field dynamic-field-input" data-key="${fDef.key}" rows="3" placeholder="Enter ${fDef.name}...">${val}</textarea>`;
+      } else if (fDef.type === 'password') {
+        inputHtml = `
+          <div style="position: relative;">
+            <input type="password" id="field-inp-${fDef.key}" class="input-field dynamic-field-input" data-key="${fDef.key}" value="${val}" placeholder="Enter ${fDef.name}..." />
+            <button type="button" class="pwd-toggle-btn" data-target="field-inp-${fDef.key}" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+          </div>
+        `;
+      } else {
+        inputHtml = `<input type="text" class="input-field dynamic-field-input" data-key="${fDef.key}" value="${val}" placeholder="Enter ${fDef.name}..." />`;
+      }
+
       fg.innerHTML = `
-        <label class="form-label">${fName}</label>
-        <input type="text" class="input-field dynamic-field-input" data-key="${fKey}" placeholder="Enter ${fName}..." required />
+        <label class="form-label">${fDef.name}</label>
+        ${inputHtml}
       `;
       dynamicFieldsContainer.appendChild(fg);
     });
+
+    setupPasswordToggles();
   }
 
   if (entryDynamicForm) {
     entryDynamicForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const title = document.getElementById('entry-title-input').value;
-      const notes = document.getElementById('entry-notes-input').value;
+      const title = document.getElementById('entry-title-input').value.trim();
+      const notes = document.getElementById('entry-notes-input').value.trim();
 
       const fieldValues = {};
       document.querySelectorAll('.dynamic-field-input').forEach(inp => {
         fieldValues[inp.getAttribute('data-key')] = inp.value;
       });
 
-      const newEntry = {
-        id: Date.now().toString(),
-        vault: activeVault,
-        type: activeEntryType.id,
-        typeName: activeEntryType.label,
-        title,
-        notes,
-        fields: fieldValues,
-        createdAt: new Date().toISOString()
-      };
+      if (editingEntryId) {
+        const existingIdx = vaultEntries.findIndex(e => e.id === editingEntryId);
+        if (existingIdx !== -1) {
+          vaultEntries[existingIdx] = {
+            ...vaultEntries[existingIdx],
+            vault: activeVault,
+            type: activeEntryType.id,
+            typeName: activeEntryType.label,
+            title,
+            notes,
+            fields: fieldValues,
+            updatedAt: new Date().toISOString()
+          };
+          logActivity(`VAULT ENTRY UPDATED: ${title} in ${activeVault} vault.`);
+        }
+      } else {
+        const newEntry = {
+          id: Date.now().toString(),
+          vault: activeVault,
+          type: activeEntryType.id,
+          typeName: activeEntryType.label,
+          title,
+          notes,
+          fields: fieldValues,
+          createdAt: new Date().toISOString()
+        };
+        vaultEntries.push(newEntry);
+        logActivity(`VAULT ENTRY ADDED: ${title} in ${activeVault} vault.`);
+      }
 
-      vaultEntries.push(newEntry);
       saveVaultEntriesToStorage();
-      logActivity(`VAULT ENTRY ADDED: ${title} in ${activeVault} vault.`);
       addEntryModal.classList.add('hidden');
       entryDynamicForm.reset();
+      editingEntryId = null;
       renderVaultEntries();
     });
+  }
+
+  function maskFieldValue(val, fDef) {
+    if (!val) return '—';
+    if (!fDef || !fDef.sensitive) return val;
+
+    if (fDef.maskType === 'card' || fDef.maskType === 'account') {
+      const clean = val.replace(/\s+/g, '');
+      if (clean.length > 4) {
+        const last4 = clean.slice(-4);
+        return `•••• •••• •••• ${last4}`;
+      }
+    }
+    return '••••••••••••';
   }
 
   function renderVaultEntries() {
@@ -717,35 +969,126 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'entry-card';
 
-      let fieldsHtml = '';
-      for (const [k, v] of Object.entries(entry.fields)) {
-        fieldsHtml += `
-          <div class="field-item">
-            <span class="field-label">${k.replace(/_/g, ' ')}</span>
-            <span class="field-value">${v}</span>
+      const isFile = entry.type === 'file';
+      const availableTypes = (vaultMetadata[activeVault] && vaultMetadata[activeVault].types) || [];
+      const typeConfig = availableTypes.find(t => t.id === entry.type) || {
+        label: entry.typeName || 'Entry',
+        icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>',
+        fields: []
+      };
+
+      let fieldsGridHtml = '';
+      if (isFile) {
+        fieldsGridHtml = `
+          <div class="field-container-box">
+            <div class="field-box-label">Filename</div>
+            <div class="field-box-value-row">
+              <span class="field-box-text">${entry.fields.filename || 'Attached File'} (${entry.fields.filesize || ''})</span>
+            </div>
           </div>
         `;
+      } else {
+        const defsMap = {};
+        (typeConfig.fields || []).forEach(d => { defsMap[d.key] = d; });
+
+        for (const [fKey, rawVal] of Object.entries(entry.fields || {})) {
+          if (!rawVal) continue;
+          const fDef = defsMap[fKey] || { name: fKey.replace(/_/g, ' '), sensitive: false };
+          const isSensitive = fDef.sensitive || false;
+          const maskedText = maskFieldValue(rawVal, fDef);
+
+          const elemId = `val-${entry.id}-${fKey}`;
+
+          fieldsGridHtml += `
+            <div class="field-container-box">
+              <div class="field-box-label">${fDef.name}</div>
+              <div class="field-box-value-row">
+                <span id="${elemId}" class="field-box-text" data-masked="${maskedText}" data-plain="${rawVal}" data-is-masked="${isSensitive ? 'true' : 'false'}">${isSensitive ? maskedText : rawVal}</span>
+                <div class="field-box-actions">
+                  ${isSensitive ? `<button type="button" class="field-eye-btn" data-target="${elemId}">👁️</button>` : ''}
+                  <button type="button" class="field-copy-btn" data-copy="${rawVal}">📋</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
       }
 
-      const isFile = entry.type === 'file';
-      const fileBadgeIcon = isFile ? '📁 ' : '';
-      const viewFileBtnHtml = isFile ? `<button class="btn-secondary view-file-btn" data-id="${entry.id}">View / Open File</button>` : '';
-
       card.innerHTML = `
-        <div class="entry-header">
-          <span class="entry-title">${fileBadgeIcon}${entry.title}</span>
-          <span class="entry-type-badge">${entry.typeName}</span>
+        <div class="entry-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="category-badge" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(201, 162, 74, 0.15); border: 1px solid var(--brass-accent); color: var(--brass-accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">
+              ${typeConfig.icon || ''}
+              <span>${typeConfig.label || entry.typeName}</span>
+            </span>
+            <h3 class="entry-title-prominent" style="font-family: var(--font-heading); font-size: 20px; font-weight: 700; color: #ffffff; margin: 0;">${entry.title}</h3>
+          </div>
+          <div class="entry-actions" style="display: flex; gap: 8px;">
+            ${isFile ? `<button class="btn-secondary view-file-btn" data-id="${entry.id}" style="padding: 6px 12px; font-size: 12px;">View File</button>` : `<button class="btn-secondary edit-entry-btn" data-id="${entry.id}" style="padding: 6px 12px; font-size: 12px;">Edit</button>`}
+            <button class="btn-danger delete-entry-btn" data-id="${entry.id}" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+          </div>
         </div>
-        <div class="entry-fields-grid">${fieldsHtml}</div>
-        ${entry.notes ? `<div style="font-size:12px; color: var(--text-secondary); margin-top: 6px;"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
-        <div class="entry-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
-          ${viewFileBtnHtml}
-          <button class="btn-danger delete-entry-btn" data-id="${entry.id}">Delete</button>
+
+        <div class="field-containers-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px;">
+          ${fieldsGridHtml}
         </div>
+
+        ${entry.notes ? `<div style="font-size: 13px; color: var(--text-secondary); background: #121212; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--surface-border);"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
       `;
+
       entryListContainer.appendChild(card);
     });
 
+    // Eye toggle handlers
+    document.querySelectorAll('.field-eye-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          const isMasked = targetEl.getAttribute('data-is-masked') === 'true';
+          if (isMasked) {
+            targetEl.textContent = targetEl.getAttribute('data-plain');
+            targetEl.setAttribute('data-is-masked', 'false');
+            btn.textContent = '🙈';
+          } else {
+            targetEl.textContent = targetEl.getAttribute('data-masked');
+            targetEl.setAttribute('data-is-masked', 'true');
+            btn.textContent = '👁️';
+          }
+        }
+      });
+    });
+
+    // Copy handlers with inline toast feedback
+    document.querySelectorAll('.field-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const valToCopy = btn.getAttribute('data-copy');
+        if (valToCopy) {
+          clipboardMgr.writeText(valToCopy);
+          logActivity('CLIPBOARD: Copied field data to clipboard.');
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          btn.style.color = '#10b981';
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.style.color = '';
+          }, 1500);
+        }
+      });
+    });
+
+    // Edit button handlers
+    document.querySelectorAll('.edit-entry-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const targetEntry = vaultEntries.find(e => e.id === id);
+        if (targetEntry) {
+          openAddEntryModal(targetEntry);
+        }
+      });
+    });
+
+    // File view button handlers
     document.querySelectorAll('.view-file-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
@@ -756,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    // Delete button handlers
     document.querySelectorAll('.delete-entry-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');

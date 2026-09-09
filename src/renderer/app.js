@@ -393,10 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Centralized setActiveView view manager
   function setActiveView(targetView) {
-    const titlebarControls = document.getElementById('titlebar-right-controls');
-    if (titlebarControls) {
-      titlebarControls.style.visibility = 'visible';
-      titlebarControls.style.opacity = '1';
+    const titlebarBar = document.getElementById('titlebar-bar');
+    if (titlebarBar) {
+      titlebarBar.style.visibility = 'visible';
+      titlebarBar.style.opacity = '1';
     }
     setupPasswordToggles();
 
@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetInput) {
           const isPwd = targetInput.type === 'password';
           targetInput.type = isPwd ? 'text' : 'password';
-          btn.textContent = isPwd ? '🙈' : '👁️';
+          btn.innerHTML = isPwd ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
         }
       });
     });
@@ -868,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputHtml = `
           <div style="position: relative;">
             <input type="password" id="field-inp-${fDef.key}" class="input-field dynamic-field-input" data-key="${fDef.key}" value="${val}" placeholder="Enter ${fDef.name}..." />
-            <button type="button" class="pwd-toggle-btn" data-target="field-inp-${fDef.key}" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+            <button type="button" class="pwd-toggle-btn" data-target="field-inp-${fDef.key}" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
           </div>
         `;
       } else {
@@ -888,13 +888,58 @@ document.addEventListener('DOMContentLoaded', () => {
   if (entryDynamicForm) {
     entryDynamicForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const title = document.getElementById('entry-title-input').value.trim();
+      const titleInput = document.getElementById('entry-title-input');
+      const title = titleInput.value.trim();
       const notes = document.getElementById('entry-notes-input').value.trim();
 
-      const fieldValues = {};
+      // Reset previous validation errors
+      titleInput.style.borderColor = 'var(--surface-border)';
       document.querySelectorAll('.dynamic-field-input').forEach(inp => {
-        fieldValues[inp.getAttribute('data-key')] = inp.value;
+        inp.style.borderColor = 'var(--surface-border)';
       });
+
+      let isValid = true;
+      if (!title) {
+        titleInput.style.borderColor = '#ef4444';
+        isValid = false;
+      }
+
+      const fieldValues = {};
+      const dynamicInputs = document.querySelectorAll('.dynamic-field-input');
+      let filledDynamicCount = 0;
+
+      dynamicInputs.forEach(inp => {
+        const val = inp.value.trim();
+        const fKey = inp.getAttribute('data-key');
+        fieldValues[fKey] = val;
+        if (val) filledDynamicCount++;
+      });
+
+      // Require at least one dynamic field filled in addition to title
+      if (dynamicInputs.length > 0 && filledDynamicCount === 0) {
+        dynamicInputs.forEach(inp => {
+          inp.style.borderColor = '#ef4444';
+        });
+        isValid = false;
+      }
+
+      if (!isValid) {
+        let errBanner = document.getElementById('form-val-error');
+        if (!errBanner) {
+          errBanner = document.createElement('div');
+          errBanner.id = 'form-val-error';
+          errBanner.style.color = '#ef4444';
+          errBanner.style.fontSize = '12px';
+          errBanner.style.marginTop = '10px';
+          errBanner.style.fontWeight = '600';
+          entryDynamicForm.appendChild(errBanner);
+        }
+        errBanner.textContent = 'Please fill out entry title and required fields before saving.';
+        return;
+      }
+
+      const errBanner = document.getElementById('form-val-error');
+      if (errBanner) errBanner.remove();
 
       if (editingEntryId) {
         const existingIdx = vaultEntries.findIndex(e => e.id === editingEntryId);
@@ -992,8 +1037,8 @@ document.addEventListener('DOMContentLoaded', () => {
         (typeConfig.fields || []).forEach(d => { defsMap[d.key] = d; });
 
         for (const [fKey, rawVal] of Object.entries(entry.fields || {})) {
-          if (!rawVal) continue;
-          const fDef = defsMap[fKey] || { name: fKey.replace(/_/g, ' '), sensitive: false };
+          if (!rawVal || fKey === 'notes' || fKey === 'branch_notes') continue;
+          const fDef = defsMap[fKey] || { name: fKey.replace(/_/g, ' ').toUpperCase(), sensitive: false };
           const isSensitive = fDef.sensitive || false;
           const maskedText = maskFieldValue(rawVal, fDef);
 
@@ -1005,8 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="field-box-value-row">
                 <span id="${elemId}" class="field-box-text" data-masked="${maskedText}" data-plain="${rawVal}" data-is-masked="${isSensitive ? 'true' : 'false'}">${isSensitive ? maskedText : rawVal}</span>
                 <div class="field-box-actions">
-                  ${isSensitive ? `<button type="button" class="field-eye-btn" data-target="${elemId}">👁️</button>` : ''}
-                  <button type="button" class="field-copy-btn" data-copy="${rawVal}">📋</button>
+                  ${isSensitive ? `<button type="button" class="field-eye-btn" data-target="${elemId}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
+                  <button type="button" class="field-copy-btn" data-copy="${rawVal}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></button>
                 </div>
               </div>
             </div>
@@ -1049,11 +1094,11 @@ document.addEventListener('DOMContentLoaded', () => {
           if (isMasked) {
             targetEl.textContent = targetEl.getAttribute('data-plain');
             targetEl.setAttribute('data-is-masked', 'false');
-            btn.textContent = '🙈';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
           } else {
             targetEl.textContent = targetEl.getAttribute('data-masked');
             targetEl.setAttribute('data-is-masked', 'true');
-            btn.textContent = '👁️';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
           }
         }
       });
@@ -1161,7 +1206,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="form-label">Current Master Password</label>
               <div style="position: relative;">
                 <input type="password" id="current-mp-input" class="input-field" placeholder="Enter current password..." required />
-                <button type="button" class="pwd-toggle-btn" data-target="current-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                <button type="button" class="pwd-toggle-btn" data-target="current-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
 
@@ -1169,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="form-label">New Master Password</label>
               <div style="position: relative;">
                 <input type="password" id="sec-new-mp-input" class="input-field" placeholder="Enter new password..." required />
-                <button type="button" class="pwd-toggle-btn" data-target="sec-new-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                <button type="button" class="pwd-toggle-btn" data-target="sec-new-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
               <div class="strength-meter">
                 <div id="sec-strength-bar" class="strength-bar"></div>
@@ -1181,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="form-label">Confirm New Master Password</label>
               <div style="position: relative;">
                 <input type="password" id="sec-confirm-mp-input" class="input-field" placeholder="Confirm new password..." required />
-                <button type="button" class="pwd-toggle-btn" data-target="sec-confirm-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                <button type="button" class="pwd-toggle-btn" data-target="sec-confirm-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
 
@@ -1288,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (targetInput) {
             const isPwd = targetInput.type === 'password';
             targetInput.type = isPwd ? 'text' : 'password';
-            btn.textContent = isPwd ? '🙈' : '👁️';
+            btn.textContent = isPwd ? '🙈' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
           }
         });
       });
@@ -1314,7 +1359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label class="form-label">Enter Master Password</label>
                 <div style="position: relative;">
                   <input type="password" id="seed-mp-confirm" class="input-field" placeholder="Enter password to reveal..." required />
-                  <button type="button" class="pwd-toggle-btn" data-target="seed-mp-confirm" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                  <button type="button" class="pwd-toggle-btn" data-target="seed-mp-confirm" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                 </div>
               </div>
               <button type="submit" class="btn-primary">Reveal Recovery Phrase</button>
@@ -1383,7 +1428,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (targetInput) {
             const isPwd = targetInput.type === 'password';
             targetInput.type = isPwd ? 'text' : 'password';
-            btn.textContent = isPwd ? '🙈' : '👁️';
+            btn.textContent = isPwd ? '🙈' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
           }
         });
       });

@@ -1,5 +1,47 @@
 [
   {
+    "version": "1.1.36",
+    "date": "2026-09-10",
+    "summary": "Password input error interactivity fix, auto-select on error, and focus state error clearing.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "Fixed",
+        "text": "Restored input interactivity and un-disabled state upon password verification errors."
+      },
+      {
+        "type": "Fixed",
+        "text": "Added auto .focus() and .select() on password fields after authentication error triggers."
+      },
+      {
+        "type": "Fixed",
+        "text": "Added automatic error state clearing when focusing into any password input field."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated release badges and installer download links to v1.1.36."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.36.exe",
+        "sha256": "e10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921836"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.36-arm64.dmg",
+        "sha256": "f20192e80192a0192a0192e01928a0192e10920192e80192a01928a01921836"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.36.AppImage",
+        "sha256": "a3019281092e0192a0192e10928a0192e10920192e0192a801928a01921836"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.35",
     "date": "2026-09-10",
     "summary": "Defect fix for Activity Log DOM state refresh when resuming session after unlock.",

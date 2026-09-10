@@ -457,6 +457,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setActiveView(screen);
   }
 
+  // Global password focus reset & error clearing helper
+  document.addEventListener('focusin', (e) => {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'password') {
+      e.target.disabled = false;
+      e.target.readOnly = false;
+      if (unlockErrorText && e.target.id === 'unlock-mp-input') {
+        unlockErrorText.style.display = 'none';
+      }
+      const msgDiv = document.getElementById('mp-change-msg');
+      if (msgDiv && (e.target.id === 'current-mp-input' || e.target.id === 'sec-new-mp-input' || e.target.id === 'sec-confirm-mp-input')) {
+        if (msgDiv.textContent.includes('Incorrect')) {
+          msgDiv.textContent = '';
+        }
+      }
+    }
+  });
+
   // Global password toggle button binding helper
   function setupPasswordToggles() {
     document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
@@ -534,6 +551,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!verifyKey(currDerivedKey, storedVerifier)) {
           if (unlockErrorText) unlockErrorText.style.display = 'block';
+          if (unlockMpInput) {
+            unlockMpInput.disabled = false;
+            unlockMpInput.readOnly = false;
+            unlockMpInput.focus();
+            unlockMpInput.select();
+          }
           logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
           return;
         }
@@ -1336,6 +1359,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!verifyKey(currDerivedKey, storedVerifier)) {
               msgDiv.style.color = '#ef4444';
               msgDiv.textContent = 'Incorrect current master password.';
+              const currInp = document.getElementById('current-mp-input');
+              if (currInp) {
+                currInp.disabled = false;
+                currInp.readOnly = false;
+                currInp.focus();
+                currInp.select();
+              }
               logActivity('SECURITY WARNING: Failed master password verification during password change.');
               return;
             }
@@ -1425,6 +1455,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!verifyKey(currDerivedKey, storedVerifier)) {
               alert('Incorrect master password. Access denied.');
+              if (pwdInp) {
+                pwdInp.disabled = false;
+                pwdInp.readOnly = false;
+                pwdInp.focus();
+                pwdInp.select();
+              }
               logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
               return;
             }

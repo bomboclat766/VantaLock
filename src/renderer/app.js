@@ -422,7 +422,18 @@ document.addEventListener('DOMContentLoaded', () => {
       lockMgr.recordSuccessfulUnlock();
       localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
-      renderVaultEntries();
+
+      const activeToolTab = document.querySelector('.tool-tab-btn.active');
+      if (activeToolTab) {
+        const toolKey = activeToolTab.getAttribute('data-tool');
+        if (toolKey) {
+          renderToolView(toolKey);
+        } else {
+          renderVaultEntries();
+        }
+      } else {
+        renderVaultEntries();
+      }
     } else {
       if (setupViewContainer) setupViewContainer.classList.remove('hidden');
 

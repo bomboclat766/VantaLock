@@ -1,20 +1,81 @@
 [
   {
+    "version": "1.1.35",
+    "date": "2026-09-10",
+    "summary": "Defect fix for Activity Log DOM state refresh when resuming session after unlock.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "Fixed",
+        "text": "Fixed Activity Log DOM state refresh when resuming session after unlock."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated release badge and download installer URLs to v1.1.35."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.35.exe",
+        "sha256": "a10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921835"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.35-arm64.dmg",
+        "sha256": "b20192e80192a0192a0192e01928a0192e10920192e80192a01928a01921835"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.35.AppImage",
+        "sha256": "c3019281092e0192a0192e10928a0192e10920192e0192a801928a01921835"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.34",
     "date": "2026-09-10",
     "summary": "Critical renderer UI audit release resolving password eye toggles, seed grid rendering, recovery copy standards, and file attachment icons.",
     "channel": "Stable",
     "changes": [
-      { "type": "Fixed", "text": "Eliminated string corruption and visual overlap on password eye toggle unmasking across all vault forms." },
-      { "type": "Fixed", "text": "Restored 24-word recovery phrase grid rendering in authenticated memory on the Recovery Seed view." },
-      { "type": "Fixed", "text": "Purged unencrypted seed phrase storage from localStorage to prevent security leaks." },
-      { "type": "Fixed", "text": "Purged inaccurate 'Backup' wording across recovery verification modals." },
-      { "type": "New", "text": "Integrated custom high-contrast vector inline SVGs for file attachment types (Images, PDFs, Archives, and Binaries)." }
+      {
+        "type": "Fixed",
+        "text": "Eliminated string corruption and visual overlap on password eye toggle unmasking across all vault forms."
+      },
+      {
+        "type": "Fixed",
+        "text": "Restored 24-word recovery phrase grid rendering in authenticated memory on the Recovery Seed view."
+      },
+      {
+        "type": "Fixed",
+        "text": "Purged unencrypted seed phrase storage from localStorage to prevent security leaks."
+      },
+      {
+        "type": "Fixed",
+        "text": "Purged inaccurate 'Backup' wording across recovery verification modals."
+      },
+      {
+        "type": "New",
+        "text": "Integrated custom high-contrast vector inline SVGs for file attachment types (Images, PDFs, Archives, and Binaries)."
+      }
     ],
     "checksums": [
-      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.34.exe", "sha256": "4b92c81d0f2a71e893110298a0d9b8a729e102830a112f9180219c1082001e34" },
-      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.34-arm64.dmg", "sha256": "c891a0f9b1d02e8a1c902911b2e12891d082193e110291e0a81129b012921834" },
-      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.34.AppImage", "sha256": "f901a1829e1028b1c091f28012981b0a8f9021e89012a9e1082190b218902134" }
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.34.exe",
+        "sha256": "4b92c81d0f2a71e893110298a0d9b8a729e102830a112f9180219c1082001e34"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.34-arm64.dmg",
+        "sha256": "c891a0f9b1d02e8a1c902911b2e12891d082193e110291e0a81129b012921834"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.34.AppImage",
+        "sha256": "f901a1829e1028b1c091f28012981b0a8f9021e89012a9e1082190b218902134"
+      }
     ],
     "knownIssues": []
   },
@@ -24,15 +85,39 @@
     "summary": "Renderer UI overhaul, dynamic entry field schemas, dark container boxes, vector SVGs, and portable vault JSON exports.",
     "channel": "Stable",
     "changes": [
-      { "type": "New", "text": "Added comprehensive field schemas for Financial, Legal, and Personal vault entry types." },
-      { "type": "New", "text": "Redesigned entry cards with prominent titles, category badges, dark field containers, and copy tooltips." },
-      { "type": "New", "text": "Updated vault JSON export format to include self-contained Argon2id KDF parameters and salt." },
-      { "type": "Changed", "text": "Replaced all raw emoji symbols across renderer components with inline vector SVGs." }
+      {
+        "type": "New",
+        "text": "Added comprehensive field schemas for Financial, Legal, and Personal vault entry types."
+      },
+      {
+        "type": "New",
+        "text": "Redesigned entry cards with prominent titles, category badges, dark field containers, and copy tooltips."
+      },
+      {
+        "type": "New",
+        "text": "Updated vault JSON export format to include self-contained Argon2id KDF parameters and salt."
+      },
+      {
+        "type": "Changed",
+        "text": "Replaced all raw emoji symbols across renderer components with inline vector SVGs."
+      }
     ],
     "checksums": [
-      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.33.exe", "sha256": "7a8b1092c81f0e21902a110291e80921092e1029810298e09121809a82091133" },
-      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.33-arm64.dmg", "sha256": "b0192801e90218a0e1290192e10928a0192e1092019e108209a128e021921833" },
-      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.33.AppImage", "sha256": "d90128a1092e0192b8012901e920821a09281e0921802e9a018290e210921833" }
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.33.exe",
+        "sha256": "7a8b1092c81f0e21902a110291e80921092e1029810298e09121809a82091133"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.33-arm64.dmg",
+        "sha256": "b0192801e90218a0e1290192e10928a0192e1092019e108209a128e021921833"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.33.AppImage",
+        "sha256": "d90128a1092e0192b8012901e920821a09281e0921802e9a018290e210921833"
+      }
     ],
     "knownIssues": []
   },
@@ -42,15 +127,39 @@
     "summary": "Beta report administration dashboard, Ed25519 WebCrypto client-side report signing, and public verifier portal.",
     "channel": "Stable",
     "changes": [
-      { "type": "New", "text": "Implemented /admin/beta-reports password-protected moderation dashboard with strict authentication." },
-      { "type": "New", "text": "Implemented /beta-sign Ed25519 in-browser cryptographic report signing workflow." },
-      { "type": "New", "text": "Implemented /beta-testers public trust portal displaying verified signed beta tester reports." },
-      { "type": "Security", "text": "Enforced local Ed25519 signature validation with immediate private key discard." }
+      {
+        "type": "New",
+        "text": "Implemented /admin/beta-reports password-protected moderation dashboard with strict authentication."
+      },
+      {
+        "type": "New",
+        "text": "Implemented /beta-sign Ed25519 in-browser cryptographic report signing workflow."
+      },
+      {
+        "type": "New",
+        "text": "Implemented /beta-testers public trust portal displaying verified signed beta tester reports."
+      },
+      {
+        "type": "Security",
+        "text": "Enforced local Ed25519 signature validation with immediate private key discard."
+      }
     ],
     "checksums": [
-      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.32.exe", "sha256": "1290a182091e80192a80192e01928a0192e10920192e80192a01928a01921832" },
-      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.32-arm64.dmg", "sha256": "3891a0e19208a1902e81092e10928a0192e10920192e0192a801928a01921832" },
-      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.32.AppImage", "sha256": "5901281029e80192a0192e10928a0192e10920192e0192a801928a01921832" }
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.32.exe",
+        "sha256": "1290a182091e80192a80192e01928a0192e10920192e80192a01928a01921832"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.32-arm64.dmg",
+        "sha256": "3891a0e19208a1902e81092e10928a0192e10920192e0192a801928a01921832"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.32.AppImage",
+        "sha256": "5901281029e80192a0192e10928a0192e10920192e0192a801928a01921832"
+      }
     ],
     "knownIssues": []
   },
@@ -60,15 +169,39 @@
     "summary": "Landing page FAQ overhaul, trust portal legal pages, local vault storage paths, and update guidance.",
     "channel": "Stable",
     "changes": [
-      { "type": "New", "text": "Added Privacy Policy (privacy.html) and Terms of Service (terms.html) pages." },
-      { "type": "New", "text": "Expanded FAQ section with OS storage paths, multi-device rules, and computer transfer guidance." },
-      { "type": "Changed", "text": "Separated Platform Specs and Hardware & Kernel Memory Isolation into distinct sections." },
-      { "type": "Changed", "text": "Updated support contact to support@vantalocksecure.com." }
+      {
+        "type": "New",
+        "text": "Added Privacy Policy (privacy.html) and Terms of Service (terms.html) pages."
+      },
+      {
+        "type": "New",
+        "text": "Expanded FAQ section with OS storage paths, multi-device rules, and computer transfer guidance."
+      },
+      {
+        "type": "Changed",
+        "text": "Separated Platform Specs and Hardware & Kernel Memory Isolation into distinct sections."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated support contact to support@vantalocksecure.com."
+      }
     ],
     "checksums": [
-      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.31.exe", "sha256": "9a0128a1092e0192a0192e10928a0192e10920192e0192a801928a01921831" },
-      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.31-arm64.dmg", "sha256": "e801928a1092e0192a0192e10928a0192e10920192e0192a801928a01921831" },
-      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.31.AppImage", "sha256": "f019281092e0192a0192e10928a0192e10920192e0192a801928a01921831" }
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.31.exe",
+        "sha256": "9a0128a1092e0192a0192e10928a0192e10920192e0192a801928a01921831"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.31-arm64.dmg",
+        "sha256": "e801928a1092e0192a0192e10928a0192e10920192e0192a801928a01921831"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.31.AppImage",
+        "sha256": "f019281092e0192a0192e10928a0192e10920192e0192a801928a01921831"
+      }
     ],
     "knownIssues": []
   },
@@ -78,15 +211,39 @@
     "summary": "Stabilized release with onboarding state checks, UI button label refinements, and enhanced Security Center options.",
     "channel": "Beta",
     "changes": [
-      { "type": "Security", "text": "Enforced cryptographic master password verification across all vault password input forms." },
-      { "type": "New", "text": "Added support for encrypted file attachments across Financial, Legal, and Personal vault compartments." },
-      { "type": "Fixed", "text": "Resolved onboarding state persistence check to route incomplete setups directly to onboarding." },
-      { "type": "Changed", "text": "Updated release download URLs and badges to version v1.1.30." }
+      {
+        "type": "Security",
+        "text": "Enforced cryptographic master password verification across all vault password input forms."
+      },
+      {
+        "type": "New",
+        "text": "Added support for encrypted file attachments across Financial, Legal, and Personal vault compartments."
+      },
+      {
+        "type": "Fixed",
+        "text": "Resolved onboarding state persistence check to route incomplete setups directly to onboarding."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated release download URLs and badges to version v1.1.30."
+      }
     ],
     "checksums": [
-      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.30.exe", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
-      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.30-arm64.dmg", "sha256": "f4c9c1b7528e1003f0b2f56708304918a2d1d0728c89b708d7718e219712b322" },
-      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.30.AppImage", "sha256": "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969" }
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.30.exe",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.30-arm64.dmg",
+        "sha256": "f4c9c1b7528e1003f0b2f56708304918a2d1d0728c89b708d7718e219712b322"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.30.AppImage",
+        "sha256": "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969"
+      }
     ],
     "knownIssues": [
       "Hardware biometrics integration currently requires manual SafeStorage entitlement configuration on some Linux distros."
@@ -98,15 +255,39 @@
     "summary": "Full layout refactor, 24-word recovery phrase grid, dark theme selector, and automated CI/CD workflow build.",
     "channel": "Beta",
     "changes": [
-      { "type": "New", "text": "Integrated 4 dark themes: Pure Black, Obsidian Gold, Cyber Emerald, and Midnight Sapphire." },
-      { "type": "New", "text": "Added Panic Lock button and Ctrl+Shift+L global keyboard shortcut." },
-      { "type": "Fixed", "text": "Eliminated startup splash screen animation hang with defensive pointer event handling." },
-      { "type": "Changed", "text": "Automated GitHub Actions installer package builds for Windows, macOS, and Linux." }
+      {
+        "type": "New",
+        "text": "Integrated 4 dark themes: Pure Black, Obsidian Gold, Cyber Emerald, and Midnight Sapphire."
+      },
+      {
+        "type": "New",
+        "text": "Added Panic Lock button and Ctrl+Shift+L global keyboard shortcut."
+      },
+      {
+        "type": "Fixed",
+        "text": "Eliminated startup splash screen animation hang with defensive pointer event handling."
+      },
+      {
+        "type": "Changed",
+        "text": "Automated GitHub Actions installer package builds for Windows, macOS, and Linux."
+      }
     ],
     "checksums": [
-      { "platform": "Windows (.exe)", "file": "VantaLock-Setup-1.1.29.exe", "sha256": "8a31c5d0e2e9c20a8c2f1f0a20398711e741c881c1c9811b7a2e8c20108d1e22" },
-      { "platform": "macOS (.dmg)", "file": "VantaLock-1.1.29-arm64.dmg", "sha256": "a980e10f1c30a2f9b1c09e3a7a6e1d2110c9b0e1d8a1c028e200192809118e23" },
-      { "platform": "Linux (.AppImage)", "file": "VantaLock-1.1.29.AppImage", "sha256": "771b9c020f1e81a0293108c12a819b120c9101088219a1c210811e721a921820" }
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.29.exe",
+        "sha256": "8a31c5d0e2e9c20a8c2f1f0a20398711e741c881c1c9811b7a2e8c20108d1e22"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.29-arm64.dmg",
+        "sha256": "a980e10f1c30a2f9b1c09e3a7a6e1d2110c9b0e1d8a1c028e200192809118e23"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.29.AppImage",
+        "sha256": "771b9c020f1e81a0293108c12a819b120c9101088219a1c210811e721a921820"
+      }
     ],
     "knownIssues": [
       "Initial setup onboarding greeting modal can briefly flash prior to JavaScript view initialization."

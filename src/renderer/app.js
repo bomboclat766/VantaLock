@@ -596,7 +596,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (copyRkBtn) {
     copyRkBtn.addEventListener('click', () => {
-      if (activeRecoveryKeyWords && activeRecoveryKeyWords.length > 0) {
+      let phrase = activeRecoveryKeyWords ? activeRecoveryKeyWords.join(' ') : '';
+          if (!phrase) phrase = localStorage.getItem('vantalock_seed_phrase') || '';
+          if (phrase) {
         clipboardMgr.copySensitiveText(activeRecoveryKeyWords.join(' '));
         copyRkBtn.textContent = 'Copied!';
         setTimeout(() => copyRkBtn.textContent = 'Copy', 2000);
@@ -684,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       rkErrorText.style.display = 'none';
       localStorage.setItem('vantalock_setup_complete', 'true');
+      if (activeRecoveryKeyWords.length) localStorage.setItem('vantalock_seed_phrase', activeRecoveryKeyWords.join(' '));
       logActivity('SECURITY: 24-word recovery phrase backup verified.');
       showScreen('dashboard');
     });
@@ -1016,19 +1019,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const isFile = entry.type === 'file';
       const availableTypes = (vaultMetadata[activeVault] && vaultMetadata[activeVault].types) || [];
-      const typeConfig = availableTypes.find(t => t.id === entry.type) || {
+
+      let fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+      if (isFile && entry.fields) {
+        const fname = ((entry.fields.filename) || '').toLowerCase();
+        const ftype = ((entry.fields.filetype) || '').toLowerCase();
+        if (ftype.includes('image') || fname.match(/\.(png|jpg|jpeg|gif|svg|webp)$/)) {
+          fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+        } else if (ftype.includes('pdf') || fname.endsWith('.pdf')) {
+          fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+        } else if (ftype.includes('zip') || ftype.includes('tar') || fname.match(/\.(zip|tar|gz|7z|rar)$/)) {
+          fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V3h10"/><path d="M18 2v6h6"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>';
+        }
+      }
+
+      const typeConfig = isFile ? {
+        label: entry.typeName || 'Encrypted File',
+        icon: fileSvgIcon,
+        fields: []
+      } : (availableTypes.find(t => t.id === entry.type) || {
         label: entry.typeName || 'Entry',
         icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>',
         fields: []
-      };
+      });
 
       let fieldsGridHtml = '';
       if (isFile) {
         fieldsGridHtml = `
           <div class="field-container-box">
-            <div class="field-box-label">Filename</div>
+            <div class="field-box-label" style="display: flex; align-items: center; gap: 6px;">
+              ${fileSvgIcon}
+              <span>Filename</span>
+            </div>
             <div class="field-box-value-row">
-              <span class="field-box-text">${entry.fields.filename || 'Attached File'} (${entry.fields.filesize || ''})</span>
+              <span class="field-box-text">${(entry.fields && entry.fields.filename) || 'Attached File'} (${(entry.fields && entry.fields.filesize) || ''})</span>
             </div>
           </div>
         `;
@@ -1326,17 +1350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetId = btn.getAttribute('data-target');
-          const targetInput = document.getElementById(targetId);
-          if (targetInput) {
-            const isPwd = targetInput.type === 'password';
-            targetInput.type = isPwd ? 'text' : 'password';
-            btn.textContent = isPwd ? '🙈' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-          }
-        });
-      });
+      setupPasswordToggles();
 
       const autoLockSelect = document.getElementById('autolock-select');
       if (autoLockSelect) {
@@ -1409,9 +1423,18 @@ document.addEventListener('DOMContentLoaded', () => {
           contentView.classList.remove('hidden');
           logActivity('SECURITY: Recovery seed revealed following valid password verification.');
 
-          if (activeRecoveryKeyWords && activeRecoveryKeyWords.length === 24) {
+          let wordsToRender = activeRecoveryKeyWords;
+          if (!wordsToRender || wordsToRender.length !== 24) {
+            const savedSeed = localStorage.getItem('vantalock_seed_phrase');
+            if (savedSeed) {
+              wordsToRender = savedSeed.trim().split(/\s+/);
+              activeRecoveryKeyWords = wordsToRender;
+            }
+          }
+
+          if (wordsToRender && wordsToRender.length === 24) {
             wordsMask.innerHTML = '';
-            activeRecoveryKeyWords.forEach((w, i) => {
+            wordsToRender.forEach((w, i) => {
               const chip = document.createElement('div');
               chip.className = 'word-chip';
               chip.innerHTML = `<span class="word-num">${i + 1}.</span> ${w}`;
@@ -1421,17 +1444,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetId = btn.getAttribute('data-target');
-          const targetInput = document.getElementById(targetId);
-          if (targetInput) {
-            const isPwd = targetInput.type === 'password';
-            targetInput.type = isPwd ? 'text' : 'password';
-            btn.textContent = isPwd ? '🙈' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-          }
-        });
-      });
+      setupPasswordToggles();
 
       if (toggleBlurBtn) {
         let revealed = false;
@@ -1444,8 +1457,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (copyScrubBtn) {
         copyScrubBtn.addEventListener('click', () => {
-          if (activeRecoveryKeyWords && activeRecoveryKeyWords.length > 0) {
-            const phrase = activeRecoveryKeyWords.join(' ');
+          let phrase = activeRecoveryKeyWords && activeRecoveryKeyWords.length ? activeRecoveryKeyWords.join(' ') : (localStorage.getItem('vantalock_seed_phrase') || '');
+          if (phrase) {
             clipboardMgr.copySensitiveText(phrase);
             copyMsg.style.color = '#10b981';
             copyMsg.textContent = 'Phrase copied to clipboard! Clipboard will auto-clear in 30 seconds.';

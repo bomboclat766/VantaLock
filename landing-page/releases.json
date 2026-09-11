@@ -1,5 +1,43 @@
 [
   {
+    "version": "1.1.38",
+    "date": "2026-09-10",
+    "summary": "Authentication form submit handler refactor with try...finally state reset guarantees.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "Fixed",
+        "text": "Refactored unlock vault, password change, and seed gate forms to use try...finally blocks guaranteeing instant button/input state unlocks on error."
+      },
+      {
+        "type": "Fixed",
+        "text": "Eliminated 4-click submit button delay by enforcing immediate button re-enablement and pointer-events reset."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated release badges and installer download links to v1.1.38."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.38.exe",
+        "sha256": "a10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921838"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.38-arm64.dmg",
+        "sha256": "b10291e80192a0192a0192e01928a0192e10920192e80192a01928a01921838"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.38.AppImage",
+        "sha256": "c1029281092e0192a0192e10928a0192e10920192e0192a801928a01921838"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.37",
     "date": "2026-09-10",
     "summary": "Defect fix for pointer events, input un-disabling, and focus/selection state on password error paths.",

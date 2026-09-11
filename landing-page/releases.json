@@ -1,5 +1,43 @@
 [
   {
+    "version": "1.1.37",
+    "date": "2026-09-10",
+    "summary": "Defect fix for pointer events, input un-disabling, and focus/selection state on password error paths.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "Fixed",
+        "text": "Explicitly enforced input.style.pointerEvents = auto and removed readonly/disabled attributes on error."
+      },
+      {
+        "type": "Fixed",
+        "text": "Wrapped .focus() and .select() calls in zero-delay timeouts to ensure immediate editability after error triggers."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated release badges and installer download links to v1.1.37."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.37.exe",
+        "sha256": "a901281092e0192a0192e10928a0192e10920192e0192a801928a01921837"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.37-arm64.dmg",
+        "sha256": "b801928a1092e0192a0192e10928a0192e10920192e0192a801928a01921837"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.37.AppImage",
+        "sha256": "c019281092e0192a0192e10928a0192e10920192e0192a801928a01921837"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.36",
     "date": "2026-09-10",
     "summary": "Password input error interactivity fix, auto-select on error, and focus state error clearing.",

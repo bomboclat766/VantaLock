@@ -540,35 +540,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (unlockVaultForm) {
     unlockVaultForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pwdVal = unlockMpInput.value;
-      const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-      const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+      if (e) e.preventDefault();
+      const submitBtn = document.getElementById('unlock-btn');
+      const inputElem = unlockMpInput;
+      try {
+        if (submitBtn) submitBtn.disabled = true;
+        const pwdVal = inputElem ? inputElem.value : '';
+        const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+        const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-      if (storedSaltHex && storedVerifier) {
-        const salt = Buffer.from(storedSaltHex, 'hex');
-        const currDerivedKey = await deriveKey(pwdVal, salt);
+        if (storedSaltHex && storedVerifier) {
+          const salt = Buffer.from(storedSaltHex, 'hex');
+          const currDerivedKey = await deriveKey(pwdVal, salt);
 
-        if (!verifyKey(currDerivedKey, storedVerifier)) {
-          if (unlockErrorText) unlockErrorText.style.display = 'block';
-          if (unlockMpInput) {
-            unlockMpInput.disabled = false;
-            unlockMpInput.removeAttribute('readonly');
-            unlockMpInput.style.pointerEvents = 'auto';
-            unlockMpInput.classList.remove('disabled', 'read-only');
-            setTimeout(() => {
-              unlockMpInput.focus();
-              unlockMpInput.select();
-            }, 0);
+          if (!verifyKey(currDerivedKey, storedVerifier)) {
+            if (unlockErrorText) unlockErrorText.style.display = 'block';
+            logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
+            return;
           }
-          logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
-          return;
+        }
+
+        if (unlockErrorText) unlockErrorText.style.display = 'none';
+        unlockVaultForm.reset();
+        showScreen('dashboard');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.pointerEvents = 'auto';
+        }
+        if (inputElem) {
+          inputElem.disabled = false;
+          inputElem.removeAttribute('readonly');
+          inputElem.classList.remove('disabled', 'read-only', 'locked');
+          inputElem.style.pointerEvents = 'auto';
+          inputElem.style.userSelect = 'text';
+          setTimeout(() => {
+            inputElem.focus();
+            inputElem.select();
+          }, 10);
         }
       }
-
-      if (unlockErrorText) unlockErrorText.style.display = 'none';
-      unlockVaultForm.reset();
-      showScreen('dashboard');
     });
   }
 
@@ -1349,52 +1360,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (changeForm) {
         changeForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const currPwd = document.getElementById('current-mp-input').value;
-          const newPwd = secNewInp.value;
+          if (e) e.preventDefault();
+          const submitBtn = secUpdateBtn;
+          const inputElem = document.getElementById('current-mp-input');
+          try {
+            if (submitBtn) submitBtn.disabled = true;
+            const currPwd = inputElem ? inputElem.value : '';
+            const newPwd = secNewInp.value;
 
-          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-          const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+            const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+            const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-          if (storedSaltHex && storedVerifier) {
-            const salt = Buffer.from(storedSaltHex, 'hex');
-            const currDerivedKey = await deriveKey(currPwd, salt);
+            if (storedSaltHex && storedVerifier) {
+              const salt = Buffer.from(storedSaltHex, 'hex');
+              const currDerivedKey = await deriveKey(currPwd, salt);
 
-            if (!verifyKey(currDerivedKey, storedVerifier)) {
-              msgDiv.style.color = '#ef4444';
-              msgDiv.textContent = 'Incorrect current master password.';
-              const currInp = document.getElementById('current-mp-input');
-              if (currInp) {
-                currInp.disabled = false;
-                currInp.removeAttribute('readonly');
-                currInp.style.pointerEvents = 'auto';
-                currInp.classList.remove('disabled', 'read-only');
-                setTimeout(() => {
-                  currInp.focus();
-                  currInp.select();
-                }, 0);
+              if (!verifyKey(currDerivedKey, storedVerifier)) {
+                msgDiv.style.color = '#ef4444';
+                msgDiv.textContent = 'Incorrect current master password.';
+                logActivity('SECURITY WARNING: Failed master password verification during password change.');
+                return;
               }
-              logActivity('SECURITY WARNING: Failed master password verification during password change.');
-              return;
+
+              const newSalt = generateSalt();
+              const newDerivedKey = await deriveKey(newPwd, newSalt);
+              const newVerifier = createVerifier(newDerivedKey);
+
+              localStorage.setItem('vantalock_vault_salt', newSalt.toString('hex'));
+              localStorage.setItem('vantalock_vault_verifier', newVerifier);
+
+              msgDiv.style.color = '#10b981';
+              msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
+              logActivity('SECURITY: Master password changed and key re-derived.');
+              changeForm.reset();
+            } else {
+              msgDiv.style.color = '#10b981';
+              msgDiv.textContent = 'Master password updated.';
+              changeForm.reset();
             }
-
-            const newSalt = generateSalt();
-            const newDerivedKey = await deriveKey(newPwd, newSalt);
-            const newVerifier = createVerifier(newDerivedKey);
-
-            localStorage.setItem('vantalock_vault_salt', newSalt.toString('hex'));
-            localStorage.setItem('vantalock_vault_verifier', newVerifier);
-
-            msgDiv.style.color = '#10b981';
-            msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
-            logActivity('SECURITY: Master password changed and key re-derived.');
-            changeForm.reset();
-            secUpdateBtn.disabled = true;
-            secUpdateBtn.style.opacity = '0.5';
-          } else {
-            msgDiv.style.color = '#10b981';
-            msgDiv.textContent = 'Master password updated.';
-            changeForm.reset();
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.style.pointerEvents = 'auto';
+            }
+            if (inputElem) {
+              inputElem.disabled = false;
+              inputElem.removeAttribute('readonly');
+              inputElem.classList.remove('disabled', 'read-only', 'locked');
+              inputElem.style.pointerEvents = 'auto';
+              inputElem.style.userSelect = 'text';
+              setTimeout(() => {
+                inputElem.focus();
+                inputElem.select();
+              }, 10);
+            }
           }
         });
       }
@@ -1450,35 +1469,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (gateForm) {
         gateForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const pwdInp = document.getElementById('seed-mp-confirm');
-          const pwdVal = pwdInp ? pwdInp.value : '';
+          if (e) e.preventDefault();
+          const submitBtn = gateForm.querySelector('button[type="submit"]');
+          const inputElem = document.getElementById('seed-mp-confirm');
+          try {
+            if (submitBtn) submitBtn.disabled = true;
+            const pwdVal = inputElem ? inputElem.value : '';
 
-          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-          const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+            const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+            const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-          if (storedSaltHex && storedVerifier) {
-            const salt = Buffer.from(storedSaltHex, 'hex');
-            const currDerivedKey = await deriveKey(pwdVal, salt);
+            if (storedSaltHex && storedVerifier) {
+              const salt = Buffer.from(storedSaltHex, 'hex');
+              const currDerivedKey = await deriveKey(pwdVal, salt);
 
-            if (!verifyKey(currDerivedKey, storedVerifier)) {
-              alert('Incorrect master password. Access denied.');
-              if (pwdInp) {
-                pwdInp.disabled = false;
-                pwdInp.removeAttribute('readonly');
-                pwdInp.style.pointerEvents = 'auto';
-                pwdInp.classList.remove('disabled', 'read-only');
-                setTimeout(() => {
-                  pwdInp.focus();
-                  pwdInp.select();
-                }, 0);
+              if (!verifyKey(currDerivedKey, storedVerifier)) {
+                alert('Incorrect master password. Access denied.');
+                logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
+                return;
               }
-              logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
-              return;
             }
-          }
 
-          gateView.classList.add('hidden');
+            gateView.classList.add('hidden');
           contentView.classList.remove('hidden');
           logActivity('SECURITY: Recovery seed revealed following valid password verification.');
 
@@ -1499,6 +1511,23 @@ document.addEventListener('DOMContentLoaded', () => {
               chip.innerHTML = `<span class="word-num">${i + 1}.</span> ${w}`;
               wordsMask.appendChild(chip);
             });
+          }
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.style.pointerEvents = 'auto';
+            }
+            if (inputElem) {
+              inputElem.disabled = false;
+              inputElem.removeAttribute('readonly');
+              inputElem.classList.remove('disabled', 'read-only', 'locked');
+              inputElem.style.pointerEvents = 'auto';
+              inputElem.style.userSelect = 'text';
+              setTimeout(() => {
+                inputElem.focus();
+                inputElem.select();
+              }, 10);
+            }
           }
         });
       }

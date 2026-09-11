@@ -553,9 +553,13 @@ document.addEventListener('DOMContentLoaded', () => {
           if (unlockErrorText) unlockErrorText.style.display = 'block';
           if (unlockMpInput) {
             unlockMpInput.disabled = false;
-            unlockMpInput.readOnly = false;
-            unlockMpInput.focus();
-            unlockMpInput.select();
+            unlockMpInput.removeAttribute('readonly');
+            unlockMpInput.style.pointerEvents = 'auto';
+            unlockMpInput.classList.remove('disabled', 'read-only');
+            setTimeout(() => {
+              unlockMpInput.focus();
+              unlockMpInput.select();
+            }, 0);
           }
           logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
           return;
@@ -1362,9 +1366,13 @@ document.addEventListener('DOMContentLoaded', () => {
               const currInp = document.getElementById('current-mp-input');
               if (currInp) {
                 currInp.disabled = false;
-                currInp.readOnly = false;
-                currInp.focus();
-                currInp.select();
+                currInp.removeAttribute('readonly');
+                currInp.style.pointerEvents = 'auto';
+                currInp.classList.remove('disabled', 'read-only');
+                setTimeout(() => {
+                  currInp.focus();
+                  currInp.select();
+                }, 0);
               }
               logActivity('SECURITY WARNING: Failed master password verification during password change.');
               return;
@@ -1457,9 +1465,13 @@ document.addEventListener('DOMContentLoaded', () => {
               alert('Incorrect master password. Access denied.');
               if (pwdInp) {
                 pwdInp.disabled = false;
-                pwdInp.readOnly = false;
-                pwdInp.focus();
-                pwdInp.select();
+                pwdInp.removeAttribute('readonly');
+                pwdInp.style.pointerEvents = 'auto';
+                pwdInp.classList.remove('disabled', 'read-only');
+                setTimeout(() => {
+                  pwdInp.focus();
+                  pwdInp.select();
+                }, 0);
               }
               logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
               return;

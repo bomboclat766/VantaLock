@@ -259,7 +259,22 @@
     </div>
   </div>
 
-  <!-- Password Health Check Modal -->
+    <!-- Biometric Notice Modal -->
+  <div id="biometric-notice-modal" class="modal-overlay hidden" style="z-index: 9950;">
+    <div class="setup-card" style="max-width: 500px; width: 90%; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
+          <h3 id="bio-notice-title" class="setup-title" style="margin: 0; font-size: 16px;">Biometric Status</h3>
+        </div>
+        <button id="close-bio-notice-btn" class="btn-secondary" style="width: auto; padding: 4px 12px;">✕</button>
+      </div>
+      <p id="bio-notice-message" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;"></p>
+      <button type="button" id="bio-notice-ok-btn" class="btn-primary" style="width: 100%;">OK</button>
+    </div>
+  </div>
+
+<!-- Password Health Check Modal -->
   <div id="password-health-modal" class="modal-overlay hidden">
     <div class="setup-card" style="max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">

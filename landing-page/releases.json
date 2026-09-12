@@ -1,5 +1,39 @@
 [
   {
+    "version": "1.1.44",
+    "date": "2026-09-12",
+    "summary": "Strict password-only asset targeting, brass font typography alignment across Security Center cards, and v1.1.44 release.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "Fixed",
+        "text": "Restricted Health Audit Engine to strictly target user-managed password fields (such as Wi-Fi passwords and web logins) while excluding bank cards, PINs, and secure notes."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated Security Center section headers to match the exact Brass font typography of the main header."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.44.exe",
+        "sha256": "a10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921844"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.44-arm64.dmg",
+        "sha256": "b10291e80192a0192a0192e01928a0192e10920192e80192a01928a01921844"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.44.AppImage",
+        "sha256": "c1029281092e0192a0192e10928a0192e10920192e0192a801928a01921844"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.43",
     "date": "2026-09-12",
     "summary": "Strict Zero-Leniency Health Audit Engine, dedicated OS Biometrics section, interactive Fix Now confirmation workflow, and granular canvas history graph.",

@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: `App Version: 1.1.43 | License: Activated | Zero-Cloud Encryption`
+      desc: `App Version: 1.1.44 | License: Activated | Zero-Cloud Encryption`
     }
   };
 
@@ -1440,7 +1440,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="background: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 8px; padding: 20px; margin-top: 20px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-              <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; text-transform: uppercase; letter-spacing: 1px;">Password Health Check</h3>
+              <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--brass-accent); margin: 0; text-transform: uppercase; letter-spacing: 1px;">Password Health Check</h3>
             </div>
             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Scan local vault entries for weak, reused, or stale passwords.</p>
             <button type="button" id="open-health-check-btn" class="btn-primary" style="width: 100%;">Run Password Health Check</button>
@@ -1450,7 +1450,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="background: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 8px; padding: 20px; margin-top: 20px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04c.054-.195.112-.39.174-.583a12.008 12.008 0 0 1 12.387-8.125m-2.12 11.238c.642-1.782.99-3.712.99-5.72A12.022 12.022 0 0 0 12 1.5C6.012 1.5 1.5 6.012 1.5 12c0 1.341.22 2.63.626 3.834m3.04-10.428A8.966 8.966 0 0 1 12 4.5c3.55 0 6.602 2.062 8.01 5.04"/></svg>
-              <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; text-transform: uppercase; letter-spacing: 1px;">OS Biometrics Configuration</h3>
+              <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--brass-accent); margin: 0; text-transform: uppercase; letter-spacing: 1px;">OS Biometrics Configuration</h3>
             </div>
             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Configure Touch ID or Windows Hello native biometric hardware unlock for VantaLock.</p>
             <button type="button" id="configure-biometrics-btn" class="btn-primary" style="width: 100%;">Configure OS Biometrics</button>
@@ -2019,7 +2019,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getEntryPassword(entry) {
     if (!entry) return null;
-    if (entry.type === 'file' || entry.type === 'document' || entry.attachment != null) return null;
+
+    const entryType = (entry.type || '').toLowerCase();
+    const entryTypeName = (entry.typeName || '').toLowerCase();
+    const entryTitle = (entry.title || '').toLowerCase();
+
+    // Absolute Exclusions: Never target bank cards, PINs, notes, files, or documents
+    if (
+      entryType === 'file' ||
+      entryType === 'document' ||
+      entryType === 'card' ||
+      entryType === 'bank' ||
+      entryType === 'credit_card' ||
+      entryType === 'note' ||
+      entryType === 'secure_note' ||
+      entryTypeName.includes('card') ||
+      entryTypeName.includes('bank') ||
+      entryTypeName.includes('note') ||
+      entryTitle.includes('card') ||
+      entryTitle.includes('pin') ||
+      entry.attachment != null
+    ) {
+      return null;
+    }
 
     let pwdVal = null;
     let pwdKey = null;
@@ -2029,10 +2051,10 @@ document.addEventListener('DOMContentLoaded', () => {
       pwdKey = 'password';
     } else if (entry.fields && typeof entry.fields === 'object') {
       const fields = entry.fields;
-      // Prioritize explicit password, pin, or secret fields
       for (const k in fields) {
         const lowerK = k.toLowerCase();
-        if (lowerK.includes('password') || lowerK.includes('pin') || lowerK.includes('secret') || lowerK === 'key') {
+        if (lowerK.includes('pin')) continue;
+        if (lowerK.includes('password') || lowerK.includes('secret') || lowerK === 'key') {
           if (fields[k] && typeof fields[k] === 'string' && fields[k].trim() !== '') {
             pwdVal = fields[k];
             pwdKey = k;
@@ -2043,7 +2065,21 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!pwdVal) {
         for (const k in fields) {
           const lowerK = k.toLowerCase();
-          if (typeof fields[k] === 'string' && fields[k].trim() !== '' && lowerK !== 'username' && lowerK !== 'email' && lowerK !== 'url' && lowerK !== 'filename' && lowerK !== 'account_number' && lowerK !== 'routing_number' && lowerK !== 'account_type' && lowerK !== 'bank_name' && lowerK !== 'notes') {
+          if (
+            typeof fields[k] === 'string' &&
+            fields[k].trim() !== '' &&
+            !lowerK.includes('pin') &&
+            lowerK !== 'username' &&
+            lowerK !== 'email' &&
+            lowerK !== 'url' &&
+            lowerK !== 'filename' &&
+            lowerK !== 'account_number' &&
+            lowerK !== 'routing_number' &&
+            lowerK !== 'account_type' &&
+            lowerK !== 'bank_name' &&
+            lowerK !== 'notes' &&
+            lowerK !== 'instructions'
+          ) {
             pwdVal = fields[k];
             pwdKey = k;
             break;

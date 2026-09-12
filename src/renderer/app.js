@@ -2153,7 +2153,37 @@ document.addEventListener('DOMContentLoaded', () => {
               entryObj.updatedAt = new Date().toISOString();
               saveVaultEntriesToStorage();
               logActivity(`PASSWORD HEALTH FIX: Generated new strong password for ${item.title}`);
-              renderHealthCheckResults();
+
+              const confirmModal = document.getElementById('account-update-confirm-modal');
+              const confirmTitle = document.getElementById('confirm-account-title');
+              const confirmPwdInp = document.getElementById('confirm-new-pwd-display');
+              const confirmDomain = document.getElementById('confirm-account-domain');
+              const copyBtn = document.getElementById('copy-confirm-pwd-btn');
+              const updatedBtn = document.getElementById('confirm-account-updated-btn');
+
+              if (confirmModal) {
+                if (confirmTitle) confirmTitle.textContent = item.title;
+                if (confirmPwdInp) confirmPwdInp.value = newPassword;
+                if (confirmDomain) confirmDomain.textContent = (entryObj.fields && entryObj.fields.url) || item.title;
+                confirmModal.classList.remove('hidden');
+
+                if (copyBtn) {
+                  copyBtn.onclick = () => {
+                    if (clipboardMgr) clipboardMgr.writeText(newPassword);
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+                  };
+                }
+
+                if (updatedBtn) {
+                  updatedBtn.onclick = () => {
+                    confirmModal.classList.add('hidden');
+                    renderHealthCheckResults();
+                  };
+                }
+              } else {
+                renderHealthCheckResults();
+              }
             }
           }
         };

@@ -232,6 +232,33 @@
     </div>
   </div>
 
+  <!-- Account Password Update Confirmation Modal -->
+  <div id="account-update-confirm-modal" class="modal-overlay hidden" style="z-index: 9900;">
+    <div class="setup-card" style="max-width: 540px; width: 90%; position: relative;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--brass-accent);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <h3 class="setup-title" style="margin: 0; font-size: 18px;">Action Required: Update External Account</h3>
+      </div>
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+        A new high-entropy password has been generated and saved to your encrypted VantaLock vault for <strong id="confirm-account-title" style="color: var(--text-primary);">Account</strong>.
+      </p>
+
+      <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--surface-border); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+        <label class="form-label" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">New Generated Password</label>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+          <input type="text" id="confirm-new-pwd-display" class="input-field" readonly style="font-family: monospace; font-size: 13px; letter-spacing: 1px;" />
+          <button type="button" id="copy-confirm-pwd-btn" class="btn-secondary" style="width: auto; padding: 10px 16px;">Copy</button>
+        </div>
+      </div>
+
+      <div style="padding: 12px; background: rgba(201, 162, 74, 0.08); border-left: 3px solid var(--brass-accent); border-radius: 4px; font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+        <strong>Important Security Notice:</strong> VantaLock is a sovereign, zero-cloud vault. Please log into your real account at <span id="confirm-account-domain" style="color: var(--text-primary); font-weight: 600;">your service provider</span> and change your password to this new generated value.
+      </div>
+
+      <button type="button" id="confirm-account-updated-btn" class="btn-primary" style="width: 100%;">Yes, I have updated my account</button>
+    </div>
+  </div>
+
   <!-- Password Health Check Modal -->
   <div id="password-health-modal" class="modal-overlay hidden">
     <div class="setup-card" style="max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative;">

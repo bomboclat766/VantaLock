@@ -9,7 +9,7 @@
 <body class="theme-default">
 
   <!-- Top Window Bar -->
-  <div class="titlebar">
+  <div id="titlebar-bar" class="titlebar" style="visibility: hidden; opacity: 0; transition: opacity 0.2s;">
     <div class="brand-badge">
       <svg class="brand-logo-small" viewBox="0 0 100 100">
         <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
@@ -96,7 +96,8 @@
             <label class="form-label" for="unlock-mp-input">Master Password</label>
             <div style="position: relative;">
               <input type="password" id="unlock-mp-input" class="input-field" placeholder="Enter master password..." required />
-              <button type="button" class="pwd-toggle-btn" data-target="unlock-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+              <button type="button" class="pwd-toggle-btn" data-target="unlock-mp-input" style="position: absolute; right: 34px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              <button type="button" id="unlock-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
             </div>
             <div id="unlock-error-text" class="error-text">Incorrect master password. Please try again.</div>
           </div>
@@ -136,11 +137,23 @@
       </div>
     </div>
 
+    <!-- Biometric Setup View -->
+    <div id="biometric-optin-modal" class="setup-card-wrap hidden">
+      <div class="setup-card">
+        <h2 class="setup-title">Enable Biometric Unlock</h2>
+        <p class="setup-desc">Use Touch ID / Windows Hello to unlock VantaLock instead of typing your master password each time. Your master password is still required as a fallback and for sensitive actions.</p>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+          <button id="enable-biometrics-btn" class="btn-primary">Enable Biometric Unlock</button>
+          <button id="skip-biometrics-btn" class="btn-secondary">Skip for Now</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Recovery Key Step 1: Reveal Words -->
     <div id="recovery-key-reveal-step" class="setup-card-wrap hidden">
       <div class="setup-card" style="max-width: 720px;">
         <h2 class="setup-title">24-Word Recovery Phrase</h2>
-        <p class="setup-desc">Record these 24 words in order and store them in a secure physical location. On the next screen, you will be prompted to re-enter specific words from this phrase to confirm your backup.</p>
+        <p class="setup-desc">Record these 24 words in order and store them in a secure physical location. On the next screen, you will be prompted to re-enter specific words from this phrase to confirm your recovery phrase.</p>
 
         <div id="recovery-words-grid" class="recovery-words-grid"></div>
 
@@ -157,14 +170,14 @@
     <!-- Recovery Key Step 2: Verification -->
     <div id="recovery-key-verify-step" class="setup-card-wrap hidden">
       <div class="setup-card" style="max-width: 600px;">
-        <h2 class="setup-title">Confirm Recovery Phrase Backup</h2>
-        <p class="setup-desc">Please re-enter the specified words from your 24-word recovery phrase to verify your backup.</p>
+        <h2 class="setup-title">Confirm Recovery Phrase</h2>
+        <p class="setup-desc">Please re-enter the specified words from your 24-word recovery phrase to verify accuracy.</p>
 
         <div id="rk-verify-inputs" class="form-group" style="display: flex; flex-direction: column; gap: 16px;"></div>
         <div id="rk-error-text" class="error-text" style="margin-bottom: 12px;">Incorrect word verification. Please check your recovery phrase and try again.</div>
 
         <div style="display: flex; gap: 12px; margin-top: 20px;">
-          <button id="back-to-seed-btn" class="btn-secondary" style="flex:1;">← Back to Phrase</button>
+          <button id="back-to-seed-btn" class="btn-secondary" style="flex:1;">← Back</button>
           <button id="verify-rk-btn" class="btn-primary" style="flex:2;">Verify & Unlock Vault</button>
         </div>
       </div>
@@ -216,6 +229,77 @@
 
         <button type="submit" class="btn-primary" style="margin-top: 16px;">Encrypt & Attach File</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Account Password Update Confirmation Modal -->
+  <div id="account-update-confirm-modal" class="modal-overlay hidden" style="z-index: 9900;">
+    <div class="setup-card" style="max-width: 540px; width: 90%; position: relative;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--brass-accent);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <h3 class="setup-title" style="margin: 0; font-size: 18px;">Action Required: Update External Account</h3>
+      </div>
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+        A new high-entropy password has been generated and saved to your encrypted VantaLock vault for <strong id="confirm-account-title" style="color: var(--text-primary);">Account</strong>.
+      </p>
+
+      <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--surface-border); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+        <label class="form-label" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">New Generated Password</label>
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+          <input type="text" id="confirm-new-pwd-display" class="input-field" readonly style="font-family: monospace; font-size: 13px; letter-spacing: 1px;" />
+          <button type="button" id="copy-confirm-pwd-btn" class="btn-secondary" style="width: auto; padding: 10px 16px;">Copy</button>
+        </div>
+      </div>
+
+      <div style="padding: 12px; background: rgba(201, 162, 74, 0.08); border-left: 3px solid var(--brass-accent); border-radius: 4px; font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">
+        <strong>Important Security Notice:</strong> VantaLock is a sovereign, zero-cloud vault. Please log into your real account at <span id="confirm-account-domain" style="color: var(--text-primary); font-weight: 600;">your service provider</span> and change your password to this new generated value.
+      </div>
+
+      <button type="button" id="confirm-account-updated-btn" class="btn-primary" style="width: 100%;">Yes, I have updated my account</button>
+    </div>
+  </div>
+
+  <!-- Password Health Check Modal -->
+  <div id="password-health-modal" class="modal-overlay hidden">
+    <div class="setup-card" style="max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 class="setup-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          Password Health Check
+        </h2>
+        <button id="close-health-modal-btn" class="btn-secondary" style="width: auto; padding: 4px 12px;">✕</button>
+      </div>
+
+      <!-- Radar Scanning Animation View -->
+      <div id="health-scanning-view" style="display: none; padding: 30px 0; text-align: center; position: relative; overflow: hidden; border: 1px solid var(--surface-border); border-radius: 8px; background: rgba(0,0,0,0.5);">
+        <div id="radar-sweep-beam" class="radar-beam"></div>
+        <div style="font-size: 14px; color: var(--brass-accent); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 16px;">Scanning Local Vault Entries...</div>
+        <div id="radar-entry-scan-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: hidden; padding: 0 20px;"></div>
+      </div>
+
+      <!-- Health Results View -->
+      <div id="health-results-view">
+        <!-- Overall Score Card -->
+        <div style="text-align: center; padding: 20px; background: rgba(201, 162, 74, 0.05); border: 1px solid var(--brass-accent); border-radius: 8px; margin-bottom: 20px;">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); margin-bottom: 6px;">Overall Health Score</div>
+          <div id="health-score-display" style="font-size: 48px; font-weight: 800; color: var(--brass-accent); font-family: monospace;">0/100</div>
+          <div id="health-score-status" style="font-size: 13px; color: var(--text-primary); margin-top: 4px;">Evaluating...</div>
+        </div>
+
+        <!-- Issue List per entry -->
+        <div style="margin-bottom: 20px;">
+          <h3 style="font-size: 14px; color: var(--text-primary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Audit Findings Per Entry</h3>
+          <div id="health-issues-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+
+        <!-- History Graph -->
+        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--surface-border);">
+          <h3 style="font-size: 14px; color: var(--text-primary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Health Score History</h3>
+          <div id="health-history-chart-container" style="width: 100%; height: 120px; background: rgba(0,0,0,0.3); border: 1px solid var(--surface-border); border-radius: 6px; padding: 10px; box-sizing: border-box;">
+            <svg id="health-history-svg" width="100%" height="100%" viewBox="0 0 500 100" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

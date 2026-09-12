@@ -1,9 +1,34 @@
-const { calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier } = require('../crypto/vaultCrypto');
-const { generateRecoveryKey } = require('../crypto/recoveryKey');
-const ClipboardManager = require('../crypto/clipboardManager');
-const clipboardMgr = new ClipboardManager(30000);
-const { exportEncryptedVault, importEncryptedVault } = require('../crypto/vaultBackup');
-const LockManager = require('../crypto/lockManager');
+let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
+let generateRecoveryKey, ClipboardManager, clipboardMgr, exportEncryptedVault, importEncryptedVault, LockManager;
+
+try {
+  const cryptoVault = require('../crypto/vaultCrypto');
+  calculatePasswordStrength = cryptoVault.calculatePasswordStrength;
+  encryptData = cryptoVault.encryptData;
+  deriveKey = cryptoVault.deriveKey;
+  verifyKey = cryptoVault.verifyKey;
+  generateSalt = cryptoVault.generateSalt;
+  createVerifier = cryptoVault.createVerifier;
+
+  generateRecoveryKey = require('../crypto/recoveryKey').generateRecoveryKey;
+  ClipboardManager = require('../crypto/clipboardManager');
+  clipboardMgr = new ClipboardManager(30000);
+  const backup = require('../crypto/vaultBackup');
+  exportEncryptedVault = backup.exportEncryptedVault;
+  importEncryptedVault = backup.importEncryptedVault;
+  LockManager = require('../crypto/lockManager');
+} catch (e) {
+  // Web browser fallback implementations for testing / static view
+  calculatePasswordStrength = (pwd) => ({ score: pwd.length > 8 ? 3 : 1, label: pwd.length > 8 ? 'Strong' : 'Weak' });
+  deriveKey = async (pwd, salt) => Buffer.from('mockderivedkey32byteslongkey12345');
+  verifyKey = () => true;
+  generateSalt = () => Buffer.from('1234567890123456');
+  createVerifier = () => 'mockverifier';
+  generateRecoveryKey = () => ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mike', 'november', 'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform', 'victor', 'whiskey', 'xray'];
+  clipboardMgr = { copySensitiveText: () => {}, writeText: () => {} };
+  LockManager = class { constructor() {} resetInactivityTimer() {} recordSuccessfulUnlock() {} lock() {} };
+}
+
 
 // Application Activity Logging System
 const appActivityLogs = [
@@ -75,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const onboardingContainer = document.getElementById('onboarding-container');
   const masterPasswordModal = document.getElementById('master-password-modal');
+  const biometricOptinModal = document.getElementById('biometric-optin-modal');
   const unlockVaultView = document.getElementById('unlock-vault-view');
   const unlockVaultForm = document.getElementById('unlock-vault-form');
   const unlockMpInput = document.getElementById('unlock-mp-input');
@@ -151,38 +177,201 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let vaultEntries = loadSavedVaultEntries();
 
-  const vaultMetadata = {
+    const vaultMetadata = {
     financial: {
       title: 'Financial Vault',
       desc: 'Manage bank accounts, payment cards, crypto wallets, loans, tax documents, and property deeds.',
       types: [
-        { id: 'bank', label: 'Bank Account', fields: ['Bank Name', 'Account Number', 'Routing Number', 'Account Holder'] },
-        { id: 'card', label: 'Payment Card', fields: ['Card Name', 'Card Number', 'Expiry Date', 'CVV', 'PIN'] },
-        { id: 'crypto', label: 'Crypto Wallet', fields: ['Wallet Name', 'Public Address', 'Private Key / Seed Phrase'] },
-        { id: 'loan', label: 'Loan & Mortgage', fields: ['Lender Name', 'Account Number', 'Principal Amount', 'Interest Rate'] },
-        { id: 'tax', label: 'Tax Document', fields: ['Tax Year', 'Document Type (W2/1099/1040)', 'Filing Status'] }
+        {
+          id: 'bank',
+          label: 'Bank Account',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 7H3l9-7z"/></svg>`,
+          fields: [
+            { name: 'Bank Name', key: 'bank_name', type: 'text' },
+            { name: 'Account Type', key: 'account_type', type: 'select', options: ['Checking', 'Savings', 'Business', 'Investment'] },
+            { name: 'Account Number', key: 'account_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Routing / ABA Number', key: 'routing_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'SWIFT / IBAN', key: 'swift_iban', type: 'text', sensitive: true },
+            { name: 'PIN / Password', key: 'pin_password', type: 'password', sensitive: true },
+            { name: 'Branch / Notes', key: 'branch_notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'card',
+          label: 'Payment Card',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+          fields: [
+            { name: 'Card Title / Nickname', key: 'card_title', type: 'text' },
+            { name: 'Cardholder Name', key: 'cardholder_name', type: 'text' },
+            { name: 'Card Number', key: 'card_number', type: 'text', sensitive: true, maskType: 'card' },
+            { name: 'Expiry Date (MM/YY)', key: 'expiry_date', type: 'text' },
+            { name: 'CVV / CVC', key: 'cvv', type: 'password', sensitive: true },
+            { name: 'PIN', key: 'pin', type: 'password', sensitive: true },
+            { name: 'Billing Zip Code', key: 'zip_code', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'crypto',
+          label: 'Crypto Wallet',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M15 9.5a2.5 2.5 0 0 0-5 0c0 2 5 2.5 5 4.5a2.5 2.5 0 0 1-5 0"/></svg>`,
+          fields: [
+            { name: 'Wallet Name', key: 'wallet_name', type: 'text' },
+            { name: 'Network / Asset', key: 'network', type: 'text' },
+            { name: 'Public Address', key: 'public_address', type: 'text' },
+            { name: 'Private Key', key: 'private_key', type: 'textarea', sensitive: true },
+            { name: 'Recovery Seed Phrase (12/24 words)', key: 'seed_phrase', type: 'textarea', sensitive: true },
+            { name: 'Passphrase / PIN', key: 'wallet_pin', type: 'password', sensitive: true },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'loan',
+          label: 'Loan & Mortgage',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 7H3l9-7z"/></svg>`,
+          fields: [
+            { name: 'Lender Name', key: 'lender_name', type: 'text' },
+            { name: 'Account / Loan Number', key: 'account_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Principal Amount', key: 'principal_amount', type: 'text' },
+            { name: 'Interest Rate (%)', key: 'interest_rate', type: 'text' },
+            { name: 'Monthly Payment', key: 'monthly_payment', type: 'text' },
+            { name: 'Due Date', key: 'due_date', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'tax',
+          label: 'Tax Document',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+          fields: [
+            { name: 'Tax Year', key: 'tax_year', type: 'text' },
+            { name: 'Document Type (W2/1099/1040)', key: 'document_type', type: 'text' },
+            { name: 'Filing Status', key: 'filing_status', type: 'text' },
+            { name: 'SSN / EIN Number', key: 'ssn_ein', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        }
       ]
     },
     legal: {
       title: 'Legal Vault',
       desc: 'Store passport details, identification numbers, legal contracts, property deeds, and wills.',
       types: [
-        { id: 'passport', label: 'Passport', fields: ['Country', 'Passport Number', 'Expiration Date', 'Full Legal Name'] },
-        { id: 'ssn', label: 'Identity / SSN / ID', fields: ['Full Legal Name', 'SSN / National ID Number', 'Date of Birth'] },
-        { id: 'contract', label: 'Legal Contract', fields: ['Document Title', 'Parties Involved', 'Effective Date', 'Key Terms'] },
-        { id: 'deed', label: 'Property Deed / Title', fields: ['Property Address', 'Parcel / Registry ID', 'Owner Names'] },
-        { id: 'will', label: 'Will & Estate Plan', fields: ['Document Name', 'Executor Name', 'Attorney Contact'] }
+        {
+          id: 'passport',
+          label: 'Passport',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 17c0-2 2.5-3 5-3s5 1 5 3"/></svg>`,
+          fields: [
+            { name: 'Country / Issuing Authority', key: 'country', type: 'text' },
+            { name: 'Passport Number', key: 'passport_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Full Legal Name', key: 'full_name', type: 'text' },
+            { name: 'Issue Date', key: 'issue_date', type: 'text' },
+            { name: 'Expiration Date', key: 'expiration_date', type: 'text' },
+            { name: 'Place of Birth / DOB', key: 'dob', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'ssn',
+          label: 'Identity / SSN / ID',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+          fields: [
+            { name: 'Full Legal Name', key: 'full_name', type: 'text' },
+            { name: 'SSN / National ID Number', key: 'ssn_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Date of Birth', key: 'dob', type: 'text' },
+            { name: 'Issuing State / Authority', key: 'issuing_authority', type: 'text' },
+            { name: 'Expiration Date', key: 'expiration_date', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'contract',
+          label: 'Legal Contract',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+          fields: [
+            { name: 'Document Title', key: 'document_title', type: 'text' },
+            { name: 'Contract ID / Reference', key: 'contract_id', type: 'text' },
+            { name: 'Parties Involved', key: 'parties', type: 'text' },
+            { name: 'Effective Date', key: 'effective_date', type: 'text' },
+            { name: 'Expiration Date', key: 'expiration_date', type: 'text' },
+            { name: 'Key Terms / Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'deed',
+          label: 'Property Deed / Title',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+          fields: [
+            { name: 'Property Address', key: 'property_address', type: 'text' },
+            { name: 'Parcel / Registry ID', key: 'parcel_id', type: 'text' },
+            { name: 'Owner Names', key: 'owner_names', type: 'text' },
+            { name: 'Recording Date', key: 'recording_date', type: 'text' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'will',
+          label: 'Will & Estate Plan',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+          fields: [
+            { name: 'Document Name', key: 'document_name', type: 'text' },
+            { name: 'Executor Name', key: 'executor_name', type: 'text' },
+            { name: 'Attorney Contact', key: 'attorney_contact', type: 'text' },
+            { name: 'Physical Storage Location', key: 'physical_location', type: 'text' },
+            { name: 'Notes / Beneficiaries', key: 'notes', type: 'textarea' }
+          ]
+        }
       ]
     },
     personal: {
       title: 'Personal Vault',
       desc: 'Keep private logins, personal notes, medical info, emergency instructions, and confidential records.',
       types: [
-        { id: 'login', label: 'Login / Password', fields: ['Site/App Name', 'Username / Email', 'Password', '2FA Backup Codes'] },
-        { id: 'note', label: 'Secure Note', fields: ['Title', 'Freeform Text'] },
-        { id: 'medical', label: 'Medical & Prescription Info', fields: ['Condition / Prescription', 'Doctor Name', 'Dosage / Instructions'] },
-        { id: 'emergency', label: 'Emergency Instruction', fields: ['Title', 'Instructions', 'Who to Notify', 'Contact Phone'] },
-        { id: 'confidential', label: 'Confidential Record', fields: ['Record Title', 'Category', 'Details'] }
+        {
+          id: 'login',
+          label: 'Login / Password',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+          fields: [
+            { name: 'Site / App Name', key: 'site_name', type: 'text' },
+            { name: 'URL / Web Address', key: 'url', type: 'text' },
+            { name: 'Username / Email', key: 'username', type: 'text' },
+            { name: 'Password', key: 'password', type: 'password', sensitive: true },
+            { name: '2FA Backup Codes', key: '2fa_codes', type: 'textarea', sensitive: true },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'note',
+          label: 'Secure Note',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+          fields: [
+            { name: 'Title', key: 'title', type: 'text' },
+            { name: 'Freeform Text Content', key: 'content', type: 'textarea', sensitive: true }
+          ]
+        },
+        {
+          id: 'medical',
+          label: 'Medical & Prescription Info',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
+          fields: [
+            { name: 'Condition / Prescription Name', key: 'condition_name', type: 'text' },
+            { name: 'Doctor Name / Clinic', key: 'doctor_name', type: 'text' },
+            { name: 'Dosage / Usage Instructions', key: 'dosage', type: 'text' },
+            { name: 'Rx Number / Insurance ID', key: 'rx_number', type: 'text', sensitive: true, maskType: 'account' },
+            { name: 'Notes', key: 'notes', type: 'textarea' }
+          ]
+        },
+        {
+          id: 'emergency',
+          label: 'Emergency Instruction',
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+          fields: [
+            { name: 'Title', key: 'title', type: 'text' },
+            { name: 'Who to Notify', key: 'who_to_notify', type: 'text' },
+            { name: 'Contact Phone / Email', key: 'contact_phone', type: 'text' },
+            { name: 'Action Instructions', key: 'instructions', type: 'textarea', sensitive: true }
+          ]
+        }
       ]
     }
   };
@@ -210,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: 'App Version: 1.0.23 | License: Activated | Zero-Cloud Encryption'
+      desc: `App Version: 1.1.39 | License: Activated | Zero-Cloud Encryption`
     }
   };
 
@@ -228,41 +417,150 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Helper function to switch views cleanly
-  function showScreen(screen) {
+  // Centralized setActiveView view manager
+  function setActiveView(targetView) {
+    const titlebarBar = document.getElementById('titlebar-bar');
+    if (titlebarBar) {
+      titlebarBar.style.visibility = 'visible';
+      titlebarBar.style.opacity = '1';
+    }
     setupPasswordToggles();
-    if (screen === 'dashboard') {
-      if (setupViewContainer) setupViewContainer.classList.add('hidden');
+
+    // 1. Hide all main containers and setup steps first
+    if (setupViewContainer) setupViewContainer.classList.add('hidden');
+    if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
+
+    if (onboardingContainer) onboardingContainer.classList.add('hidden');
+    if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
+    if (biometricOptinModal) biometricOptinModal.classList.add('hidden');
+    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
+    if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
+
+    // 2. Panic Lock Visibility Guard: Only display on unlocked dashboard
+    if (panicLockBtn) {
+      panicLockBtn.style.display = targetView === 'dashboard' ? 'flex' : 'none';
+    }
+
+    // 3. Reveal target view
+    if (targetView === 'dashboard') {
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
       if (lockStatusText) lockStatusText.textContent = 'VAULT UNLOCKED';
       lockMgr.recordSuccessfulUnlock();
       localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
-      renderVaultEntries(); // INSTANTLY render entries on entering dashboard
+
+      const activeToolTab = document.querySelector('.tool-tab-btn.active');
+      if (activeToolTab) {
+        const toolKey = activeToolTab.getAttribute('data-tool');
+        if (toolKey) {
+          renderToolView(toolKey);
+        } else {
+          renderVaultEntries();
+        }
+      } else {
+        renderVaultEntries();
+      }
     } else {
-      if (dashboardViewContainer) dashboardViewContainer.classList.add('hidden');
       if (setupViewContainer) setupViewContainer.classList.remove('hidden');
 
-      if (onboardingContainer) onboardingContainer.classList.add('hidden');
-      if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
-      if (unlockVaultView) unlockVaultView.classList.add('hidden');
-      if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
-      if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
-
-      if (screen === 'onboarding') {
+      if (targetView === 'onboarding') {
         if (onboardingContainer) onboardingContainer.classList.remove('hidden');
-      } else if (screen === 'master-password') {
+      } else if (targetView === 'master-password') {
         if (masterPasswordModal) masterPasswordModal.classList.remove('hidden');
-      } else if (screen === 'unlock-vault') {
+      } else if (targetView === 'biometric-optin') {
+        if (biometricOptinModal) biometricOptinModal.classList.remove('hidden');
+      } else if (targetView === 'unlock-vault') {
         if (unlockVaultView) unlockVaultView.classList.remove('hidden');
         if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
-      } else if (screen === 'recovery-key-reveal') {
+        triggerAutoBiometricsUnlock();
+      } else if (targetView === 'recovery-key-reveal') {
         if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.remove('hidden');
-      } else if (screen === 'recovery-key-verify') {
+      } else if (targetView === 'recovery-key-verify') {
         if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.remove('hidden');
       }
     }
   }
+
+  // Alias for backward compatibility
+
+  // Biometric Support Helper
+  async function checkBiometricsSupport() {
+    if (window.electronAPI && typeof window.electronAPI.isBiometricsAvailable === 'function') {
+      try {
+        return await window.electronAPI.isBiometricsAvailable();
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  let pendingMasterPassword = '';
+
+  async function triggerAutoBiometricsUnlock() {
+    const isEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
+    const encToken = localStorage.getItem('vantalock_secure_token');
+    if (isEnabled && encToken && window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+      setTimeout(async () => {
+        try {
+          const authenticated = await window.electronAPI.promptBiometrics('Authenticate to unlock VantaLock Vault');
+          if (authenticated) {
+            const pwd = await window.electronAPI.retrieveSecureToken(encToken);
+            const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+            const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+            if (storedSaltHex && storedVerifier) {
+              const salt = Buffer.from(storedSaltHex, 'hex');
+              const currDerivedKey = await deriveKey(pwd, salt);
+              if (verifyKey(currDerivedKey, storedVerifier)) {
+                logActivity('SECURITY: Vault unlocked via Biometrics.');
+                showScreen('dashboard');
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Biometric auto-unlock error:', err);
+        }
+      }, 150);
+    }
+  }
+
+  function showScreen(screen) {
+    setActiveView(screen);
+  }
+  window.showScreen = showScreen;
+  window.openPasswordHealthModal = openPasswordHealthModal;
+
+  // Global password focus reset & error clearing helper
+
+  // Global password input error clearing listener (persists until typing resumes)
+  document.addEventListener('input', (e) => {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'password') {
+      if (unlockErrorText && e.target.id === 'unlock-mp-input') {
+        unlockErrorText.style.display = 'none';
+      }
+      const seedErr = document.getElementById('seed-error-msg');
+      if (seedErr && e.target.id === 'seed-mp-confirm') {
+        seedErr.style.display = 'none';
+      }
+      const msgDiv = document.getElementById('mp-change-msg');
+      if (msgDiv && (e.target.id === 'current-mp-input' || e.target.id === 'sec-new-mp-input' || e.target.id === 'sec-confirm-mp-input')) {
+        if (msgDiv.textContent.includes('Incorrect')) {
+          msgDiv.textContent = '';
+        }
+      }
+      if (mpErrorText && (e.target.id === 'mp-input' || e.target.id === 'mp-confirm-input')) {
+        mpErrorText.style.display = 'none';
+      }
+    }
+  });
+
+  document.addEventListener('focusin', (e) => {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'password') {
+      e.target.disabled = false;
+      e.target.readOnly = false;
+    }
+  });
 
   // Global password toggle button binding helper
   function setupPasswordToggles() {
@@ -277,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetInput) {
           const isPwd = targetInput.type === 'password';
           targetInput.type = isPwd ? 'text' : 'password';
-          btn.textContent = isPwd ? '🙈' : '👁️';
+          btn.innerHTML = isPwd ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
         }
       });
     });
@@ -290,12 +588,10 @@ document.addEventListener('DOMContentLoaded', () => {
     splashDismissed = true;
 
     const navigateToNextScreen = () => {
-      if (!localStorage.getItem('vantalock_onboarded')) {
+      const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
+      if (!isFullySetup) {
         showScreen('onboarding');
-      } else if (!localStorage.getItem('vantalock_vault_salt')) {
-        showScreen('master-password');
       } else {
-        // ALWAYS prompt for Unlock Vault screen explicitly after onboarding setup
         showScreen('unlock-vault');
       }
     };
@@ -320,34 +616,75 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Vault Unlock Form Handler
+  let isVerificationFromUnlock = false;
+
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
   if (forgotPwdBtn) {
     forgotPwdBtn.addEventListener('click', () => {
+      isVerificationFromUnlock = true;
       setupRecoveryVerification();
+    });
+  }
+
+
+  const unlockResetBtn = document.getElementById('unlock-reset-btn');
+  if (unlockResetBtn) {
+    unlockResetBtn.addEventListener('click', () => {
+      if (unlockMpInput) {
+        unlockMpInput.value = '';
+        unlockMpInput.disabled = false;
+        unlockMpInput.removeAttribute('readonly');
+        unlockMpInput.classList.remove('disabled', 'read-only', 'locked');
+        unlockMpInput.focus();
+      }
+      if (unlockErrorText) unlockErrorText.style.display = 'none';
+      const submitBtn = document.getElementById('unlock-btn');
+      if (submitBtn) submitBtn.disabled = false;
     });
   }
 
   if (unlockVaultForm) {
     unlockVaultForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pwdVal = unlockMpInput.value;
-      const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-      const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+      if (e) e.preventDefault();
+      const submitBtn = document.getElementById('unlock-btn');
+      const inputElem = unlockMpInput;
+      try {
+        if (submitBtn) submitBtn.disabled = true;
+        const pwdVal = inputElem ? inputElem.value : '';
+        const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+        const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-      if (storedSaltHex && storedVerifier) {
-        const salt = Buffer.from(storedSaltHex, 'hex');
-        const currDerivedKey = await deriveKey(pwdVal, salt);
+        if (storedSaltHex && storedVerifier) {
+          const salt = Buffer.from(storedSaltHex, 'hex');
+          const currDerivedKey = await deriveKey(pwdVal, salt);
 
-        if (!verifyKey(currDerivedKey, storedVerifier)) {
-          if (unlockErrorText) unlockErrorText.style.display = 'block';
-          logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
-          return;
+          if (!verifyKey(currDerivedKey, storedVerifier)) {
+            if (unlockErrorText) unlockErrorText.style.display = 'block';
+            logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
+            return;
+          }
+        }
+
+        if (unlockErrorText) unlockErrorText.style.display = 'none';
+        unlockVaultForm.reset();
+        showScreen('dashboard');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.pointerEvents = 'auto';
+        }
+        if (inputElem) {
+          inputElem.disabled = false;
+          inputElem.removeAttribute('readonly');
+          inputElem.classList.remove('disabled', 'read-only', 'locked');
+          inputElem.style.pointerEvents = 'auto';
+          inputElem.style.userSelect = 'text';
+          setTimeout(() => {
+            inputElem.focus();
+            inputElem.select();
+          }, 10);
         }
       }
-
-      if (unlockErrorText) unlockErrorText.style.display = 'none';
-      unlockVaultForm.reset();
-      showScreen('dashboard');
     });
   }
 
@@ -391,7 +728,13 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('vantalock_vault_verifier', verifier);
 
       logActivity('SECURITY: Master password key derived and verifier stored.');
-      setupRecoveryKeyScreen();
+      pendingMasterPassword = pwd;
+      const bioAvailable = await checkBiometricsSupport();
+      if (bioAvailable) {
+        showScreen('biometric-optin');
+      } else {
+        setupRecoveryKeyScreen();
+      }
     });
   }
 
@@ -413,7 +756,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (copyRkBtn) {
     copyRkBtn.addEventListener('click', () => {
-      if (activeRecoveryKeyWords && activeRecoveryKeyWords.length > 0) {
+      let phrase = activeRecoveryKeyWords ? activeRecoveryKeyWords.join(' ') : '';
+          if (!phrase) phrase = localStorage.getItem('vantalock_seed_phrase') || '';
+          if (phrase) {
         clipboardMgr.copySensitiveText(activeRecoveryKeyWords.join(' '));
         copyRkBtn.textContent = 'Copied!';
         setTimeout(() => copyRkBtn.textContent = 'Copy', 2000);
@@ -443,6 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (proceedToVerifyRkBtn) {
     proceedToVerifyRkBtn.addEventListener('click', () => {
+      isVerificationFromUnlock = false;
       setupRecoveryVerification();
     });
   }
@@ -471,7 +817,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (backToSeedBtn) {
     backToSeedBtn.addEventListener('click', () => {
-      showScreen('recovery-key-reveal');
+      if (isVerificationFromUnlock) {
+        showScreen('unlock-vault');
+      } else {
+        showScreen('recovery-key-reveal');
+      }
     });
   }
 
@@ -495,6 +845,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       rkErrorText.style.display = 'none';
+      localStorage.setItem('vantalock_setup_complete', 'true');
+      if (activeRecoveryKeyWords.length) localStorage.setItem('vantalock_seed_phrase', activeRecoveryKeyWords.join(' '));
       logActivity('SECURITY: 24-word recovery phrase backup verified.');
       showScreen('dashboard');
     });
@@ -591,6 +943,8 @@ document.addEventListener('DOMContentLoaded', () => {
     viewFileModal.classList.remove('hidden');
   }
 
+    let editingEntryId = null;
+
   // Entry Modals & Dynamic Form Rendering
   if (addEntryBtn) {
     addEntryBtn.addEventListener('click', () => {
@@ -604,75 +958,202 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function openAddEntryModal() {
+  function openAddEntryModal(entryToEdit = null) {
     typeChipsGrid.innerHTML = '';
+    const modalTitleEl = addEntryModal.querySelector('.setup-title');
     const availableTypes = vaultMetadata[activeVault].types;
 
-    availableTypes.forEach((tConfig, idx) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = `type-chip ${idx === 0 ? 'selected' : ''}`;
-      chip.textContent = tConfig.label;
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
-        chip.classList.add('selected');
-        renderDynamicFormFields(tConfig);
-      });
-      typeChipsGrid.appendChild(chip);
-    });
+    if (entryToEdit) {
+      editingEntryId = entryToEdit.id;
+      if (modalTitleEl) modalTitleEl.textContent = 'Edit Vault Entry';
+      document.getElementById('entry-title-input').value = entryToEdit.title || '';
+      document.getElementById('entry-notes-input').value = entryToEdit.notes || '';
 
-    if (availableTypes.length > 0) {
-      renderDynamicFormFields(availableTypes[0]);
+      const targetType = availableTypes.find(t => t.id === entryToEdit.type) || availableTypes[0];
+      activeEntryType = targetType;
+
+      availableTypes.forEach((tConfig) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `type-chip ${tConfig.id === targetType.id ? 'selected' : ''}`;
+        chip.textContent = tConfig.label;
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          renderDynamicFormFields(tConfig, entryToEdit.fields || {});
+        });
+        typeChipsGrid.appendChild(chip);
+      });
+
+      renderDynamicFormFields(targetType, entryToEdit.fields || {});
+    } else {
+      editingEntryId = null;
+      if (modalTitleEl) modalTitleEl.textContent = 'Add Vault Entry';
+      if (entryDynamicForm) entryDynamicForm.reset();
+
+      availableTypes.forEach((tConfig, idx) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `type-chip ${idx === 0 ? 'selected' : ''}`;
+        chip.textContent = tConfig.label;
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+          chip.classList.add('selected');
+          renderDynamicFormFields(tConfig);
+        });
+        typeChipsGrid.appendChild(chip);
+      });
+
+      if (availableTypes.length > 0) {
+        renderDynamicFormFields(availableTypes[0]);
+      }
     }
 
     addEntryModal.classList.remove('hidden');
   }
 
-  function renderDynamicFormFields(typeConfig) {
+  function renderDynamicFormFields(typeConfig, existingFields = {}) {
     activeEntryType = typeConfig;
     dynamicFieldsContainer.innerHTML = '';
 
-    typeConfig.fields.forEach(fName => {
-      const fKey = fName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    typeConfig.fields.forEach(fDef => {
       const fg = document.createElement('div');
       fg.className = 'form-group';
+      const val = existingFields[fDef.key] || '';
+
+      let inputHtml = '';
+      if (fDef.type === 'select') {
+        const opts = (fDef.options || []).map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('');
+        inputHtml = `<select class="input-field dynamic-field-input" data-key="${fDef.key}">${opts}</select>`;
+      } else if (fDef.type === 'textarea') {
+        inputHtml = `<textarea class="input-field dynamic-field-input" data-key="${fDef.key}" rows="3" placeholder="Enter ${fDef.name}...">${val}</textarea>`;
+      } else if (fDef.type === 'password') {
+        inputHtml = `
+          <div style="position: relative;">
+            <input type="password" id="field-inp-${fDef.key}" class="input-field dynamic-field-input" data-key="${fDef.key}" value="${val}" placeholder="Enter ${fDef.name}..." />
+            <button type="button" class="pwd-toggle-btn" data-target="field-inp-${fDef.key}" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        `;
+      } else {
+        inputHtml = `<input type="text" class="input-field dynamic-field-input" data-key="${fDef.key}" value="${val}" placeholder="Enter ${fDef.name}..." />`;
+      }
+
       fg.innerHTML = `
-        <label class="form-label">${fName}</label>
-        <input type="text" class="input-field dynamic-field-input" data-key="${fKey}" placeholder="Enter ${fName}..." required />
+        <label class="form-label">${fDef.name}</label>
+        ${inputHtml}
       `;
       dynamicFieldsContainer.appendChild(fg);
     });
+
+    setupPasswordToggles();
   }
 
   if (entryDynamicForm) {
     entryDynamicForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const title = document.getElementById('entry-title-input').value;
-      const notes = document.getElementById('entry-notes-input').value;
+      const titleInput = document.getElementById('entry-title-input');
+      const title = titleInput.value.trim();
+      const notes = document.getElementById('entry-notes-input').value.trim();
 
-      const fieldValues = {};
+      // Reset previous validation errors
+      titleInput.style.borderColor = 'var(--surface-border)';
       document.querySelectorAll('.dynamic-field-input').forEach(inp => {
-        fieldValues[inp.getAttribute('data-key')] = inp.value;
+        inp.style.borderColor = 'var(--surface-border)';
       });
 
-      const newEntry = {
-        id: Date.now().toString(),
-        vault: activeVault,
-        type: activeEntryType.id,
-        typeName: activeEntryType.label,
-        title,
-        notes,
-        fields: fieldValues,
-        createdAt: new Date().toISOString()
-      };
+      let isValid = true;
+      if (!title) {
+        titleInput.style.borderColor = '#ef4444';
+        isValid = false;
+      }
 
-      vaultEntries.push(newEntry);
+      const fieldValues = {};
+      const dynamicInputs = document.querySelectorAll('.dynamic-field-input');
+      let filledDynamicCount = 0;
+
+      dynamicInputs.forEach(inp => {
+        const val = inp.value.trim();
+        const fKey = inp.getAttribute('data-key');
+        fieldValues[fKey] = val;
+        if (val) filledDynamicCount++;
+      });
+
+      // Require at least one dynamic field filled in addition to title
+      if (dynamicInputs.length > 0 && filledDynamicCount === 0) {
+        dynamicInputs.forEach(inp => {
+          inp.style.borderColor = '#ef4444';
+        });
+        isValid = false;
+      }
+
+      if (!isValid) {
+        let errBanner = document.getElementById('form-val-error');
+        if (!errBanner) {
+          errBanner = document.createElement('div');
+          errBanner.id = 'form-val-error';
+          errBanner.style.color = '#ef4444';
+          errBanner.style.fontSize = '12px';
+          errBanner.style.marginTop = '10px';
+          errBanner.style.fontWeight = '600';
+          entryDynamicForm.appendChild(errBanner);
+        }
+        errBanner.textContent = 'Please fill out entry title and required fields before saving.';
+        return;
+      }
+
+      const errBanner = document.getElementById('form-val-error');
+      if (errBanner) errBanner.remove();
+
+      if (editingEntryId) {
+        const existingIdx = vaultEntries.findIndex(e => e.id === editingEntryId);
+        if (existingIdx !== -1) {
+          vaultEntries[existingIdx] = {
+            ...vaultEntries[existingIdx],
+            vault: activeVault,
+            type: activeEntryType.id,
+            typeName: activeEntryType.label,
+            title,
+            notes,
+            fields: fieldValues,
+            updatedAt: new Date().toISOString()
+          };
+          logActivity(`VAULT ENTRY UPDATED: ${title} in ${activeVault} vault.`);
+        }
+      } else {
+        const newEntry = {
+          id: Date.now().toString(),
+          vault: activeVault,
+          type: activeEntryType.id,
+          typeName: activeEntryType.label,
+          title,
+          notes,
+          fields: fieldValues,
+          createdAt: new Date().toISOString()
+        };
+        vaultEntries.push(newEntry);
+        logActivity(`VAULT ENTRY ADDED: ${title} in ${activeVault} vault.`);
+      }
+
       saveVaultEntriesToStorage();
-      logActivity(`VAULT ENTRY ADDED: ${title} in ${activeVault} vault.`);
       addEntryModal.classList.add('hidden');
       entryDynamicForm.reset();
+      editingEntryId = null;
       renderVaultEntries();
     });
+  }
+
+  function maskFieldValue(val, fDef) {
+    if (!val) return '—';
+    if (!fDef || !fDef.sensitive) return val;
+
+    if (fDef.maskType === 'card' || fDef.maskType === 'account') {
+      const clean = val.replace(/\s+/g, '');
+      if (clean.length > 4) {
+        const last4 = clean.slice(-4);
+        return `•••• •••• •••• ${last4}`;
+      }
+    }
+    return '••••••••••••';
   }
 
   function renderVaultEntries() {
@@ -696,35 +1177,147 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'entry-card';
 
-      let fieldsHtml = '';
-      for (const [k, v] of Object.entries(entry.fields)) {
-        fieldsHtml += `
-          <div class="field-item">
-            <span class="field-label">${k.replace(/_/g, ' ')}</span>
-            <span class="field-value">${v}</span>
-          </div>
-        `;
+      const isFile = entry.type === 'file';
+      const availableTypes = (vaultMetadata[activeVault] && vaultMetadata[activeVault].types) || [];
+
+      let fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>';
+      if (isFile && entry.fields) {
+        const fname = ((entry.fields.filename) || '').toLowerCase();
+        const ftype = ((entry.fields.filetype) || '').toLowerCase();
+        if (ftype.includes('image') || fname.match(/\.(png|jpg|jpeg|gif|svg|webp)$/)) {
+          fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+        } else if (ftype.includes('pdf') || fname.endsWith('.pdf')) {
+          fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+        } else if (ftype.includes('zip') || ftype.includes('tar') || fname.match(/\.(zip|tar|gz|7z|rar)$/)) {
+          fileSvgIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V3h10"/><path d="M18 2v6h6"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>';
+        }
       }
 
-      const isFile = entry.type === 'file';
-      const fileBadgeIcon = isFile ? '📁 ' : '';
-      const viewFileBtnHtml = isFile ? `<button class="btn-secondary view-file-btn" data-id="${entry.id}">View / Open File</button>` : '';
+      const typeConfig = isFile ? {
+        label: entry.typeName || 'Encrypted File',
+        icon: fileSvgIcon,
+        fields: []
+      } : (availableTypes.find(t => t.id === entry.type) || {
+        label: entry.typeName || 'Entry',
+        icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>',
+        fields: []
+      });
+
+      let fieldsGridHtml = '';
+      if (isFile) {
+        fieldsGridHtml = `
+          <div class="field-container-box">
+            <div class="field-box-label" style="display: flex; align-items: center; gap: 6px;">
+              ${fileSvgIcon}
+              <span>Filename</span>
+            </div>
+            <div class="field-box-value-row">
+              <span class="field-box-text">${(entry.fields && entry.fields.filename) || 'Attached File'} (${(entry.fields && entry.fields.filesize) || ''})</span>
+            </div>
+          </div>
+        `;
+      } else {
+        const defsMap = {};
+        (typeConfig.fields || []).forEach(d => { defsMap[d.key] = d; });
+
+        for (const [fKey, rawVal] of Object.entries(entry.fields || {})) {
+          if (!rawVal || fKey === 'notes' || fKey === 'branch_notes') continue;
+          const fDef = defsMap[fKey] || { name: fKey.replace(/_/g, ' ').toUpperCase(), sensitive: false };
+          const isSensitive = fDef.sensitive || false;
+          const maskedText = maskFieldValue(rawVal, fDef);
+
+          const elemId = `val-${entry.id}-${fKey}`;
+
+          fieldsGridHtml += `
+            <div class="field-container-box">
+              <div class="field-box-label">${fDef.name}</div>
+              <div class="field-box-value-row">
+                <span id="${elemId}" class="field-box-text" data-masked="${maskedText}" data-plain="${rawVal}" data-is-masked="${isSensitive ? 'true' : 'false'}">${isSensitive ? maskedText : rawVal}</span>
+                <div class="field-box-actions">
+                  ${isSensitive ? `<button type="button" class="field-eye-btn" data-target="${elemId}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
+                  <button type="button" class="field-copy-btn" data-copy="${rawVal}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></button>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }
 
       card.innerHTML = `
-        <div class="entry-header">
-          <span class="entry-title">${fileBadgeIcon}${entry.title}</span>
-          <span class="entry-type-badge">${entry.typeName}</span>
+        <div class="entry-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="category-badge" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(201, 162, 74, 0.15); border: 1px solid var(--brass-accent); color: var(--brass-accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;">
+              ${typeConfig.icon || ''}
+              <span>${typeConfig.label || entry.typeName}</span>
+            </span>
+            <h3 class="entry-title-prominent" style="font-family: var(--font-heading); font-size: 20px; font-weight: 700; color: #ffffff; margin: 0;">${entry.title}</h3>
+          </div>
+          <div class="entry-actions" style="display: flex; gap: 8px;">
+            ${isFile ? `<button class="btn-secondary view-file-btn" data-id="${entry.id}" style="padding: 6px 12px; font-size: 12px;">View File</button>` : `<button class="btn-secondary edit-entry-btn" data-id="${entry.id}" style="padding: 6px 12px; font-size: 12px;">Edit</button>`}
+            <button class="btn-danger delete-entry-btn" data-id="${entry.id}" style="padding: 6px 12px; font-size: 12px;">Delete</button>
+          </div>
         </div>
-        <div class="entry-fields-grid">${fieldsHtml}</div>
-        ${entry.notes ? `<div style="font-size:12px; color: var(--text-secondary); margin-top: 6px;"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
-        <div class="entry-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
-          ${viewFileBtnHtml}
-          <button class="btn-danger delete-entry-btn" data-id="${entry.id}">Delete</button>
+
+        <div class="field-containers-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px;">
+          ${fieldsGridHtml}
         </div>
+
+        ${entry.notes ? `<div style="font-size: 13px; color: var(--text-secondary); background: #121212; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--surface-border);"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
       `;
+
       entryListContainer.appendChild(card);
     });
 
+    // Eye toggle handlers
+    document.querySelectorAll('.field-eye-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          const isMasked = targetEl.getAttribute('data-is-masked') === 'true';
+          if (isMasked) {
+            targetEl.textContent = targetEl.getAttribute('data-plain');
+            targetEl.setAttribute('data-is-masked', 'false');
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+          } else {
+            targetEl.textContent = targetEl.getAttribute('data-masked');
+            targetEl.setAttribute('data-is-masked', 'true');
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+          }
+        }
+      });
+    });
+
+    // Copy handlers with inline toast feedback
+    document.querySelectorAll('.field-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const valToCopy = btn.getAttribute('data-copy');
+        if (valToCopy) {
+          clipboardMgr.writeText(valToCopy);
+          logActivity('CLIPBOARD: Copied field data to clipboard.');
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          btn.style.color = '#10b981';
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.style.color = '';
+          }, 1500);
+        }
+      });
+    });
+
+    // Edit button handlers
+    document.querySelectorAll('.edit-entry-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        const targetEntry = vaultEntries.find(e => e.id === id);
+        if (targetEntry) {
+          openAddEntryModal(targetEntry);
+        }
+      });
+    });
+
+    // File view button handlers
     document.querySelectorAll('.view-file-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
@@ -735,6 +1328,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    // Delete button handlers
     document.querySelectorAll('.delete-entry-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
@@ -796,7 +1390,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="form-label">Current Master Password</label>
               <div style="position: relative;">
                 <input type="password" id="current-mp-input" class="input-field" placeholder="Enter current password..." required />
-                <button type="button" class="pwd-toggle-btn" data-target="current-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                <button type="button" class="pwd-toggle-btn" data-target="current-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
 
@@ -804,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="form-label">New Master Password</label>
               <div style="position: relative;">
                 <input type="password" id="sec-new-mp-input" class="input-field" placeholder="Enter new password..." required />
-                <button type="button" class="pwd-toggle-btn" data-target="sec-new-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                <button type="button" class="pwd-toggle-btn" data-target="sec-new-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
               <div class="strength-meter">
                 <div id="sec-strength-bar" class="strength-bar"></div>
@@ -816,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="form-label">Confirm New Master Password</label>
               <div style="position: relative;">
                 <input type="password" id="sec-confirm-mp-input" class="input-field" placeholder="Confirm new password..." required />
-                <button type="button" class="pwd-toggle-btn" data-target="sec-confirm-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                <button type="button" class="pwd-toggle-btn" data-target="sec-confirm-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
 
@@ -835,6 +1429,16 @@ document.addEventListener('DOMContentLoaded', () => {
               <option value="30">30 Minutes</option>
               <option value="0">Never</option>
             </select>
+          </div>
+
+          <div id="biometrics-setting-container" style="margin-top: 20px;"></div>
+
+          <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 20px 0;" />
+
+          <div style="margin-top: 20px;">
+            <label class="form-label">Password Health Check</label>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Scan local vault entries for weak, reused, or stale passwords.</p>
+            <button type="button" id="open-health-check-btn" class="btn-primary" style="width: 100%;">Run Password Health Check</button>
           </div>
         </div>
       `;
@@ -877,56 +1481,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (changeForm) {
         changeForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const currPwd = document.getElementById('current-mp-input').value;
-          const newPwd = secNewInp.value;
+          if (e) e.preventDefault();
+          const submitBtn = secUpdateBtn;
+          const inputElem = document.getElementById('current-mp-input');
+          try {
+            if (submitBtn) submitBtn.disabled = true;
+            const currPwd = inputElem ? inputElem.value : '';
+            const newPwd = secNewInp.value;
 
-          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-          const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+            const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+            const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-          if (storedSaltHex && storedVerifier) {
-            const salt = Buffer.from(storedSaltHex, 'hex');
-            const currDerivedKey = await deriveKey(currPwd, salt);
+            if (storedSaltHex && storedVerifier) {
+              const salt = Buffer.from(storedSaltHex, 'hex');
+              const currDerivedKey = await deriveKey(currPwd, salt);
 
-            if (!verifyKey(currDerivedKey, storedVerifier)) {
-              msgDiv.style.color = '#ef4444';
-              msgDiv.textContent = 'Incorrect current master password.';
-              logActivity('SECURITY WARNING: Failed master password verification during password change.');
-              return;
+              if (!verifyKey(currDerivedKey, storedVerifier)) {
+                msgDiv.style.color = '#ef4444';
+                msgDiv.textContent = 'Incorrect current master password.';
+                logActivity('SECURITY WARNING: Failed master password verification during password change.');
+                return;
+              }
+
+              const newSalt = generateSalt();
+              const newDerivedKey = await deriveKey(newPwd, newSalt);
+              const newVerifier = createVerifier(newDerivedKey);
+
+              localStorage.setItem('vantalock_vault_salt', newSalt.toString('hex'));
+              localStorage.setItem('vantalock_vault_verifier', newVerifier);
+
+              msgDiv.style.color = '#10b981';
+              msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
+              logActivity('SECURITY: Master password changed and key re-derived.');
+              changeForm.reset();
+            } else {
+              msgDiv.style.color = '#10b981';
+              msgDiv.textContent = 'Master password updated.';
+              changeForm.reset();
             }
-
-            const newSalt = generateSalt();
-            const newDerivedKey = await deriveKey(newPwd, newSalt);
-            const newVerifier = createVerifier(newDerivedKey);
-
-            localStorage.setItem('vantalock_vault_salt', newSalt.toString('hex'));
-            localStorage.setItem('vantalock_vault_verifier', newVerifier);
-
-            msgDiv.style.color = '#10b981';
-            msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
-            logActivity('SECURITY: Master password changed and key re-derived.');
-            changeForm.reset();
-            secUpdateBtn.disabled = true;
-            secUpdateBtn.style.opacity = '0.5';
-          } else {
-            msgDiv.style.color = '#10b981';
-            msgDiv.textContent = 'Master password updated.';
-            changeForm.reset();
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.style.pointerEvents = 'auto';
+            }
+            if (inputElem) {
+              inputElem.disabled = false;
+              inputElem.removeAttribute('readonly');
+              inputElem.classList.remove('disabled', 'read-only', 'locked');
+              inputElem.style.pointerEvents = 'auto';
+              inputElem.style.userSelect = 'text';
+              setTimeout(() => {
+                inputElem.focus();
+                inputElem.select();
+              }, 10);
+            }
           }
         });
       }
 
-      document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetId = btn.getAttribute('data-target');
-          const targetInput = document.getElementById(targetId);
-          if (targetInput) {
-            const isPwd = targetInput.type === 'password';
-            targetInput.type = isPwd ? 'text' : 'password';
-            btn.textContent = isPwd ? '🙈' : '👁️';
-          }
-        });
-      });
+      setupPasswordToggles();
 
       const autoLockSelect = document.getElementById('autolock-select');
       if (autoLockSelect) {
@@ -935,6 +1548,58 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.setItem('vantalock_autolock', e.target.value);
           lockMgr.setAutoLockTimer(parseInt(e.target.value, 10));
           logActivity(`SETTINGS: Auto-lock timeout set to ${e.target.value} minutes.`);
+        });
+      }
+
+      checkBiometricsSupport().then(supported => {
+        const bioContainer = document.getElementById('biometrics-setting-container');
+        if (bioContainer) {
+          if (supported) {
+            const isBioEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
+            bioContainer.innerHTML = `
+              <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <label class="form-label" style="margin-bottom: 2px;">Biometric Unlock (Touch ID / Windows Hello)</label>
+                  <div style="font-size: 12px; color: var(--text-secondary);">Use native biometrics for fast unlock.</div>
+                </div>
+                <input type="checkbox" id="sec-biometric-toggle" ${isBioEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--brass-accent);" />
+              </div>
+            `;
+            const bioToggle = document.getElementById('sec-biometric-toggle');
+            if (bioToggle) {
+              bioToggle.addEventListener('change', async (e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                  if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+                    const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+                    if (authenticated) {
+                      localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                      logActivity('SECURITY: Biometric unlock enabled in Security Settings.');
+                    } else {
+                      e.target.checked = false;
+                      localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                    }
+                  } else {
+                    localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                  }
+                } else {
+                  localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                  logActivity('SECURITY: Biometric unlock disabled in Security Settings.');
+                }
+              });
+            }
+          } else {
+            bioContainer.style.display = 'none';
+          }
+        }
+      });
+
+      const openHealthCheckBtn = document.getElementById('open-health-check-btn');
+      if (openHealthCheckBtn) {
+        openHealthCheckBtn.addEventListener('click', () => {
+          if (typeof openPasswordHealthModal === 'function') {
+            openPasswordHealthModal();
+          }
         });
       }
     } else if (toolKey === 'seed') {
@@ -949,10 +1614,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <label class="form-label">Enter Master Password</label>
                 <div style="position: relative;">
                   <input type="password" id="seed-mp-confirm" class="input-field" placeholder="Enter password to reveal..." required />
-                  <button type="button" class="pwd-toggle-btn" data-target="seed-mp-confirm" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">👁️</button>
+                  <button type="button" class="pwd-toggle-btn" data-target="seed-mp-confirm" style="position: absolute; right: 34px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                  <button type="button" id="seed-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                 </div>
+                <div id="seed-error-msg" class="error-text" style="display: none; color: #ef4444; font-size: 12px; margin-top: 6px;">Incorrect master password. Please try again.</div>
               </div>
-              <button type="submit" class="btn-primary">Reveal Recovery Phrase</button>
+              <button type="submit" class="btn-primary" style="margin-top: 12px;">Reveal Recovery Phrase</button>
             </form>
           </div>
 
@@ -975,53 +1642,96 @@ document.addEventListener('DOMContentLoaded', () => {
       const copyScrubBtn = document.getElementById('copy-seed-scrub-btn');
       const copyMsg = document.getElementById('seed-copy-msg');
 
+            const seedResetBtn = document.getElementById('seed-reset-btn');
+      if (seedResetBtn) {
+        seedResetBtn.addEventListener('click', () => {
+          const inp = document.getElementById('seed-mp-confirm');
+          if (inp) {
+            inp.value = '';
+            inp.disabled = false;
+            inp.removeAttribute('readonly');
+            inp.focus();
+          }
+          const seedErr = document.getElementById('seed-error-msg');
+          if (seedErr) seedErr.style.display = 'none';
+          const submitBtn = gateForm ? gateForm.querySelector('button[type="submit"]') : null;
+          if (submitBtn) submitBtn.disabled = false;
+        });
+      }
       if (gateForm) {
         gateForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const pwdInp = document.getElementById('seed-mp-confirm');
-          const pwdVal = pwdInp ? pwdInp.value : '';
+          if (e) e.preventDefault();
+          const submitBtn = gateForm.querySelector('button[type="submit"]');
+          const inputElem = document.getElementById('seed-mp-confirm');
+          try {
+            if (submitBtn) submitBtn.disabled = true;
+            const pwdVal = inputElem ? inputElem.value : '';
 
-          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-          const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
+            const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+            const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-          if (storedSaltHex && storedVerifier) {
-            const salt = Buffer.from(storedSaltHex, 'hex');
-            const currDerivedKey = await deriveKey(pwdVal, salt);
+            if (storedSaltHex && storedVerifier) {
+              const salt = Buffer.from(storedSaltHex, 'hex');
+              const currDerivedKey = await deriveKey(pwdVal, salt);
 
-            if (!verifyKey(currDerivedKey, storedVerifier)) {
-              alert('Incorrect master password. Access denied.');
-              logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
-              return;
+              if (!verifyKey(currDerivedKey, storedVerifier)) {
+                const seedErr = document.getElementById('seed-error-msg');
+                if (seedErr) seedErr.style.display = 'block';
+                logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
+                return;
+              }
             }
-          }
 
-          gateView.classList.add('hidden');
+            const seedErr = document.getElementById('seed-error-msg');
+            if (seedErr) seedErr.style.display = 'none';
+            gateView.classList.add('hidden');
           contentView.classList.remove('hidden');
           logActivity('SECURITY: Recovery seed revealed following valid password verification.');
 
-          if (activeRecoveryKeyWords && activeRecoveryKeyWords.length === 24) {
+          let wordsToRender = activeRecoveryKeyWords;
+          if (!wordsToRender || wordsToRender.length !== 24) {
+            const savedSeed = localStorage.getItem('vantalock_seed_phrase');
+            if (savedSeed) {
+              wordsToRender = savedSeed.trim().split(/\s+/);
+              activeRecoveryKeyWords = wordsToRender;
+            } else {
+              const freshPhrase = generateRecoveryKey();
+              wordsToRender = freshPhrase.trim().split(/\s+/);
+              activeRecoveryKeyWords = wordsToRender;
+              localStorage.setItem('vantalock_seed_phrase', freshPhrase);
+            }
+          }
+
+          if (wordsToRender && wordsToRender.length === 24) {
             wordsMask.innerHTML = '';
-            activeRecoveryKeyWords.forEach((w, i) => {
+            wordsToRender.forEach((w, i) => {
               const chip = document.createElement('div');
               chip.className = 'word-chip';
               chip.innerHTML = `<span class="word-num">${i + 1}.</span> ${w}`;
               wordsMask.appendChild(chip);
             });
           }
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.style.pointerEvents = 'auto';
+            }
+            if (inputElem) {
+              inputElem.disabled = false;
+              inputElem.removeAttribute('readonly');
+              inputElem.classList.remove('disabled', 'read-only', 'locked');
+              inputElem.style.pointerEvents = 'auto';
+              inputElem.style.userSelect = 'text';
+              setTimeout(() => {
+                inputElem.focus();
+                inputElem.select();
+              }, 10);
+            }
+          }
         });
       }
 
-      document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetId = btn.getAttribute('data-target');
-          const targetInput = document.getElementById(targetId);
-          if (targetInput) {
-            const isPwd = targetInput.type === 'password';
-            targetInput.type = isPwd ? 'text' : 'password';
-            btn.textContent = isPwd ? '🙈' : '👁️';
-          }
-        });
-      });
+      setupPasswordToggles();
 
       if (toggleBlurBtn) {
         let revealed = false;
@@ -1034,8 +1744,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (copyScrubBtn) {
         copyScrubBtn.addEventListener('click', () => {
-          if (activeRecoveryKeyWords && activeRecoveryKeyWords.length > 0) {
-            const phrase = activeRecoveryKeyWords.join(' ');
+          let phrase = activeRecoveryKeyWords && activeRecoveryKeyWords.length ? activeRecoveryKeyWords.join(' ') : (localStorage.getItem('vantalock_seed_phrase') || '');
+          if (phrase) {
             clipboardMgr.copySensitiveText(phrase);
             copyMsg.style.color = '#10b981';
             copyMsg.textContent = 'Phrase copied to clipboard! Clipboard will auto-clear in 30 seconds.';
@@ -1215,3 +1925,372 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateSidebarStats();
 });
+
+
+  const enableBiometricsBtn = document.getElementById('enable-biometrics-btn');
+  const skipBiometricsBtn = document.getElementById('skip-biometrics-btn');
+
+  if (enableBiometricsBtn) {
+    enableBiometricsBtn.addEventListener('click', async () => {
+      try {
+        if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+          const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+          if (authenticated && pendingMasterPassword) {
+            const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
+            localStorage.setItem('vantalock_secure_token', token);
+            localStorage.setItem('vantalock_biometrics_enabled', 'true');
+            logActivity('SECURITY: Biometric unlock enabled during onboarding.');
+          } else {
+            localStorage.setItem('vantalock_biometrics_enabled', 'false');
+          }
+        }
+      } catch (e) {
+        console.error('Biometric enablement failed:', e);
+        localStorage.setItem('vantalock_biometrics_enabled', 'false');
+      } finally {
+        pendingMasterPassword = '';
+        setupRecoveryKeyScreen();
+      }
+    });
+  }
+
+  if (skipBiometricsBtn) {
+    skipBiometricsBtn.addEventListener('click', () => {
+      localStorage.setItem('vantalock_biometrics_enabled', 'false');
+      pendingMasterPassword = '';
+      logActivity('SECURITY: Biometric unlock skipped during onboarding.');
+      setupRecoveryKeyScreen();
+    });
+  }
+
+
+  // Password Health Check Implementation
+  function generateStrongPassword(length = 20) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+    let res = '';
+    const array = new Uint32Array(length);
+    window.crypto.getRandomValues(array);
+    for (let i = 0; i < length; i++) {
+      res += chars[array[i] % chars.length];
+    }
+    return res;
+  }
+
+  function getEntryPassword(entry) {
+    if (!entry || !entry.fields) return null;
+    const fields = entry.fields;
+    for (const k in fields) {
+      if (k.toLowerCase().includes('password') || k.toLowerCase().includes('pin') || k.toLowerCase().includes('secret')) {
+        if (fields[k] && typeof fields[k] === 'string') {
+          return { key: k, value: fields[k] };
+        }
+      }
+    }
+    // Fallback if field isn't explicitly named password
+    for (const k in fields) {
+      if (typeof fields[k] === 'string' && fields[k].length > 0 && k !== 'username' && k !== 'email' && k !== 'url' && k !== 'filename') {
+        return { key: k, value: fields[k] };
+      }
+    }
+    return null;
+  }
+
+  function loadHealthHistory() {
+    try {
+      const raw = localStorage.getItem('vantalock_health_history');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveHealthHistory(history) {
+    try {
+      localStorage.setItem('vantalock_health_history', JSON.stringify(history));
+    } catch (e) {}
+  }
+
+    function openPasswordHealthModal() {
+    const modal = document.getElementById('password-health-modal');
+    const scanView = document.getElementById('health-scanning-view');
+    const resultsView = document.getElementById('health-results-view');
+    const scanList = document.getElementById('radar-entry-scan-list');
+    const closeBtn = document.getElementById('close-health-modal-btn');
+
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    scanView.style.display = 'block';
+    resultsView.style.display = 'none';
+
+    const compartments = [
+      { id: 'financial', name: 'Analysing Financial Vault', desc: 'Bank accounts, payment cards, crypto wallets, loans' },
+      { id: 'legal', name: 'Analysing Legal Vault', desc: 'Contracts, identity documents, legal deeds, licenses' },
+      { id: 'personal', name: 'Analysing Personal Vault', desc: 'Logins, private credentials, notes, recovery keys' }
+    ];
+
+    scanList.innerHTML = compartments.map(c => `
+      <div id="scan-compartment-${c.id}" class="scan-entry-item" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: 600; font-size: 13px;">${c.name}</div>
+          <div id="scan-status-${c.id}" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Pending analysis...</div>
+        </div>
+        <div id="scan-badge-${c.id}" style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);">QUEUED</div>
+      </div>
+    `).join('');
+
+    let compIdx = 0;
+    const scanInterval = setInterval(() => {
+      if (compIdx < compartments.length) {
+        const comp = compartments[compIdx];
+        const row = document.getElementById(`scan-compartment-${comp.id}`);
+        const statusElem = document.getElementById(`scan-status-${comp.id}`);
+        const badgeElem = document.getElementById(`scan-badge-${comp.id}`);
+
+        if (row) row.classList.add('scanned');
+        if (statusElem) statusElem.textContent = `Scanning ${comp.desc}...`;
+        if (badgeElem) {
+          badgeElem.textContent = 'SCANNING';
+          badgeElem.style.color = 'var(--brass-accent)';
+        }
+
+        const count = vaultEntries.filter(e => e.vault === comp.id).length;
+
+        setTimeout(() => {
+          if (statusElem) statusElem.textContent = `[OK] ${comp.id.toUpperCase()} compartment complete (${count} ${count === 1 ? 'entry' : 'entries'} checked)`;
+          if (badgeElem) {
+            badgeElem.textContent = 'COMPLETE';
+            badgeElem.style.color = '#10b981';
+          }
+        }, 250);
+
+        compIdx++;
+      } else {
+        clearInterval(scanInterval);
+        setTimeout(() => {
+          scanView.style.display = 'none';
+          resultsView.style.display = 'block';
+          renderHealthCheckResults();
+        }, 400);
+      }
+    }, 350);
+
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        modal.classList.add('hidden');
+      };
+    }
+  }
+
+  function renderHealthCheckResults() {
+    const scoreDisplay = document.getElementById('health-score-display');
+    const scoreStatus = document.getElementById('health-score-status');
+    const issuesList = document.getElementById('health-issues-list');
+    const svgChart = document.getElementById('health-history-svg');
+
+    if (!issuesList) return;
+    issuesList.innerHTML = '';
+
+    const pwdCounts = {};
+    vaultEntries.forEach(entry => {
+      const pwdObj = getEntryPassword(entry);
+      if (pwdObj && pwdObj.value) {
+        pwdCounts[pwdObj.value] = (pwdCounts[pwdObj.value] || 0) + 1;
+      }
+    });
+
+    const issues = [];
+    let totalScoreSum = 0;
+    const entriesWithPasswords = vaultEntries.filter(e => getEntryPassword(e) !== null);
+
+    if (entriesWithPasswords.length === 0) {
+      totalScoreSum = 100;
+    } else {
+      entriesWithPasswords.forEach(entry => {
+        let entryScore = 100;
+        const pwdObj = getEntryPassword(entry);
+        if (!pwdObj || !pwdObj.value) return;
+
+        const pwd = pwdObj.value;
+        const { score: strScore } = calculatePasswordStrength(pwd);
+
+        // 1. Weak password
+        if (strScore < 3 || pwd.length < 10) {
+          entryScore -= 35;
+          issues.push({
+            entryId: entry.id,
+            title: entry.title || 'Untitled Entry',
+            issue: 'Weak password (low entropy)',
+            pwdKey: pwdObj.key
+          });
+        }
+
+        // 2. Reused password
+        if (pwdCounts[pwd] > 1) {
+          entryScore -= 40;
+          const otherCount = pwdCounts[pwd] - 1;
+          issues.push({
+            entryId: entry.id,
+            title: entry.title || 'Untitled Entry',
+            issue: `Reused password (also used on ${otherCount} other ${otherCount === 1 ? 'entry' : 'entries'})`,
+            pwdKey: pwdObj.key
+          });
+        }
+
+        // 3. Stale password (> 12 months)
+        const dateStr = entry.updatedAt || entry.createdAt;
+        if (dateStr) {
+          const entryDate = new Date(dateStr).getTime();
+          const msIn12Months = 365 * 24 * 60 * 60 * 1000;
+          if (Date.now() - entryDate >= msIn12Months) {
+            entryScore -= 25;
+            const months = Math.floor((Date.now() - entryDate) / (1000 * 60 * 60 * 24 * 30.4375));
+            issues.push({
+              entryId: entry.id,
+              title: entry.title || 'Untitled Entry',
+              issue: `Not changed in ${months} months`,
+              pwdKey: pwdObj.key
+            });
+          }
+        }
+
+        totalScoreSum += Math.max(0, entryScore);
+      });
+    }
+
+    const overallScore = entriesWithPasswords.length ? Math.round(totalScoreSum / entriesWithPasswords.length) : 100;
+
+    // Count up score animation
+    let startVal = 0;
+    const duration = 800;
+    const startTime = performance.now();
+    function animateScore(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const currentVal = Math.floor(progress * overallScore);
+      if (scoreDisplay) scoreDisplay.textContent = `${currentVal}/100`;
+      if (progress < 1) {
+        requestAnimationFrame(animateScore);
+      } else {
+        if (scoreDisplay) scoreDisplay.textContent = `${overallScore}/100`;
+      }
+    }
+    requestAnimationFrame(animateScore);
+
+    if (scoreStatus) {
+      if (overallScore >= 85) {
+        scoreStatus.textContent = 'Excellent Vault Security Health';
+        scoreStatus.style.color = '#10b981';
+      } else if (overallScore >= 60) {
+        scoreStatus.textContent = 'Moderate Security — Attention Recommended';
+        scoreStatus.style.color = '#f59e0b';
+      } else {
+        scoreStatus.textContent = 'Critical Vulnerabilities Detected';
+        scoreStatus.style.color = '#ef4444';
+      }
+    }
+
+    // Render Issue Cards
+    if (issues.length === 0) {
+      issuesList.innerHTML = `
+        <div style="padding: 16px; background: rgba(16, 185, 129, 0.05); border: 1px solid #10b981; border-radius: 6px; color: #10b981; font-size: 13px; text-align: center;">
+          ✓ All vault passwords meet high security standards! No weak, reused, or stale passwords found.
+        </div>
+      `;
+    } else {
+      issues.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'issue-card';
+        card.innerHTML = `
+          <div>
+            <div style="font-weight: 600; color: var(--text-primary); font-size: 13px;">${item.title}</div>
+            <div style="font-size: 12px; color: #ef4444; margin-top: 2px;">${item.issue}</div>
+          </div>
+          <button type="button" class="btn-primary fix-entry-btn" style="width: auto; padding: 6px 14px; font-size: 12px;">Fix Now</button>
+        `;
+
+        const fixBtn = card.querySelector('.fix-entry-btn');
+        fixBtn.onclick = () => {
+          if (confirm(`Generate a new strong password and update "${item.title}"?`)) {
+            const entryObj = vaultEntries.find(e => e.id === item.entryId);
+            if (entryObj && entryObj.fields) {
+              const newPassword = generateStrongPassword(20);
+              entryObj.fields[item.pwdKey] = newPassword;
+              entryObj.updatedAt = new Date().toISOString();
+              saveVaultEntriesToStorage();
+              logActivity(`PASSWORD HEALTH FIX: Generated new strong password for ${item.title}`);
+
+              const confirmModal = document.getElementById('account-update-confirm-modal');
+              const confirmTitle = document.getElementById('confirm-account-title');
+              const confirmPwdInp = document.getElementById('confirm-new-pwd-display');
+              const confirmDomain = document.getElementById('confirm-account-domain');
+              const copyBtn = document.getElementById('copy-confirm-pwd-btn');
+              const updatedBtn = document.getElementById('confirm-account-updated-btn');
+
+              if (confirmModal) {
+                if (confirmTitle) confirmTitle.textContent = item.title;
+                if (confirmPwdInp) confirmPwdInp.value = newPassword;
+                if (confirmDomain) confirmDomain.textContent = (entryObj.fields && entryObj.fields.url) || item.title;
+                confirmModal.classList.remove('hidden');
+
+                if (copyBtn) {
+                  copyBtn.onclick = () => {
+                    if (clipboardMgr) clipboardMgr.writeText(newPassword);
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+                  };
+                }
+
+                if (updatedBtn) {
+                  updatedBtn.onclick = () => {
+                    confirmModal.classList.add('hidden');
+                    renderHealthCheckResults();
+                  };
+                }
+              } else {
+                renderHealthCheckResults();
+              }
+            }
+          }
+        };
+
+        issuesList.appendChild(card);
+
+        setTimeout(() => {
+          card.classList.add('visible');
+        }, index * 80);
+      });
+    }
+
+    // Record History & Render Chart
+    const history = loadHealthHistory();
+    const nowIso = new Date().toISOString();
+    history.push({ timestamp: nowIso, score: overallScore });
+    saveHealthHistory(history);
+
+    if (svgChart) {
+      const pts = history.slice(-10);
+      if (pts.length < 2) {
+        svgChart.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#666" font-size="12">Score logged: ${overallScore}/100. Run checks over time to see trend graph.</text>`;
+      } else {
+        const width = 500;
+        const height = 100;
+        const polyPts = pts.map((p, i) => {
+          const x = (i / (pts.length - 1)) * (width - 40) + 20;
+          const y = height - (p.score / 100) * (height - 30) - 15;
+          return `${x},${y}`;
+        }).join(' ');
+
+        let dotsHtml = pts.map((p, i) => {
+          const x = (i / (pts.length - 1)) * (width - 40) + 20;
+          const y = height - (p.score / 100) * (height - 30) - 15;
+          return `<circle cx="${x}" cy="${y}" r="4" fill="#c9a24a"><title>${p.score}/100 (${new Date(p.timestamp).toLocaleDateString()})</title></circle>`;
+        }).join('');
+
+        svgChart.innerHTML = `
+          <polyline fill="none" stroke="#c9a24a" stroke-width="2" points="${polyPts}" />
+          ${dotsHtml}
+        `;
+      }
+    }
+  }

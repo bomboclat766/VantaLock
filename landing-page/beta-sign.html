@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <title>VantaLock — Beta Report Signing Portal</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #0a0a0a;
+      --border: #1f1f1f;
+      --brass: #c9a24a;
+      --brass-glow: rgba(201, 162, 74, 0.25);
+      --text: #ffffff;
+      --muted: #888888;
+      --font-heading: Georgia, serif;
+      --font-mono: monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 50px;
+    }
+
+    .brand {
+      font-family: var(--font-heading);
+      font-size: 22px;
+      color: var(--brass);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 40px;
+    }
+
+    h1 {
+      font-family: var(--font-heading);
+      font-size: 34px;
+      font-weight: 300;
+      color: var(--brass);
+      margin-bottom: 10px;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      color: var(--brass);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .read-only-box {
+      width: 100%;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .canonical-box {
+      background: #050505;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+      margin-top: 8px;
+    }
+
+    .btn-submit {
+      background: var(--brass);
+      color: #000000;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-submit:hover {
+      background: #d4b055;
+      box-shadow: 0 0 15px var(--brass-glow);
+    }
+
+    .status-msg {
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Softened inactive / expired state view */
+    #expired-view {
+      display: none;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .shield-icon {
+      width: 48px;
+      height: 48px;
+      color: var(--brass);
+      margin-bottom: 16px;
+    }
+
+    .expired-title {
+      color: var(--text);
+      font-size: 22px;
+      font-family: var(--font-heading);
+      font-weight: 300;
+      margin-bottom: 8px;
+    }
+
+    .expired-desc {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    #signing-content {
+      display: none;
+    }
+
+    footer {
+      margin-top: 60px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <svg class="brand-logo" viewBox="0 0 100 100">
+        <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
+        <circle cx="50" cy="42" r="10" fill="#c9a24a" />
+        <polygon points="44,48 56,48 58,72 42,72" fill="#c9a24a" />
+      </svg>
+      VANTALOCK
+    </a>
+  </header>
+
+  <div class="container">
+    <div id="expired-view">
+      <svg class="shield-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M12 8v4m0 4h.01"/>
+      </svg>
+      <div class="expired-title">This signing link isn't active</div>
+      <div class="expired-desc">Beta signing links are sent individually by the VantaLock team.</div>
+    </div>
+
+    <div id="signing-content">
+      <h1>Cryptographic Beta Report Signing</h1>
+      <p class="page-subtitle">Your browser generates an ephemeral Ed25519 keypair locally in memory. The canonical report string below is signed in-browser, and the private key is permanently discarded.</p>
+
+      <form id="sign-form">
+        <div class="form-group">
+          <label>Tester Handle / Identifier</label>
+          <div id="display-handle" class="read-only-box"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Approved Canonical Report Text</label>
+          <div id="display-text" class="read-only-box"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Canonical String to be Signed</label>
+          <div id="canonical-preview" class="canonical-box"></div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-submit">Confirm & Sign Report</button>
+        <div id="status-msg" class="status-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    &copy; VantaLock. Sovereign Encrypted Storage. Beta Signing Portal.
+  </footer>
+
+  <script>
+    function buf2hex(buffer) {
+      return Array.from(new Uint8Array(buffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    function getCanonicalString(handle, text, dateStr) {
+      return `VANTALOCK_BETA_REPORT|HANDLE:${handle.trim()}|DATE:${dateStr}|TEXT:${text.trim()}`;
+    }
+
+    const expiredView = document.getElementById('expired-view');
+    const signingContent = document.getElementById('signing-content');
+    const displayHandle = document.getElementById('display-handle');
+    const displayText = document.getElementById('display-text');
+    const previewBox = document.getElementById('canonical-preview');
+    const statusMsg = document.getElementById('status-msg');
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportId = urlParams.get('id');
+    const fixedDateStr = new Date().toISOString().slice(0, 10);
+
+    let activeReportData = null;
+
+    async function initSigningPage() {
+      if (!reportId) {
+        showExpired();
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/beta-reports/pending/${encodeURIComponent(reportId)}`);
+        if (!res.ok) {
+          showExpired();
+          return;
+        }
+
+        activeReportData = await res.json();
+        if (!activeReportData || !activeReportData.id) {
+          showExpired();
+          return;
+        }
+
+        displayHandle.textContent = activeReportData.tester_handle;
+        displayText.textContent = activeReportData.report_text;
+        previewBox.textContent = getCanonicalString(activeReportData.tester_handle, activeReportData.report_text, fixedDateStr);
+
+        signingContent.style.display = 'block';
+      } catch (err) {
+        showExpired();
+      }
+    }
+
+    function showExpired() {
+      signingContent.style.display = 'none';
+      expiredView.style.display = 'block';
+    }
+
+    document.getElementById('sign-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!activeReportData) return;
+
+      statusMsg.textContent = 'Generating client-side Ed25519 keypair...';
+      statusMsg.style.color = 'var(--brass)';
+
+      try {
+        const canonical = getCanonicalString(activeReportData.tester_handle, activeReportData.report_text, fixedDateStr);
+
+        // 1. Generate Ed25519 keypair
+        const keyPair = await window.crypto.subtle.generateKey(
+          { name: 'Ed25519' },
+          true,
+          ['sign', 'verify']
+        );
+
+        // 2. Export public key as hex
+        const pubKeyBuf = await window.crypto.subtle.exportKey('raw', keyPair.publicKey);
+        const pubKeyHex = buf2hex(pubKeyBuf);
+
+        // 3. Sign canonical string
+        const encoder = new TextEncoder();
+        const sigBuf = await window.crypto.subtle.sign(
+          { name: 'Ed25519' },
+          keyPair.privateKey,
+          encoder.encode(canonical)
+        );
+        const sigHex = buf2hex(sigBuf);
+
+        statusMsg.textContent = 'Submitting signature and discarding private key...';
+
+        // 4. Submit signature
+        const res = await fetch('/api/beta-reports/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: activeReportData.id,
+            public_key: pubKeyHex,
+            signature: sigHex,
+            date_signed: fixedDateStr
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          statusMsg.style.color = '#10b981';
+          statusMsg.textContent = '✓ Report signed successfully! Private key discarded.';
+          setTimeout(() => showExpired(), 2000);
+        } else {
+          throw new Error(data.error || 'Signing failed');
+        }
+      } catch (err) {
+        statusMsg.style.color = '#ef4444';
+        statusMsg.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', initSigningPage);
+  </script>
+</body>
+</html>

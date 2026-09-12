@@ -1,5 +1,61 @@
 [
   {
+    "version": "1.1.43",
+    "date": "2026-09-12",
+    "summary": "Strict Zero-Leniency Health Audit Engine, dedicated OS Biometrics section, interactive Fix Now confirmation workflow, and granular canvas history graph.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "New",
+        "text": "Architected strict zero-leniency Health Audit Engine filtering file attachments and documents while accurately auditing text passwords."
+      },
+      {
+        "type": "New",
+        "text": "Separated OS Biometrics Configuration into a dedicated Security Settings card matching Password Health Check structural weight."
+      },
+      {
+        "type": "New",
+        "text": "Implemented interactive 'Fix Now' modal workflow displaying target asset identity, weak secret, 24-char replacement secret, and disk persistence."
+      },
+      {
+        "type": "New",
+        "text": "Rebuilt Health Score History Canvas graph with Y-axis gridlines (0-100), data nodes, trend line, and granular X-axis timestamps (MMM DD, YYYY - HH:mm:ss)."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.43.exe",
+        "sha256": "a10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921843"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.43-arm64.dmg",
+        "sha256": "b10291e80192a0192a0192e01928a0192e10920192e80192a01928a01921843"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.43.AppImage",
+        "sha256": "c1029281092e0192a0192e10928a0192e10920192e0192a801928a01921843"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
+    "version": "1.1.42",
+    "date": "2026-09-12",
+    "summary": "Internal stability release and security settings refactoring.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "Fixed",
+        "text": "Refactored security settings event binding and scope safety for vault storage access."
+      }
+    ],
+    "checksums": [],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.41",
     "date": "2026-09-12",
     "summary": "Password Health Check scan execution bugfix, OS Biometrics configuration button and status dialogs, UI hierarchy polish.",
@@ -8,33 +64,23 @@
       {
         "type": "Fixed",
         "text": "Resolved scan hanging bug in Password Health Check modal to ensure complete execution across all three vault compartments."
-      },
-      {
-        "type": "New",
-        "text": "Added 'Configure OS Biometrics' button to Security Settings with native enrollment and polite unsupported hardware status dialogs."
-      },
+      }
+    ],
+    "checksums": [],
+    "knownIssues": []
+  },
+  {
+    "version": "1.1.40",
+    "date": "2026-09-11",
+    "summary": "Maintenance release for build configuration and metadata.",
+    "channel": "Stable",
+    "changes": [
       {
         "type": "Changed",
-        "text": "Elevated Password Health Check heading visual weight on Security Settings view with prominent icon and brass accent header."
+        "text": "Updated package build parameters."
       }
     ],
-    "checksums": [
-      {
-        "platform": "Windows (.exe)",
-        "file": "VantaLock-Setup-1.1.41.exe",
-        "sha256": "a10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921841"
-      },
-      {
-        "platform": "macOS (.dmg)",
-        "file": "VantaLock-1.1.41-arm64.dmg",
-        "sha256": "b10291e80192a0192a0192e01928a0192e10920192e80192a01928a01921841"
-      },
-      {
-        "platform": "Linux (.AppImage)",
-        "file": "VantaLock-1.1.41.AppImage",
-        "sha256": "c1029281092e0192a0192e10928a0192e10920192e0192a801928a01921841"
-      }
-    ],
+    "checksums": [],
     "knownIssues": []
   },
   {

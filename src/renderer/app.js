@@ -1694,6 +1694,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (savedSeed) {
               wordsToRender = savedSeed.trim().split(/\s+/);
               activeRecoveryKeyWords = wordsToRender;
+            } else {
+              const freshPhrase = generateRecoveryKey();
+              wordsToRender = freshPhrase.trim().split(/\s+/);
+              activeRecoveryKeyWords = wordsToRender;
+              localStorage.setItem('vantalock_seed_phrase', freshPhrase);
             }
           }
 
@@ -2005,7 +2010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
-  function openPasswordHealthModal() {
+    function openPasswordHealthModal() {
     const modal = document.getElementById('password-health-modal');
     const scanView = document.getElementById('health-scanning-view');
     const resultsView = document.getElementById('health-results-view');
@@ -2018,38 +2023,57 @@ document.addEventListener('DOMContentLoaded', () => {
     scanView.style.display = 'block';
     resultsView.style.display = 'none';
 
-    scanList.innerHTML = '';
-    if (vaultEntries.length === 0) {
-      scanList.innerHTML = '<div class="scan-entry-item">No vault entries to scan.</div>';
-    } else {
-      vaultEntries.forEach(entry => {
-        const item = document.createElement('div');
-        item.className = 'scan-entry-item';
-        item.id = `scan-item-${entry.id}`;
-        item.textContent = `[EVALUATING] ${entry.title || 'Untitled'} (${entry.typeName || entry.type})`;
-        scanList.appendChild(item);
-      });
-    }
+    const compartments = [
+      { id: 'financial', name: 'Analysing Financial Vault', desc: 'Bank accounts, payment cards, crypto wallets, loans' },
+      { id: 'legal', name: 'Analysing Legal Vault', desc: 'Contracts, identity documents, legal deeds, licenses' },
+      { id: 'personal', name: 'Analysing Personal Vault', desc: 'Logins, private credentials, notes, recovery keys' }
+    ];
 
-    let idx = 0;
-    const interval = setInterval(() => {
-      if (idx < vaultEntries.length) {
-        const entry = vaultEntries[idx];
-        const elem = document.getElementById(`scan-item-${entry.id}`);
-        if (elem) {
-          elem.classList.add('scanned');
-          elem.textContent = `[SCANNED] ${entry.title || 'Untitled'}`;
+    scanList.innerHTML = compartments.map(c => `
+      <div id="scan-compartment-${c.id}" class="scan-entry-item" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: 600; font-size: 13px;">${c.name}</div>
+          <div id="scan-status-${c.id}" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Pending analysis...</div>
+        </div>
+        <div id="scan-badge-${c.id}" style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);">QUEUED</div>
+      </div>
+    `).join('');
+
+    let compIdx = 0;
+    const scanInterval = setInterval(() => {
+      if (compIdx < compartments.length) {
+        const comp = compartments[compIdx];
+        const row = document.getElementById(`scan-compartment-${comp.id}`);
+        const statusElem = document.getElementById(`scan-status-${comp.id}`);
+        const badgeElem = document.getElementById(`scan-badge-${comp.id}`);
+
+        if (row) row.classList.add('scanned');
+        if (statusElem) statusElem.textContent = `Scanning ${comp.desc}...`;
+        if (badgeElem) {
+          badgeElem.textContent = 'SCANNING';
+          badgeElem.style.color = 'var(--brass-accent)';
         }
-        idx++;
+
+        const count = vaultEntries.filter(e => e.vault === comp.id).length;
+
+        setTimeout(() => {
+          if (statusElem) statusElem.textContent = `[OK] ${comp.id.toUpperCase()} compartment complete (${count} ${count === 1 ? 'entry' : 'entries'} checked)`;
+          if (badgeElem) {
+            badgeElem.textContent = 'COMPLETE';
+            badgeElem.style.color = '#10b981';
+          }
+        }, 250);
+
+        compIdx++;
       } else {
-        clearInterval(interval);
+        clearInterval(scanInterval);
         setTimeout(() => {
           scanView.style.display = 'none';
           resultsView.style.display = 'block';
           renderHealthCheckResults();
         }, 400);
       }
-    }, Math.max(120, Math.floor(800 / (vaultEntries.length || 1))));
+    }, 350);
 
     if (closeBtn) {
       closeBtn.onclick = () => {

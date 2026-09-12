@@ -559,15 +559,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'password') {
       e.target.disabled = false;
       e.target.readOnly = false;
-      if (unlockErrorText && e.target.id === 'unlock-mp-input') {
-        unlockErrorText.style.display = 'none';
-      }
-      const msgDiv = document.getElementById('mp-change-msg');
-      if (msgDiv && (e.target.id === 'current-mp-input' || e.target.id === 'sec-new-mp-input' || e.target.id === 'sec-confirm-mp-input')) {
-        if (msgDiv.textContent.includes('Incorrect')) {
-          msgDiv.textContent = '';
-        }
-      }
     }
   });
 
@@ -1559,6 +1550,58 @@ document.addEventListener('DOMContentLoaded', () => {
           logActivity(`SETTINGS: Auto-lock timeout set to ${e.target.value} minutes.`);
         });
       }
+
+      checkBiometricsSupport().then(supported => {
+        const bioContainer = document.getElementById('biometrics-setting-container');
+        if (bioContainer) {
+          if (supported) {
+            const isBioEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
+            bioContainer.innerHTML = `
+              <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <label class="form-label" style="margin-bottom: 2px;">Biometric Unlock (Touch ID / Windows Hello)</label>
+                  <div style="font-size: 12px; color: var(--text-secondary);">Use native biometrics for fast unlock.</div>
+                </div>
+                <input type="checkbox" id="sec-biometric-toggle" ${isBioEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--brass-accent);" />
+              </div>
+            `;
+            const bioToggle = document.getElementById('sec-biometric-toggle');
+            if (bioToggle) {
+              bioToggle.addEventListener('change', async (e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                  if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+                    const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+                    if (authenticated) {
+                      localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                      logActivity('SECURITY: Biometric unlock enabled in Security Settings.');
+                    } else {
+                      e.target.checked = false;
+                      localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                    }
+                  } else {
+                    localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                  }
+                } else {
+                  localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                  logActivity('SECURITY: Biometric unlock disabled in Security Settings.');
+                }
+              });
+            }
+          } else {
+            bioContainer.style.display = 'none';
+          }
+        }
+      });
+
+      const openHealthCheckBtn = document.getElementById('open-health-check-btn');
+      if (openHealthCheckBtn) {
+        openHealthCheckBtn.addEventListener('click', () => {
+          if (typeof openPasswordHealthModal === 'function') {
+            openPasswordHealthModal();
+          }
+        });
+      }
     } else if (toolKey === 'seed') {
       entryListContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
@@ -1575,9 +1618,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   <button type="button" id="seed-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                 </div>
                 <div id="seed-error-msg" class="error-text" style="display: none; color: #ef4444; font-size: 12px; margin-top: 6px;">Incorrect master password. Please try again.</div>
-                </div>
               </div>
-              <button type="submit" class="btn-primary">Reveal Recovery Phrase</button>
+              <button type="submit" class="btn-primary" style="margin-top: 12px;">Reveal Recovery Phrase</button>
             </form>
           </div>
 

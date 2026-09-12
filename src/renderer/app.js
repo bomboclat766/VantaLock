@@ -559,15 +559,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'password') {
       e.target.disabled = false;
       e.target.readOnly = false;
-      if (unlockErrorText && e.target.id === 'unlock-mp-input') {
-        unlockErrorText.style.display = 'none';
-      }
-      const msgDiv = document.getElementById('mp-change-msg');
-      if (msgDiv && (e.target.id === 'current-mp-input' || e.target.id === 'sec-new-mp-input' || e.target.id === 'sec-confirm-mp-input')) {
-        if (msgDiv.textContent.includes('Incorrect')) {
-          msgDiv.textContent = '';
-        }
-      }
     }
   });
 
@@ -1559,6 +1550,58 @@ document.addEventListener('DOMContentLoaded', () => {
           logActivity(`SETTINGS: Auto-lock timeout set to ${e.target.value} minutes.`);
         });
       }
+
+      checkBiometricsSupport().then(supported => {
+        const bioContainer = document.getElementById('biometrics-setting-container');
+        if (bioContainer) {
+          if (supported) {
+            const isBioEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
+            bioContainer.innerHTML = `
+              <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <label class="form-label" style="margin-bottom: 2px;">Biometric Unlock (Touch ID / Windows Hello)</label>
+                  <div style="font-size: 12px; color: var(--text-secondary);">Use native biometrics for fast unlock.</div>
+                </div>
+                <input type="checkbox" id="sec-biometric-toggle" ${isBioEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--brass-accent);" />
+              </div>
+            `;
+            const bioToggle = document.getElementById('sec-biometric-toggle');
+            if (bioToggle) {
+              bioToggle.addEventListener('change', async (e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                  if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+                    const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+                    if (authenticated) {
+                      localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                      logActivity('SECURITY: Biometric unlock enabled in Security Settings.');
+                    } else {
+                      e.target.checked = false;
+                      localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                    }
+                  } else {
+                    localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                  }
+                } else {
+                  localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                  logActivity('SECURITY: Biometric unlock disabled in Security Settings.');
+                }
+              });
+            }
+          } else {
+            bioContainer.style.display = 'none';
+          }
+        }
+      });
+
+      const openHealthCheckBtn = document.getElementById('open-health-check-btn');
+      if (openHealthCheckBtn) {
+        openHealthCheckBtn.addEventListener('click', () => {
+          if (typeof openPasswordHealthModal === 'function') {
+            openPasswordHealthModal();
+          }
+        });
+      }
     } else if (toolKey === 'seed') {
       entryListContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
@@ -1575,9 +1618,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   <button type="button" id="seed-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                 </div>
                 <div id="seed-error-msg" class="error-text" style="display: none; color: #ef4444; font-size: 12px; margin-top: 6px;">Incorrect master password. Please try again.</div>
-                </div>
               </div>
-              <button type="submit" class="btn-primary">Reveal Recovery Phrase</button>
+              <button type="submit" class="btn-primary" style="margin-top: 12px;">Reveal Recovery Phrase</button>
             </form>
           </div>
 
@@ -1652,6 +1694,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (savedSeed) {
               wordsToRender = savedSeed.trim().split(/\s+/);
               activeRecoveryKeyWords = wordsToRender;
+            } else {
+              const freshPhrase = generateRecoveryKey();
+              wordsToRender = freshPhrase.trim().split(/\s+/);
+              activeRecoveryKeyWords = wordsToRender;
+              localStorage.setItem('vantalock_seed_phrase', freshPhrase);
             }
           }
 
@@ -1963,7 +2010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
-  function openPasswordHealthModal() {
+    function openPasswordHealthModal() {
     const modal = document.getElementById('password-health-modal');
     const scanView = document.getElementById('health-scanning-view');
     const resultsView = document.getElementById('health-results-view');
@@ -1976,38 +2023,57 @@ document.addEventListener('DOMContentLoaded', () => {
     scanView.style.display = 'block';
     resultsView.style.display = 'none';
 
-    scanList.innerHTML = '';
-    if (vaultEntries.length === 0) {
-      scanList.innerHTML = '<div class="scan-entry-item">No vault entries to scan.</div>';
-    } else {
-      vaultEntries.forEach(entry => {
-        const item = document.createElement('div');
-        item.className = 'scan-entry-item';
-        item.id = `scan-item-${entry.id}`;
-        item.textContent = `[EVALUATING] ${entry.title || 'Untitled'} (${entry.typeName || entry.type})`;
-        scanList.appendChild(item);
-      });
-    }
+    const compartments = [
+      { id: 'financial', name: 'Analysing Financial Vault', desc: 'Bank accounts, payment cards, crypto wallets, loans' },
+      { id: 'legal', name: 'Analysing Legal Vault', desc: 'Contracts, identity documents, legal deeds, licenses' },
+      { id: 'personal', name: 'Analysing Personal Vault', desc: 'Logins, private credentials, notes, recovery keys' }
+    ];
 
-    let idx = 0;
-    const interval = setInterval(() => {
-      if (idx < vaultEntries.length) {
-        const entry = vaultEntries[idx];
-        const elem = document.getElementById(`scan-item-${entry.id}`);
-        if (elem) {
-          elem.classList.add('scanned');
-          elem.textContent = `[SCANNED] ${entry.title || 'Untitled'}`;
+    scanList.innerHTML = compartments.map(c => `
+      <div id="scan-compartment-${c.id}" class="scan-entry-item" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: 600; font-size: 13px;">${c.name}</div>
+          <div id="scan-status-${c.id}" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Pending analysis...</div>
+        </div>
+        <div id="scan-badge-${c.id}" style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);">QUEUED</div>
+      </div>
+    `).join('');
+
+    let compIdx = 0;
+    const scanInterval = setInterval(() => {
+      if (compIdx < compartments.length) {
+        const comp = compartments[compIdx];
+        const row = document.getElementById(`scan-compartment-${comp.id}`);
+        const statusElem = document.getElementById(`scan-status-${comp.id}`);
+        const badgeElem = document.getElementById(`scan-badge-${comp.id}`);
+
+        if (row) row.classList.add('scanned');
+        if (statusElem) statusElem.textContent = `Scanning ${comp.desc}...`;
+        if (badgeElem) {
+          badgeElem.textContent = 'SCANNING';
+          badgeElem.style.color = 'var(--brass-accent)';
         }
-        idx++;
+
+        const count = vaultEntries.filter(e => e.vault === comp.id).length;
+
+        setTimeout(() => {
+          if (statusElem) statusElem.textContent = `[OK] ${comp.id.toUpperCase()} compartment complete (${count} ${count === 1 ? 'entry' : 'entries'} checked)`;
+          if (badgeElem) {
+            badgeElem.textContent = 'COMPLETE';
+            badgeElem.style.color = '#10b981';
+          }
+        }, 250);
+
+        compIdx++;
       } else {
-        clearInterval(interval);
+        clearInterval(scanInterval);
         setTimeout(() => {
           scanView.style.display = 'none';
           resultsView.style.display = 'block';
           renderHealthCheckResults();
         }, 400);
       }
-    }, Math.max(120, Math.floor(800 / (vaultEntries.length || 1))));
+    }, 350);
 
     if (closeBtn) {
       closeBtn.onclick = () => {

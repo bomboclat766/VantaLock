@@ -20,9 +20,9 @@ try {
 } catch (e) {
   // Web browser fallback implementations for testing / static view
   calculatePasswordStrength = (pwd) => ({ score: pwd.length > 8 ? 3 : 1, label: pwd.length > 8 ? 'Strong' : 'Weak' });
-  deriveKey = async (pwd, salt) => Buffer.from('mockderivedkey32byteslongkey12345');
+  deriveKey = async (pwd, salt) => typeof Buffer !== 'undefined' ? Buffer.from('mockderivedkey32byteslongkey12345') : 'mockderivedkey32byteslongkey12345';
   verifyKey = () => true;
-  generateSalt = () => Buffer.from('1234567890123456');
+  generateSalt = () => typeof Buffer !== 'undefined' ? Buffer.from('1234567890123456') : { toString: () => '1234567890123456' };
   createVerifier = () => 'mockverifier';
   generateRecoveryKey = () => ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mike', 'november', 'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform', 'victor', 'whiskey', 'xray'];
   clipboardMgr = { copySensitiveText: () => {}, writeText: () => {} };
@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let vaultEntries = loadSavedVaultEntries();
+  window.vaultEntries = vaultEntries;
 
     const vaultMetadata = {
     financial: {
@@ -399,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: `App Version: 1.1.39 | License: Activated | Zero-Cloud Encryption`
+      desc: `App Version: 1.1.41 | License: Activated | Zero-Cloud Encryption`
     }
   };
 
@@ -510,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
             if (storedSaltHex && storedVerifier) {
-              const salt = Buffer.from(storedSaltHex, 'hex');
+              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
               const currDerivedKey = await deriveKey(pwd, salt);
               if (verifyKey(currDerivedKey, storedVerifier)) {
                 logActivity('SECURITY: Vault unlocked via Biometrics.');
@@ -529,7 +530,28 @@ document.addEventListener('DOMContentLoaded', () => {
     setActiveView(screen);
   }
   window.showScreen = showScreen;
-  window.openPasswordHealthModal = openPasswordHealthModal;
+
+  function showBiometricAlertModal(title, message) {
+    const modal = document.getElementById('biometric-notice-modal');
+    const titleElem = document.getElementById('bio-notice-title');
+    const msgElem = document.getElementById('bio-notice-message');
+    const closeBtn = document.getElementById('close-bio-notice-btn');
+    const okBtn = document.getElementById('bio-notice-ok-btn');
+
+    if (!modal) {
+      alert(title + '\n\n' + message);
+      return;
+    }
+
+    if (titleElem) titleElem.textContent = title;
+    if (msgElem) msgElem.textContent = message;
+    modal.classList.remove('hidden');
+
+    const hide = () => modal.classList.add('hidden');
+    if (closeBtn) closeBtn.onclick = hide;
+    if (okBtn) okBtn.onclick = hide;
+  }
+  window.showBiometricAlertModal = showBiometricAlertModal;
 
   // Global password focus reset & error clearing helper
 
@@ -655,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
         if (storedSaltHex && storedVerifier) {
-          const salt = Buffer.from(storedSaltHex, 'hex');
+          const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
           const currDerivedKey = await deriveKey(pwdVal, salt);
 
           if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -740,7 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setupRecoveryKeyScreen() {
     const rawPhrase = generateRecoveryKey();
-    activeRecoveryKeyWords = rawPhrase.trim().split(/\s+/);
+    activeRecoveryKeyWords = Array.isArray(rawPhrase) ? rawPhrase : (typeof rawPhrase === 'string' ? rawPhrase.trim().split(/\s+/) : []);
 
     recoveryWordsGrid.innerHTML = '';
     activeRecoveryKeyWords.forEach((word, idx) => {
@@ -1436,9 +1458,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 20px 0;" />
 
           <div style="margin-top: 20px;">
-            <label class="form-label">Password Health Check</label>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Scan local vault entries for weak, reused, or stale passwords.</p>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0; text-transform: uppercase; letter-spacing: 1px;">Password Health Check</h3>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Scan local vault entries for weak, reused, or stale passwords.</p>
             <button type="button" id="open-health-check-btn" class="btn-primary" style="width: 100%;">Run Password Health Check</button>
+            <button type="button" id="configure-biometrics-btn" class="btn-secondary" style="width: 100%; margin-top: 10px;">Configure OS Biometrics</button>
           </div>
         </div>
       `;
@@ -1493,7 +1519,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
             if (storedSaltHex && storedVerifier) {
-              const salt = Buffer.from(storedSaltHex, 'hex');
+              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
               const currDerivedKey = await deriveKey(currPwd, salt);
 
               if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -1602,6 +1628,32 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       }
+
+      const configBioBtn = document.getElementById('configure-biometrics-btn');
+      if (configBioBtn) {
+        configBioBtn.addEventListener('click', async () => {
+          const supported = await checkBiometricsSupport();
+          if (supported) {
+            if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+              const authenticated = await window.electronAPI.promptBiometrics('Configure OS Biometric Authentication');
+              if (authenticated) {
+                localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                logActivity('SECURITY: Biometric unlock enabled via Security Settings.');
+                showBiometricAlertModal('Biometric Unlock Enabled', 'OS Biometric authentication has been successfully configured and enabled for VantaLock.');
+              }
+            } else {
+              localStorage.setItem('vantalock_biometrics_enabled', 'true');
+              logActivity('SECURITY: Biometric unlock enabled via Security Settings.');
+              showBiometricAlertModal('Biometric Unlock Enabled', 'OS Biometric authentication has been successfully configured and enabled.');
+            }
+          } else {
+            showBiometricAlertModal(
+              'Biometric Support Not Available',
+              "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows)."
+            );
+          }
+        });
+      }
     } else if (toolKey === 'seed') {
       entryListContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
@@ -1671,7 +1723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
             if (storedSaltHex && storedVerifier) {
-              const salt = Buffer.from(storedSaltHex, 'hex');
+              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
               const currDerivedKey = await deriveKey(pwdVal, salt);
 
               if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -2010,287 +2062,346 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
 
-    function openPasswordHealthModal() {
-    const modal = document.getElementById('password-health-modal');
-    const scanView = document.getElementById('health-scanning-view');
-    const resultsView = document.getElementById('health-results-view');
-    const scanList = document.getElementById('radar-entry-scan-list');
-    const closeBtn = document.getElementById('close-health-modal-btn');
+    let activeHealthScanInterval = null;
 
-    if (!modal) return;
-    modal.classList.remove('hidden');
+  function getActiveVaultEntries() {
+    if (typeof window !== 'undefined' && window.vaultEntries && Array.isArray(window.vaultEntries)) return window.vaultEntries;
+    if (typeof vaultEntries !== 'undefined' && Array.isArray(vaultEntries)) return vaultEntries;
+    return typeof loadSavedVaultEntries === 'function' ? (loadSavedVaultEntries() || []) : [];
+  }
 
-    scanView.style.display = 'block';
-    resultsView.style.display = 'none';
+  function openPasswordHealthModal() {
+    try {
+      if (activeHealthScanInterval) {
+        clearInterval(activeHealthScanInterval);
+        activeHealthScanInterval = null;
+      }
 
-    const compartments = [
-      { id: 'financial', name: 'Analysing Financial Vault', desc: 'Bank accounts, payment cards, crypto wallets, loans' },
-      { id: 'legal', name: 'Analysing Legal Vault', desc: 'Contracts, identity documents, legal deeds, licenses' },
-      { id: 'personal', name: 'Analysing Personal Vault', desc: 'Logins, private credentials, notes, recovery keys' }
-    ];
+      const modal = document.getElementById('password-health-modal');
+      const scanView = document.getElementById('health-scanning-view');
+      const resultsView = document.getElementById('health-results-view');
+      const scanList = document.getElementById('radar-entry-scan-list');
+      const closeBtn = document.getElementById('close-health-modal-btn');
 
-    scanList.innerHTML = compartments.map(c => `
-      <div id="scan-compartment-${c.id}" class="scan-entry-item" style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <div style="font-weight: 600; font-size: 13px;">${c.name}</div>
-          <div id="scan-status-${c.id}" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Pending analysis...</div>
-        </div>
-        <div id="scan-badge-${c.id}" style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);">QUEUED</div>
-      </div>
-    `).join('');
+      if (!modal || !scanView || !resultsView) {
+        console.error('[Password Health Scan] Missing modal or scan DOM elements.');
+        return;
+      }
 
-    let compIdx = 0;
-    const scanInterval = setInterval(() => {
-      if (compIdx < compartments.length) {
-        const comp = compartments[compIdx];
-        const row = document.getElementById(`scan-compartment-${comp.id}`);
-        const statusElem = document.getElementById(`scan-status-${comp.id}`);
-        const badgeElem = document.getElementById(`scan-badge-${comp.id}`);
+      modal.classList.remove('hidden');
+      scanView.style.display = 'block';
+      resultsView.style.display = 'none';
 
-        if (row) row.classList.add('scanned');
-        if (statusElem) statusElem.textContent = `Scanning ${comp.desc}...`;
-        if (badgeElem) {
-          badgeElem.textContent = 'SCANNING';
-          badgeElem.style.color = 'var(--brass-accent)';
-        }
+      const compartments = [
+        { id: 'financial', name: 'Analysing Financial Vault', desc: 'Bank accounts, payment cards, crypto wallets, loans' },
+        { id: 'legal', name: 'Analysing Legal Vault', desc: 'Contracts, identity documents, legal deeds, licenses' },
+        { id: 'personal', name: 'Analysing Personal Vault', desc: 'Logins, private credentials, notes, recovery keys' }
+      ];
 
-        const count = vaultEntries.filter(e => e.vault === comp.id).length;
+      if (scanList) {
+        scanList.innerHTML = compartments.map(c => `
+          <div id="scan-compartment-${c.id}" class="scan-entry-item" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 600; font-size: 13px;">${c.name}</div>
+              <div id="scan-status-${c.id}" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Pending analysis...</div>
+            </div>
+            <div id="scan-badge-${c.id}" style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);">QUEUED</div>
+          </div>
+        `).join('');
+      }
 
-        setTimeout(() => {
-          if (statusElem) statusElem.textContent = `[OK] ${comp.id.toUpperCase()} compartment complete (${count} ${count === 1 ? 'entry' : 'entries'} checked)`;
-          if (badgeElem) {
-            badgeElem.textContent = 'COMPLETE';
-            badgeElem.style.color = '#10b981';
+      let compIdx = 0;
+      console.log('[Password Health Scan] Starting scan through compartments...');
+
+      activeHealthScanInterval = setInterval(() => {
+        try {
+          if (compIdx < compartments.length) {
+            const comp = compartments[compIdx];
+            const row = document.getElementById(`scan-compartment-${comp.id}`);
+            const statusElem = document.getElementById(`scan-status-${comp.id}`);
+            const badgeElem = document.getElementById(`scan-badge-${comp.id}`);
+
+            if (row) row.classList.add('scanned');
+            if (statusElem) statusElem.textContent = `Scanning ${comp.desc}...`;
+            if (badgeElem) {
+              badgeElem.textContent = 'SCANNING';
+              badgeElem.style.color = 'var(--brass-accent)';
+            }
+
+            const currentEntries = getActiveVaultEntries();
+            const count = currentEntries.filter(e => e && e.vault === comp.id).length;
+
+            setTimeout(() => {
+              if (statusElem) statusElem.textContent = `[OK] ${comp.id.toUpperCase()} compartment complete (${count} ${count === 1 ? 'entry' : 'entries'} checked)`;
+              if (badgeElem) {
+                badgeElem.textContent = 'COMPLETE';
+                badgeElem.style.color = '#10b981';
+              }
+            }, 250);
+
+            compIdx++;
+          } else {
+            if (activeHealthScanInterval) {
+              clearInterval(activeHealthScanInterval);
+              activeHealthScanInterval = null;
+            }
+            setTimeout(() => {
+              scanView.style.display = 'none';
+              resultsView.style.display = 'block';
+              renderHealthCheckResults();
+            }, 400);
           }
-        }, 250);
-
-        compIdx++;
-      } else {
-        clearInterval(scanInterval);
-        setTimeout(() => {
+        } catch (scanErr) {
+          console.error('[Password Health Scan] Error during scan iteration:', scanErr);
+          if (activeHealthScanInterval) {
+            clearInterval(activeHealthScanInterval);
+            activeHealthScanInterval = null;
+          }
           scanView.style.display = 'none';
           resultsView.style.display = 'block';
           renderHealthCheckResults();
-        }, 400);
-      }
-    }, 350);
+        }
+      }, 350);
 
-    if (closeBtn) {
-      closeBtn.onclick = () => {
-        modal.classList.add('hidden');
-      };
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          if (activeHealthScanInterval) {
+            clearInterval(activeHealthScanInterval);
+            activeHealthScanInterval = null;
+          }
+          modal.classList.add('hidden');
+        };
+      }
+    } catch (e) {
+      console.error('[Password Health Scan] openPasswordHealthModal fatal error:', e);
     }
   }
 
   function renderHealthCheckResults() {
-    const scoreDisplay = document.getElementById('health-score-display');
-    const scoreStatus = document.getElementById('health-score-status');
-    const issuesList = document.getElementById('health-issues-list');
-    const svgChart = document.getElementById('health-history-svg');
+    try {
+      const scoreDisplay = document.getElementById('health-score-display');
+      const scoreStatus = document.getElementById('health-score-status');
+      const issuesList = document.getElementById('health-issues-list');
+      const svgChart = document.getElementById('health-history-svg');
 
-    if (!issuesList) return;
-    issuesList.innerHTML = '';
+      if (!issuesList) return;
+      issuesList.innerHTML = '';
 
-    const pwdCounts = {};
-    vaultEntries.forEach(entry => {
-      const pwdObj = getEntryPassword(entry);
-      if (pwdObj && pwdObj.value) {
-        pwdCounts[pwdObj.value] = (pwdCounts[pwdObj.value] || 0) + 1;
-      }
-    });
+      const currentEntries = getActiveVaultEntries();
 
-    const issues = [];
-    let totalScoreSum = 0;
-    const entriesWithPasswords = vaultEntries.filter(e => getEntryPassword(e) !== null);
-
-    if (entriesWithPasswords.length === 0) {
-      totalScoreSum = 100;
-    } else {
-      entriesWithPasswords.forEach(entry => {
-        let entryScore = 100;
+      const pwdCounts = {};
+      currentEntries.forEach(entry => {
+        if (!entry) return;
         const pwdObj = getEntryPassword(entry);
-        if (!pwdObj || !pwdObj.value) return;
-
-        const pwd = pwdObj.value;
-        const { score: strScore } = calculatePasswordStrength(pwd);
-
-        // 1. Weak password
-        if (strScore < 3 || pwd.length < 10) {
-          entryScore -= 35;
-          issues.push({
-            entryId: entry.id,
-            title: entry.title || 'Untitled Entry',
-            issue: 'Weak password (low entropy)',
-            pwdKey: pwdObj.key
-          });
+        if (pwdObj && pwdObj.value) {
+          pwdCounts[pwdObj.value] = (pwdCounts[pwdObj.value] || 0) + 1;
         }
+      });
 
-        // 2. Reused password
-        if (pwdCounts[pwd] > 1) {
-          entryScore -= 40;
-          const otherCount = pwdCounts[pwd] - 1;
-          issues.push({
-            entryId: entry.id,
-            title: entry.title || 'Untitled Entry',
-            issue: `Reused password (also used on ${otherCount} other ${otherCount === 1 ? 'entry' : 'entries'})`,
-            pwdKey: pwdObj.key
-          });
-        }
+      const issues = [];
+      let totalScoreSum = 0;
+      const entriesWithPasswords = currentEntries.filter(e => e && getEntryPassword(e) !== null);
 
-        // 3. Stale password (> 12 months)
-        const dateStr = entry.updatedAt || entry.createdAt;
-        if (dateStr) {
-          const entryDate = new Date(dateStr).getTime();
-          const msIn12Months = 365 * 24 * 60 * 60 * 1000;
-          if (Date.now() - entryDate >= msIn12Months) {
-            entryScore -= 25;
-            const months = Math.floor((Date.now() - entryDate) / (1000 * 60 * 60 * 24 * 30.4375));
+      if (entriesWithPasswords.length === 0) {
+        totalScoreSum = 100;
+      } else {
+        entriesWithPasswords.forEach(entry => {
+          let entryScore = 100;
+          const pwdObj = getEntryPassword(entry);
+          if (!pwdObj || !pwdObj.value) return;
+
+          const pwd = pwdObj.value;
+          let strScore = 3;
+          try {
+            const res = calculatePasswordStrength(pwd);
+            if (res && typeof res.score === 'number') strScore = res.score;
+          } catch (e) {
+            strScore = pwd.length > 8 ? 3 : 1;
+          }
+
+          // 1. Weak password
+          if (strScore < 3 || pwd.length < 10) {
+            entryScore -= 35;
             issues.push({
               entryId: entry.id,
               title: entry.title || 'Untitled Entry',
-              issue: `Not changed in ${months} months`,
+              issue: 'Weak password (low entropy)',
               pwdKey: pwdObj.key
             });
           }
-        }
 
-        totalScoreSum += Math.max(0, entryScore);
-      });
-    }
+          // 2. Reused password
+          if (pwdCounts[pwd] > 1) {
+            entryScore -= 40;
+            const otherCount = pwdCounts[pwd] - 1;
+            issues.push({
+              entryId: entry.id,
+              title: entry.title || 'Untitled Entry',
+              issue: `Reused password (also used on ${otherCount} other ${otherCount === 1 ? 'entry' : 'entries'})`,
+              pwdKey: pwdObj.key
+            });
+          }
 
-    const overallScore = entriesWithPasswords.length ? Math.round(totalScoreSum / entriesWithPasswords.length) : 100;
-
-    // Count up score animation
-    let startVal = 0;
-    const duration = 800;
-    const startTime = performance.now();
-    function animateScore(now) {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const currentVal = Math.floor(progress * overallScore);
-      if (scoreDisplay) scoreDisplay.textContent = `${currentVal}/100`;
-      if (progress < 1) {
-        requestAnimationFrame(animateScore);
-      } else {
-        if (scoreDisplay) scoreDisplay.textContent = `${overallScore}/100`;
-      }
-    }
-    requestAnimationFrame(animateScore);
-
-    if (scoreStatus) {
-      if (overallScore >= 85) {
-        scoreStatus.textContent = 'Excellent Vault Security Health';
-        scoreStatus.style.color = '#10b981';
-      } else if (overallScore >= 60) {
-        scoreStatus.textContent = 'Moderate Security — Attention Recommended';
-        scoreStatus.style.color = '#f59e0b';
-      } else {
-        scoreStatus.textContent = 'Critical Vulnerabilities Detected';
-        scoreStatus.style.color = '#ef4444';
-      }
-    }
-
-    // Render Issue Cards
-    if (issues.length === 0) {
-      issuesList.innerHTML = `
-        <div style="padding: 16px; background: rgba(16, 185, 129, 0.05); border: 1px solid #10b981; border-radius: 6px; color: #10b981; font-size: 13px; text-align: center;">
-          ✓ All vault passwords meet high security standards! No weak, reused, or stale passwords found.
-        </div>
-      `;
-    } else {
-      issues.forEach((item, index) => {
-        const card = document.createElement('div');
-        card.className = 'issue-card';
-        card.innerHTML = `
-          <div>
-            <div style="font-weight: 600; color: var(--text-primary); font-size: 13px;">${item.title}</div>
-            <div style="font-size: 12px; color: #ef4444; margin-top: 2px;">${item.issue}</div>
-          </div>
-          <button type="button" class="btn-primary fix-entry-btn" style="width: auto; padding: 6px 14px; font-size: 12px;">Fix Now</button>
-        `;
-
-        const fixBtn = card.querySelector('.fix-entry-btn');
-        fixBtn.onclick = () => {
-          if (confirm(`Generate a new strong password and update "${item.title}"?`)) {
-            const entryObj = vaultEntries.find(e => e.id === item.entryId);
-            if (entryObj && entryObj.fields) {
-              const newPassword = generateStrongPassword(20);
-              entryObj.fields[item.pwdKey] = newPassword;
-              entryObj.updatedAt = new Date().toISOString();
-              saveVaultEntriesToStorage();
-              logActivity(`PASSWORD HEALTH FIX: Generated new strong password for ${item.title}`);
-
-              const confirmModal = document.getElementById('account-update-confirm-modal');
-              const confirmTitle = document.getElementById('confirm-account-title');
-              const confirmPwdInp = document.getElementById('confirm-new-pwd-display');
-              const confirmDomain = document.getElementById('confirm-account-domain');
-              const copyBtn = document.getElementById('copy-confirm-pwd-btn');
-              const updatedBtn = document.getElementById('confirm-account-updated-btn');
-
-              if (confirmModal) {
-                if (confirmTitle) confirmTitle.textContent = item.title;
-                if (confirmPwdInp) confirmPwdInp.value = newPassword;
-                if (confirmDomain) confirmDomain.textContent = (entryObj.fields && entryObj.fields.url) || item.title;
-                confirmModal.classList.remove('hidden');
-
-                if (copyBtn) {
-                  copyBtn.onclick = () => {
-                    if (clipboardMgr) clipboardMgr.writeText(newPassword);
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
-                  };
-                }
-
-                if (updatedBtn) {
-                  updatedBtn.onclick = () => {
-                    confirmModal.classList.add('hidden');
-                    renderHealthCheckResults();
-                  };
-                }
-              } else {
-                renderHealthCheckResults();
-              }
+          // 3. Stale password (> 12 months)
+          const dateStr = entry.updatedAt || entry.createdAt;
+          if (dateStr) {
+            const entryDate = new Date(dateStr).getTime();
+            const msIn12Months = 365 * 24 * 60 * 60 * 1000;
+            if (!isNaN(entryDate) && Date.now() - entryDate >= msIn12Months) {
+              entryScore -= 25;
+              const months = Math.floor((Date.now() - entryDate) / (1000 * 60 * 60 * 24 * 30.4375));
+              issues.push({
+                entryId: entry.id,
+                title: entry.title || 'Untitled Entry',
+                issue: `Not changed in ${months} months`,
+                pwdKey: pwdObj.key
+              });
             }
           }
-        };
 
-        issuesList.appendChild(card);
-
-        setTimeout(() => {
-          card.classList.add('visible');
-        }, index * 80);
-      });
-    }
-
-    // Record History & Render Chart
-    const history = loadHealthHistory();
-    const nowIso = new Date().toISOString();
-    history.push({ timestamp: nowIso, score: overallScore });
-    saveHealthHistory(history);
-
-    if (svgChart) {
-      const pts = history.slice(-10);
-      if (pts.length < 2) {
-        svgChart.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#666" font-size="12">Score logged: ${overallScore}/100. Run checks over time to see trend graph.</text>`;
-      } else {
-        const width = 500;
-        const height = 100;
-        const polyPts = pts.map((p, i) => {
-          const x = (i / (pts.length - 1)) * (width - 40) + 20;
-          const y = height - (p.score / 100) * (height - 30) - 15;
-          return `${x},${y}`;
-        }).join(' ');
-
-        let dotsHtml = pts.map((p, i) => {
-          const x = (i / (pts.length - 1)) * (width - 40) + 20;
-          const y = height - (p.score / 100) * (height - 30) - 15;
-          return `<circle cx="${x}" cy="${y}" r="4" fill="#c9a24a"><title>${p.score}/100 (${new Date(p.timestamp).toLocaleDateString()})</title></circle>`;
-        }).join('');
-
-        svgChart.innerHTML = `
-          <polyline fill="none" stroke="#c9a24a" stroke-width="2" points="${polyPts}" />
-          ${dotsHtml}
-        `;
+          totalScoreSum += Math.max(0, entryScore);
+        });
       }
+
+      const overallScore = entriesWithPasswords.length ? Math.round(totalScoreSum / entriesWithPasswords.length) : 100;
+
+      // Count up score animation
+      let startVal = 0;
+      const duration = 800;
+      const startTime = performance.now();
+      function animateScore(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const currentVal = Math.floor(progress * overallScore);
+        if (scoreDisplay) scoreDisplay.textContent = `${currentVal}/100`;
+        if (progress < 1) {
+          requestAnimationFrame(animateScore);
+        } else {
+          if (scoreDisplay) scoreDisplay.textContent = `${overallScore}/100`;
+        }
+      }
+      requestAnimationFrame(animateScore);
+
+      if (scoreStatus) {
+        if (overallScore >= 85) {
+          scoreStatus.textContent = 'Excellent Vault Security Health';
+          scoreStatus.style.color = '#10b981';
+        } else if (overallScore >= 60) {
+          scoreStatus.textContent = 'Moderate Security — Attention Recommended';
+          scoreStatus.style.color = '#f59e0b';
+        } else {
+          scoreStatus.textContent = 'Critical Vulnerabilities Detected';
+          scoreStatus.style.color = '#ef4444';
+        }
+      }
+
+      // Render Issue Cards
+      if (issues.length === 0) {
+        issuesList.innerHTML = `
+          <div style="padding: 16px; background: rgba(16, 185, 129, 0.05); border: 1px solid #10b981; border-radius: 6px; color: #10b981; font-size: 13px; text-align: center;">
+            ✓ All vault passwords meet high security standards! No weak, reused, or stale passwords found.
+          </div>
+        `;
+      } else {
+        issues.forEach((item, index) => {
+          const card = document.createElement('div');
+          card.className = 'issue-card';
+          card.innerHTML = `
+            <div>
+              <div style="font-weight: 600; color: var(--text-primary); font-size: 13px;">${item.title}</div>
+              <div style="font-size: 12px; color: #ef4444; margin-top: 2px;">${item.issue}</div>
+            </div>
+            <button type="button" class="btn-primary fix-entry-btn" style="width: auto; padding: 6px 14px; font-size: 12px;">Fix Now</button>
+          `;
+
+          const fixBtn = card.querySelector('.fix-entry-btn');
+          fixBtn.onclick = () => {
+            if (confirm(`Generate a new strong password and update "${item.title}"?`)) {
+              const currentEntries = getActiveVaultEntries();
+              const entryObj = currentEntries.find(e => e.id === item.entryId);
+              if (entryObj && entryObj.fields) {
+                const newPassword = generateStrongPassword(20);
+                entryObj.fields[item.pwdKey] = newPassword;
+                entryObj.updatedAt = new Date().toISOString();
+                saveVaultEntriesToStorage();
+                logActivity(`PASSWORD HEALTH FIX: Generated new strong password for ${item.title}`);
+
+                const confirmModal = document.getElementById('account-update-confirm-modal');
+                const confirmTitle = document.getElementById('confirm-account-title');
+                const confirmPwdInp = document.getElementById('confirm-new-pwd-display');
+                const confirmDomain = document.getElementById('confirm-account-domain');
+                const copyBtn = document.getElementById('copy-confirm-pwd-btn');
+                const updatedBtn = document.getElementById('confirm-account-updated-btn');
+
+                if (confirmModal) {
+                  if (confirmTitle) confirmTitle.textContent = item.title;
+                  if (confirmPwdInp) confirmPwdInp.value = newPassword;
+                  if (confirmDomain) confirmDomain.textContent = (entryObj.fields && entryObj.fields.url) || item.title;
+                  confirmModal.classList.remove('hidden');
+
+                  if (copyBtn) {
+                    copyBtn.onclick = () => {
+                      if (clipboardMgr) clipboardMgr.writeText(newPassword);
+                      copyBtn.textContent = 'Copied!';
+                      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+                    };
+                  }
+
+                  if (updatedBtn) {
+                    updatedBtn.onclick = () => {
+                      confirmModal.classList.add('hidden');
+                      renderHealthCheckResults();
+                    };
+                  }
+                } else {
+                  renderHealthCheckResults();
+                }
+              }
+            }
+          };
+
+          issuesList.appendChild(card);
+
+          setTimeout(() => {
+            card.classList.add('visible');
+          }, index * 80);
+        });
+      }
+
+      // Record History & Render Chart
+      let history = loadHealthHistory();
+      if (!Array.isArray(history)) history = [];
+      const nowIso = new Date().toISOString();
+      history.push({ timestamp: nowIso, score: overallScore });
+      saveHealthHistory(history);
+
+      if (svgChart) {
+        const pts = history.slice(-10);
+        if (pts.length < 2) {
+          svgChart.innerHTML = `<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#666" font-size="12">Score logged: ${overallScore}/100. Run checks over time to see trend graph.</text>`;
+        } else {
+          const width = 500;
+          const height = 100;
+          const polyPts = pts.map((p, i) => {
+            const x = (i / (pts.length - 1)) * (width - 40) + 20;
+            const y = height - (p.score / 100) * (height - 30) - 15;
+            return `${x},${y}`;
+          }).join(' ');
+
+          let dotsHtml = pts.map((p, i) => {
+            const x = (i / (pts.length - 1)) * (width - 40) + 20;
+            const y = height - (p.score / 100) * (height - 30) - 15;
+            return `<circle cx="${x}" cy="${y}" r="4" fill="#c9a24a"><title>${p.score}/100 (${new Date(p.timestamp).toLocaleDateString()})</title></circle>`;
+          }).join('');
+
+          svgChart.innerHTML = `
+            <polyline fill="none" stroke="#c9a24a" stroke-width="2" points="${polyPts}" />
+            ${dotsHtml}
+          `;
+        }
+      }
+      console.log('[Password Health Check] Rendered results with overall score:', overallScore);
+    } catch (e) {
+      console.error('[Password Health Check] renderHealthCheckResults error:', e);
     }
   }

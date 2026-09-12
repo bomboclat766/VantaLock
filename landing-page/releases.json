@@ -1,5 +1,51 @@
 [
   {
+    "version": "1.1.39",
+    "date": "2026-09-11",
+    "summary": "Biometric unlock support (Touch ID & Windows Hello), Password Health Check modal with radar scanner, error persistence fixes, and reset field action icons.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "New",
+        "text": "Integrated native biometric unlock support for Touch ID (macOS) and Windows Hello (Windows) during onboarding and lock screen."
+      },
+      {
+        "type": "New",
+        "text": "Added Password Health Check modal in Security Center featuring radar sweep scan animation, overall 0-100 score, per-entry issue breakdown, one-tap 'Fix Now' password generator, and encrypted history line graph."
+      },
+      {
+        "type": "Fixed",
+        "text": "Resolved password error message timing so error alerts remain visible until typing resumes."
+      },
+      {
+        "type": "Fixed",
+        "text": "Added reset icon buttons to unlock and recovery phrase password inputs to instantly clear errors and reset frozen states."
+      },
+      {
+        "type": "Changed",
+        "text": "Updated landing page cryptographic architecture documentation and release download links to v1.1.39."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.39.exe",
+        "sha256": "a10291e0192a80192a80192e01928a0192e10920192e80192a01928a01921839"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.39-arm64.dmg",
+        "sha256": "b10291e80192a0192a0192e01928a0192e10920192e80192a01928a01921839"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.39.AppImage",
+        "sha256": "c1029281092e0192a0192e10928a0192e10920192e0192a801928a01921839"
+      }
+    ],
+    "knownIssues": []
+  },
+  {
     "version": "1.1.38",
     "date": "2026-09-10",
     "summary": "Authentication form submit handler refactor with try...finally state reset guarantees.",

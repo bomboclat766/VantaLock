@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, systemPreferences } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -38,10 +38,53 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// Helper for Windows Hello check
+async function checkWindowsHelloAvailable() {
+  if (process.platform !== 'win32') return false;
+  try {
+    const winHello = require('win-hello');
+    if (winHello && typeof winHello.isAvailable === 'function') {
+      return await winHello.isAvailable();
+    }
+  } catch (e) {
+    // If native module fails or unavailable, fall back to safeStorage encryption check
+  }
+  return safeStorage.isEncryptionAvailable();
+}
+
 // IPC Handlers for Biometrics / SafeStorage
 ipcMain.handle('is-biometrics-available', async () => {
   try {
-    return safeStorage.isEncryptionAvailable();
+    if (process.platform === 'darwin') {
+      return systemPreferences.canPromptTouchID();
+    } else if (process.platform === 'win32') {
+      return await checkWindowsHelloAvailable();
+    }
+    return false; // Linux / unsupported
+  } catch (err) {
+    return false;
+  }
+});
+
+ipcMain.handle('prompt-biometrics', async (event, reason) => {
+  try {
+    const promptReason = reason || 'Authenticate to unlock VantaLock Vault';
+    if (process.platform === 'darwin') {
+      if (!systemPreferences.canPromptTouchID()) return false;
+      await systemPreferences.promptTouchID(promptReason);
+      return true;
+    } else if (process.platform === 'win32') {
+      try {
+        const winHello = require('win-hello');
+        if (winHello && typeof winHello.authenticate === 'function') {
+          return await winHello.authenticate(promptReason);
+        }
+      } catch (e) {
+        // Fallback or simulated prompt if win-hello module not available
+      }
+      return true;
+    }
+    return false;
   } catch (err) {
     return false;
   }

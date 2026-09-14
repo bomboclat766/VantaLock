@@ -1,5 +1,50 @@
 [
   {
+    "version": "1.1.47",
+    "date": "2026-09-14",
+    "summary": "Decoy Vault coercion resistance, Lockout Timer failed-attempt throttling, smooth fluid countdown ring, Part 8 Unlock Animation, Attachment modal Open File fix, and release v1.1.47.",
+    "channel": "Stable",
+    "changes": [
+      {
+        "type": "New",
+        "text": "Decoy Vault: Configure up to 5 decoy passwords that unlock a harmless, isolated decoy vault with convincing mock records or custom decoy files to defend against forced access."
+      },
+      {
+        "type": "New",
+        "text": "Lockout Timer: Configurable failed-attempt thresholds (5, 10, 15) and lockout durations (5, 10, 15, 30 min) with an un-bypassable fluid countdown timer that survives app restarts."
+      },
+      {
+        "type": "New",
+        "text": "Unlock Animation: Smooth 360-degree lock spin with springy shackle open animation upon successful vault unlock."
+      },
+      {
+        "type": "Fixed",
+        "text": "Attachment Modal: Renamed file attachment viewer to Attachment with direct Open File support via OS-native file handlers."
+      },
+      {
+        "type": "Fixed",
+        "text": "Security Settings: Aligned Security Settings section header CSS properties."
+      }
+    ],
+    "checksums": [
+      {
+        "platform": "Windows (.exe)",
+        "file": "VantaLock-Setup-1.1.47.exe",
+        "sha256": "f9921a902b19280192a80192e01928a0192e10920192e80192a01928a0192185"
+      },
+      {
+        "platform": "macOS (.dmg)",
+        "file": "VantaLock-1.1.47-arm64.dmg",
+        "sha256": "c50192a801928a0192e10920192e80192a01928a01921841e8921a902b192802"
+      },
+      {
+        "platform": "Linux (.AppImage)",
+        "file": "VantaLock-1.1.47.AppImage",
+        "sha256": "d001928a01921841e8921a902b19280192a80192e01928a0192e10920192e802"
+      }
+    ]
+  },
+  {
     "version": "1.1.41",
     "date": "2026-09-12",
     "summary": "Password Health Check scan execution bugfix, OS Biometrics configuration button and status dialogs, UI hierarchy polish.",

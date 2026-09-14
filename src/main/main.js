@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, systemPreferences } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, systemPreferences, dialog, shell } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -47,7 +47,7 @@ async function checkWindowsHelloAvailable() {
       return await winHello.isAvailable();
     }
   } catch (e) {
-    // If native module fails or unavailable, fall back to safeStorage encryption check
+    // Fallback
   }
   return safeStorage.isEncryptionAvailable();
 }
@@ -60,7 +60,7 @@ ipcMain.handle('is-biometrics-available', async () => {
     } else if (process.platform === 'win32') {
       return await checkWindowsHelloAvailable();
     }
-    return false; // Linux / unsupported
+    return false;
   } catch (err) {
     return false;
   }
@@ -80,7 +80,7 @@ ipcMain.handle('prompt-biometrics', async (event, reason) => {
           return await winHello.authenticate(promptReason);
         }
       } catch (e) {
-        // Fallback or simulated prompt if win-hello module not available
+        // Fallback
       }
       return true;
     }
@@ -111,5 +111,23 @@ ipcMain.handle('retrieve-secure-token', async (event, encryptedBase64) => {
     return safeStorage.decryptString(buffer);
   } catch (err) {
     throw err;
+  }
+});
+
+// IPC Handler for OS File Picker Dialog
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  if (!mainWindow) return { canceled: true, filePaths: [] };
+  return await dialog.showOpenDialog(mainWindow, options || {
+    properties: ['openFile', 'multiSelections']
+  });
+});
+
+// IPC Handler for OS Native Open File
+ipcMain.handle('open-path', async (event, filePath) => {
+  try {
+    await shell.openPath(filePath);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 });

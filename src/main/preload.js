@@ -4,5 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isBiometricsAvailable: () => ipcRenderer.invoke('is-biometrics-available'),
   promptBiometrics: (reason) => ipcRenderer.invoke('prompt-biometrics', reason),
   storeSecureToken: (token) => ipcRenderer.invoke('store-secure-token', token),
-  retrieveSecureToken: (encToken) => ipcRenderer.invoke('retrieve-secure-token', encToken)
+  retrieveSecureToken: (encToken) => ipcRenderer.invoke('retrieve-secure-token', encToken),
+  showOpenDialog: (options) => ipcRenderer.invoke('show-open-dialog', options),
+  openPath: (filePath) => ipcRenderer.invoke('open-path', filePath)
 });

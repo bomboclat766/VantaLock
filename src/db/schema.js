@@ -10,4 +10,21 @@ const betaReports = sqliteTable('beta_reports', {
   featured: integer('featured', { mode: 'boolean' }).notNull().default(false),
 });
 
-module.exports = { betaReports };
+const decoyPasswords = sqliteTable('decoy_passwords', {
+  id: text('id').primaryKey(),
+  password_hash: text('password_hash').notNull(),
+  created_at: text('created_at').notNull(),
+});
+
+const decoyVaultData = sqliteTable('decoy_vault_data', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  category: text('category').notNull(), // 'Financial' | 'Legal' | 'Personal'
+  username: text('username'),
+  password: text('password'),
+  url: text('url'),
+  notes: text('notes'),
+  created_at: text('created_at').notNull(),
+});
+
+module.exports = { betaReports, decoyPasswords, decoyVaultData };

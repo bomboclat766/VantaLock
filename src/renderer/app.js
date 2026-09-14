@@ -1,5 +1,6 @@
 let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
 let generateRecoveryKey, ClipboardManager, clipboardMgr, exportEncryptedVault, importEncryptedVault, LockManager;
+let generateDecoyContent, decoyManager;
 
 try {
   const cryptoVault = require('../crypto/vaultCrypto');
@@ -17,6 +18,8 @@ try {
   exportEncryptedVault = backup.exportEncryptedVault;
   importEncryptedVault = backup.importEncryptedVault;
   LockManager = require('../crypto/lockManager');
+  decoyManager = require('../crypto/decoyManager');
+  generateDecoyContent = decoyManager.generateDecoyContent;
 } catch (e) {
   // Web browser fallback implementations for testing / static view
   calculatePasswordStrength = (pwd) => ({ score: pwd.length > 8 ? 3 : 1, label: pwd.length > 8 ? 'Strong' : 'Weak' });
@@ -27,6 +30,15 @@ try {
   generateRecoveryKey = () => ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mike', 'november', 'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform', 'victor', 'whiskey', 'xray'];
   clipboardMgr = { copySensitiveText: () => {}, writeText: () => {} };
   LockManager = class { constructor() {} resetInactivityTimer() {} recordSuccessfulUnlock() {} lock() {} };
+  generateDecoyContent = () => [
+    { id: 'mock1', title: 'City Power & Light Statement', category: 'Financial', username: 'acc_7829104', password: '', url: 'https://billing.citypowerlight.com', notes: 'Monthly utility billing statement summary.', created_at: new Date().toISOString() },
+    { id: 'mock2', title: 'Apex National Bank Summary', category: 'Financial', username: 'apex_client_9941', password: '', url: 'https://online.apexnatbank.com', notes: 'Savings account checking summary.', created_at: new Date().toISOString() },
+    { id: 'mock3', title: 'High-Yield Savings Login', category: 'Financial', username: 'j.sterling.vault@mailnet.com', password: 'P123456!9', url: 'https://secure.apexnatbank.com/login', notes: 'Primary personal savings portal.', created_at: new Date().toISOString() },
+    { id: 'mock4', title: 'Residential Lease Agreement', category: 'Legal', username: 'Tenant ID: TL-4081', password: '', url: 'https://portal.oakwoodproperties.com', notes: 'Oakwood Apartments Unit 4B Lease.', created_at: new Date().toISOString() },
+    { id: 'mock5', title: 'Sovereign Mutual Life Policy', category: 'Legal', username: 'Policy #SML-992014-B', password: '', url: 'https://claims.sovereignmutual.com', notes: 'Term Life Coverage policy.', created_at: new Date().toISOString() },
+    { id: 'mock6', title: 'ProtonMail Secondary Inbox', category: 'Personal', username: 'j.sterling.private@pm.me', password: 'K987654#2', url: 'https://mail.proton.me', notes: 'Encrypted personal email.', created_at: new Date().toISOString() },
+    { id: 'mock7', title: 'CineStream Premium Account', category: 'Personal', username: 'sterling_family_pass', password: 'v554433$4', url: 'https://cinestream.tv/signin', notes: '4K Family Subscription Plan.', created_at: new Date().toISOString() }
+  ];
 }
 
 
@@ -40,6 +52,120 @@ function logActivity(eventMessage) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  // Decoy Vault & Lockout Timer State
+  let activeVaultType = 'real'; // 'real' | 'decoy'
+  let lockoutAnimFrame = null;
+
+  function getDecoyPasswordsStore() {
+    try {
+      return JSON.parse(localStorage.getItem('vantalock_decoy_passwords') || '[]');
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function saveDecoyPasswordsStore(list) {
+    localStorage.setItem('vantalock_decoy_passwords', JSON.stringify(list));
+  }
+
+  function getDecoyVaultDataStore() {
+    try {
+      return JSON.parse(localStorage.getItem('vantalock_decoy_vault_data') || '[]');
+    } catch(e) {
+      return [];
+    }
+  }
+
+  function saveDecoyVaultDataStore(list) {
+    localStorage.setItem('vantalock_decoy_vault_data', JSON.stringify(list));
+  }
+
+  function ensureDecoyContentPopulated() {
+    const current = getDecoyVaultDataStore();
+    if (current.length === 0) {
+      const generated = generateDecoyContent();
+      saveDecoyVaultDataStore(generated);
+      return generated;
+    }
+    return current;
+  }
+
+  function checkLockoutActive() {
+    const expiresAt = parseInt(localStorage.getItem('vantalock_lockout_expires_at') || '0', 10);
+    const now = Date.now();
+    if (expiresAt && expiresAt > now) {
+      showLockoutModal();
+      return true;
+    } else if (expiresAt && expiresAt <= now) {
+      localStorage.removeItem('vantalock_lockout_expires_at');
+      localStorage.removeItem('vantalock_lockout_duration_ms');
+      localStorage.setItem('vantalock_failed_attempts', '0');
+      hideLockoutModal();
+    }
+    return false;
+  }
+
+  function triggerLockout() {
+    const durationMin = parseInt(localStorage.getItem('vantalock_lockout_duration_min') || '5', 10);
+    const durationMs = durationMin * 60 * 1000;
+    const expiresAt = Date.now() + durationMs;
+    localStorage.setItem('vantalock_lockout_expires_at', expiresAt.toString());
+    localStorage.setItem('vantalock_lockout_duration_ms', durationMs.toString());
+    logActivity(`SECURITY LOCKOUT: Lockout triggered for ${durationMin} minutes.`);
+    showLockoutModal();
+  }
+
+  function showLockoutModal() {
+    const modal = document.getElementById('lockout-timer-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    const ring = document.getElementById('lockout-timer-ring');
+    const display = document.getElementById('lockout-time-display');
+    const circumference = 490.08;
+
+    if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+
+    function updateRing() {
+      const expiresAt = parseInt(localStorage.getItem('vantalock_lockout_expires_at') || '0', 10);
+      const totalMs = parseInt(localStorage.getItem('vantalock_lockout_duration_ms') || (5 * 60 * 1000).toString(), 10);
+      const now = Date.now();
+      const remainingMs = Math.max(0, expiresAt - now);
+
+      if (remainingMs <= 0) {
+        if (ring) ring.style.strokeDashoffset = `${circumference}px`;
+        if (display) display.textContent = '00:00';
+        localStorage.removeItem('vantalock_lockout_expires_at');
+        localStorage.removeItem('vantalock_lockout_duration_ms');
+        localStorage.setItem('vantalock_failed_attempts', '0');
+        hideLockoutModal();
+        return;
+      }
+
+      const fractionRemaining = Math.min(1.0, Math.max(0.0, remainingMs / totalMs));
+      const offset = circumference * (1.0 - fractionRemaining);
+      if (ring) ring.style.strokeDashoffset = `${offset}px`;
+
+      const totalSecs = Math.ceil(remainingMs / 1000);
+      const mins = Math.floor(totalSecs / 60);
+      const secs = totalSecs % 60;
+      if (display) display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      lockoutAnimFrame = requestAnimationFrame(updateRing);
+    }
+
+    lockoutAnimFrame = requestAnimationFrame(updateRing);
+  }
+
+  function hideLockoutModal() {
+    if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+    const modal = document.getElementById('lockout-timer-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  checkLockoutActive();
+
   // Lock Manager Instance & User Inactivity Listeners
   const savedAutoLockMin = parseInt(localStorage.getItem('vantalock_autolock') || '5', 10);
   const lockMgr = new LockManager({
@@ -400,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: `App Version: 1.1.41 | License: Activated | Zero-Cloud Encryption`
+      desc: `App Version: 1.1.47 | License: Activated | Zero-Cloud Encryption`
     }
   };
 
@@ -445,6 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Reveal target view
     if (targetView === 'dashboard') {
+      applySidebarRestrictions();
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
       if (lockStatusText) lockStatusText.textContent = 'VAULT UNLOCKED';
       lockMgr.recordSuccessfulUnlock();
@@ -680,11 +807,45 @@ document.addEventListener('DOMContentLoaded', () => {
           const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
           const currDerivedKey = await deriveKey(pwdVal, salt);
 
-          if (!verifyKey(currDerivedKey, storedVerifier)) {
+          if (checkLockoutActive()) return;
+
+          let isRealMatch = verifyKey(currDerivedKey, storedVerifier);
+          let isDecoyMatch = false;
+
+          const decoyList = getDecoyPasswordsStore();
+          for (const dec of decoyList) {
+            try {
+              const cryptoVault = require('../crypto/vaultCrypto');
+              if (cryptoVault.verifyKey(currDerivedKey, dec.verifier)) {
+                isDecoyMatch = true;
+                break;
+              }
+            } catch(e) {}
+          }
+
+          if (isRealMatch) {
+            activeVaultType = 'real';
+            localStorage.setItem('vantalock_failed_attempts', '0');
+          } else if (isDecoyMatch) {
+            activeVaultType = 'decoy';
+            localStorage.setItem('vantalock_failed_attempts', '0');
+            ensureDecoyContentPopulated();
+          } else {
+            let failedAttempts = parseInt(localStorage.getItem('vantalock_failed_attempts') || '0', 10) + 1;
+            localStorage.setItem('vantalock_failed_attempts', failedAttempts.toString());
+
+            const threshold = parseInt(localStorage.getItem('vantalock_lockout_threshold') || '5', 10);
+            if (failedAttempts >= threshold) {
+              triggerLockout();
+              return;
+            }
+
             if (unlockErrorText) unlockErrorText.style.display = 'block';
-            logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
+            logActivity('SECURITY WARNING: Incorrect password attempt on vault unlock.');
             return;
           }
+
+          await playUnlockAnimation();
         }
 
         if (unlockErrorText) unlockErrorText.style.display = 'none';
@@ -1405,7 +1566,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toolKey === 'security') {
       entryListContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
-          <h3 class="setup-title" style="font-size: 18px;">Security Settings</h3>
+
+
+          <h3 class="setup-title" style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 1px;">Security Settings</h3>
 
           <form id="change-mp-form" style="margin-bottom: 24px;">
             <div class="form-group">
@@ -1736,7 +1899,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const seedErr = document.getElementById('seed-error-msg');
             if (seedErr) seedErr.style.display = 'none';
-            gateView.classList.add('hidden');
+
+            const recoveryKeyVerifyStep = document.getElementById('recovery-key-verify-step');
+            if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
+
+            setupDecoyOnboardingModal();
           contentView.classList.remove('hidden');
           logActivity('SECURITY: Recovery seed revealed following valid password verification.');
 
@@ -2403,5 +2570,294 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('[Password Health Check] Rendered results with overall score:', overallScore);
     } catch (e) {
       console.error('[Password Health Check] renderHealthCheckResults error:', e);
+    }
+  }
+
+
+  // Part 8 Unlock Animation Function
+  async function playUnlockAnimation() {
+    return new Promise((resolve) => {
+      let animOverlay = document.getElementById('unlock-animation-overlay');
+      if (!animOverlay) {
+        animOverlay = document.createElement('div');
+        animOverlay.id = 'unlock-animation-overlay';
+        animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 1; transition: opacity 0.3s ease;';
+        animOverlay.innerHTML = `
+          <div id="unlock-padlock-container" style="position: relative; width: 100px; height: 120px; display: flex; align-items: flex-end; justify-content: center;">
+            <svg id="unlock-padlock-svg" width="90" height="110" viewBox="0 0 100 120" style="transform-origin: 50px 70px;">
+              <path id="unlock-padlock-shackle" d="M 32 50 V 28 A 18 18 0 0 1 68 28 V 50" fill="none" stroke="var(--brass-accent)" stroke-width="8" stroke-linecap="round" style="transform-origin: 32px 50px; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);" />
+              <rect x="20" y="48" width="60" height="52" rx="8" ry="8" fill="#121212" stroke="var(--brass-accent)" stroke-width="5" />
+              <circle cx="50" cy="70" r="6" fill="var(--brass-accent)" />
+              <polygon points="46,72 54,72 56,86 44,86" fill="var(--brass-accent)" />
+            </svg>
+          </div>
+        `;
+        document.body.appendChild(animOverlay);
+      } else {
+        animOverlay.style.display = 'flex';
+        animOverlay.style.opacity = '1';
+        const shackle = document.getElementById('unlock-padlock-shackle');
+        const svg = document.getElementById('unlock-padlock-svg');
+        if (shackle) shackle.style.transform = 'rotate(0deg)';
+        if (svg) svg.style.transform = 'rotate(0deg)';
+      }
+
+      const svg = document.getElementById('unlock-padlock-svg');
+      const shackle = document.getElementById('unlock-padlock-shackle');
+
+      if (svg) {
+        svg.style.transition = 'transform 0.7s cubic-bezier(0.45, 0, 0.55, 1)';
+        svg.style.transform = 'rotate(360deg)';
+      }
+
+      setTimeout(() => {
+        if (shackle) {
+          shackle.style.transform = 'rotate(-55deg)';
+        }
+      }, 650);
+
+      setTimeout(() => {
+        if (animOverlay) {
+          animOverlay.style.opacity = '0';
+          setTimeout(() => {
+            animOverlay.style.display = 'none';
+            resolve();
+          }, 300);
+        } else {
+          resolve();
+        }
+      }, 1400);
+    });
+  }
+
+
+  function renderSecDecoyList() {
+    const container = document.getElementById('sec-decoy-list');
+    const addBtn = document.getElementById('sec-add-decoy-btn');
+    const maxMsg = document.getElementById('sec-decoy-max-msg');
+    if (!container) return;
+
+    const list = getDecoyPasswordsStore();
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+      container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); font-style: italic;">No decoy passwords currently configured.</div>`;
+    } else {
+      list.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--surface-border); font-size: 13px;';
+        row.innerHTML = `
+          <span style="font-family: monospace; letter-spacing: 2px;">••••••••</span>
+          <button type="button" class="btn-danger-remove" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px; padding: 2px 6px;">Remove</button>
+        `;
+        row.querySelector('.btn-danger-remove').addEventListener('click', () => {
+          if (confirm('Are you sure you want to remove this decoy password?')) {
+            const updated = getDecoyPasswordsStore().filter(d => d.id !== item.id);
+            saveDecoyPasswordsStore(updated);
+            renderSecDecoyList();
+            logActivity('SECURITY: Decoy password removed.');
+          }
+        });
+        container.appendChild(row);
+      });
+    }
+
+    if (list.length >= 5) {
+      if (addBtn) addBtn.style.display = 'none';
+      if (maxMsg) maxMsg.style.display = 'block';
+    } else {
+      if (addBtn && document.getElementById('sec-decoy-form-wrap').style.display !== 'block') addBtn.style.display = 'block';
+      if (maxMsg) maxMsg.style.display = 'none';
+    }
+  }
+
+
+  let decoyUploadedFiles = [];
+
+  function setupDecoyOnboardingModal() {
+    const decoyStep = document.getElementById('decoy-vault-setup-step');
+    if (!decoyStep) {
+      localStorage.setItem('vantalock_setup_complete', 'true');
+      showScreen('dashboard');
+      return;
+    }
+    decoyStep.classList.remove('hidden');
+
+    let decoyCount = 1;
+    const countDisplay = document.getElementById('decoy-count-display');
+    const minusBtn = document.getElementById('decoy-count-minus');
+    const plusBtn = document.getElementById('decoy-count-plus');
+    const inputsContainer = document.getElementById('decoy-inputs-container');
+    const customToggle = document.getElementById('decoy-custom-files-toggle');
+    const browseWrap = document.getElementById('decoy-browse-files-wrap');
+    const browseBtn = document.getElementById('decoy-browse-files-btn');
+    const uploadStatus = document.getElementById('decoy-uploaded-files-status');
+    const skipBtn = document.getElementById('decoy-skip-btn');
+    const form = document.getElementById('decoy-setup-form');
+    const errDiv = document.getElementById('decoy-setup-error');
+
+    function renderInputs() {
+      if (!inputsContainer) return;
+      inputsContainer.innerHTML = '';
+      for (let i = 1; i <= decoyCount; i++) {
+        const div = document.createElement('div');
+        div.style.cssText = 'background: rgba(255,255,255,0.02); padding: 12px; border-radius: 6px; border: 1px solid var(--surface-border);';
+        div.innerHTML = `
+          <div style="font-size: 12px; font-weight: 600; color: var(--brass-accent); margin-bottom: 8px;">Decoy Password Slot #${i}</div>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <input type="password" class="input-field decoy-inp" placeholder="Decoy password #${i}..." required />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <input type="password" class="input-field decoy-confirm-inp" placeholder="Confirm decoy password #${i}..." required />
+          </div>
+        `;
+        inputsContainer.appendChild(div);
+      }
+    }
+
+    if (countDisplay) countDisplay.textContent = decoyCount;
+    renderInputs();
+
+    if (minusBtn) {
+      minusBtn.onclick = () => {
+        if (decoyCount > 1) {
+          decoyCount--;
+          if (countDisplay) countDisplay.textContent = decoyCount;
+          renderInputs();
+        }
+      };
+    }
+
+    if (plusBtn) {
+      plusBtn.onclick = () => {
+        if (decoyCount < 5) {
+          decoyCount++;
+          if (countDisplay) countDisplay.textContent = decoyCount;
+          renderInputs();
+        }
+      };
+    }
+
+    if (customToggle) {
+      customToggle.onchange = () => {
+        if (customToggle.checked) {
+          if (browseWrap) browseWrap.style.display = 'block';
+        } else {
+          if (browseWrap) browseWrap.style.display = 'none';
+        }
+      };
+    }
+
+    if (browseBtn) {
+      browseBtn.onclick = async () => {
+        if (window.electronAPI && typeof window.electronAPI.showOpenDialog === 'function') {
+          const res = await window.electronAPI.showOpenDialog({ properties: ['openFile', 'multiSelections'] });
+          if (res && !res.canceled && res.filePaths.length > 0) {
+            decoyUploadedFiles = res.filePaths;
+            if (uploadStatus) uploadStatus.textContent = `${decoyUploadedFiles.length} custom file(s) selected for Decoy Vault.`;
+          }
+        } else {
+          decoyUploadedFiles = ['/path/to/custom_decoy_doc1.pdf', '/path/to/custom_decoy_doc2.docx'];
+          if (uploadStatus) uploadStatus.textContent = `2 custom file(s) selected for Decoy Vault.`;
+        }
+      };
+    }
+
+    if (skipBtn) {
+      skipBtn.onclick = () => {
+        decoyStep.classList.add('hidden');
+        localStorage.setItem('vantalock_setup_complete', 'true');
+        showScreen('dashboard');
+      };
+    }
+
+    if (form) {
+      form.onsubmit = async (e) => {
+        if (e) e.preventDefault();
+        const inps = inputsContainer.querySelectorAll('.decoy-inp');
+        const confs = inputsContainer.querySelectorAll('.decoy-confirm-inp');
+        const cryptoVault = require('../crypto/vaultCrypto');
+        const newDecoyList = getDecoyPasswordsStore();
+
+        for (let i = 0; i < inps.length; i++) {
+          const p = inps[i].value;
+          const c = confs[i].value;
+          if (!p) {
+            if (errDiv) { errDiv.textContent = `Please enter password for slot #${i+1}`; errDiv.style.display = 'block'; }
+            return;
+          }
+          if (p !== c) {
+            if (errDiv) { errDiv.textContent = `Passwords for slot #${i+1} do not match.`; errDiv.style.display = 'block'; }
+            return;
+          }
+
+          const salt = generateSalt();
+          const derived = await deriveKey(p, salt);
+          const verifier = cryptoVault.createVerifier(derived);
+          newDecoyList.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            verifier
+          });
+        }
+
+        saveDecoyPasswordsStore(newDecoyList);
+
+        if (customToggle && customToggle.checked && decoyUploadedFiles.length > 0) {
+          const customDecoyEntries = decoyUploadedFiles.map((fp, index) => ({
+            id: Date.now().toString(36) + index,
+            title: fp.split(/[\\/]/).pop() || `Decoy File ${index+1}`,
+            category: 'Personal',
+            username: 'User Document',
+            password: '',
+            url: fp,
+            notes: `Custom uploaded decoy document. Path: ${fp}`,
+            created_at: new Date().toISOString()
+          }));
+          saveDecoyVaultDataStore(customDecoyEntries);
+        } else {
+          ensureDecoyContentPopulated();
+        }
+
+        decoyStep.classList.add('hidden');
+        localStorage.setItem('vantalock_setup_complete', 'true');
+        showScreen('dashboard');
+      };
+    }
+  }
+
+
+  const fileOpenBtn = document.getElementById('file-modal-open-btn');
+  if (fileOpenBtn) {
+    fileOpenBtn.addEventListener('click', async () => {
+      const notesElem = document.getElementById('file-modal-notes');
+      const filePath = notesElem ? notesElem.dataset.filePath : null;
+      if (filePath) {
+        if (window.electronAPI && typeof window.electronAPI.openPath === 'function') {
+          await window.electronAPI.openPath(filePath);
+        } else {
+          alert(`Simulating opening file at: ${filePath}`);
+        }
+      }
+    });
+  }
+
+
+  function applySidebarRestrictions() {
+    const toolsTitle = document.querySelector('.nav-section-title');
+    const navDivider = document.querySelector('.nav-divider');
+    const toolBtns = document.querySelectorAll('.tool-tab-btn');
+
+    if (activeVaultType === 'decoy') {
+      if (toolsTitle) toolsTitle.style.display = 'none';
+      if (navDivider) navDivider.style.display = 'none';
+      toolBtns.forEach(btn => {
+        btn.style.display = 'none';
+      });
+    } else {
+      if (toolsTitle) toolsTitle.style.display = 'block';
+      if (navDivider) navDivider.style.display = 'block';
+      toolBtns.forEach(btn => {
+        btn.style.display = 'flex';
+      });
     }
   }

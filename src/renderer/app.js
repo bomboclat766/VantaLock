@@ -1,3 +1,5 @@
+var activeVaultType = 'real';
+window.activeVaultType = activeVaultType;
 let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
 let generateRecoveryKey, ClipboardManager, clipboardMgr, exportEncryptedVault, importEncryptedVault, LockManager;
 let generateDecoyContent, decoyManager;
@@ -54,7 +56,7 @@ function logActivity(eventMessage) {
 document.addEventListener('DOMContentLoaded', () => {
 
   // Decoy Vault & Lockout Timer State
-  let activeVaultType = 'real'; // 'real' | 'decoy'
+  window.activeVaultType = 'real'; // 'real' | 'decoy'
   let lockoutAnimFrame = null;
 
   function getDecoyPasswordsStore() {
@@ -824,10 +826,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           if (isRealMatch) {
-            activeVaultType = 'real';
+            window.activeVaultType = 'real';
             localStorage.setItem('vantalock_failed_attempts', '0');
           } else if (isDecoyMatch) {
-            activeVaultType = 'decoy';
+            window.activeVaultType = 'decoy';
             localStorage.setItem('vantalock_failed_attempts', '0');
             ensureDecoyContentPopulated();
           } else {
@@ -2574,102 +2576,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  // Part 8 Unlock Animation Function
-  async function playUnlockAnimation() {
-    return new Promise((resolve) => {
-      let animOverlay = document.getElementById('unlock-animation-overlay');
-      if (!animOverlay) {
-        animOverlay = document.createElement('div');
-        animOverlay.id = 'unlock-animation-overlay';
-        animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 1; transition: opacity 0.3s ease;';
-        animOverlay.innerHTML = `
-          <div id="unlock-padlock-container" style="position: relative; width: 100px; height: 120px; display: flex; align-items: flex-end; justify-content: center;">
-            <svg id="unlock-padlock-svg" width="90" height="110" viewBox="0 0 100 120" style="transform-origin: 50px 70px;">
-              <path id="unlock-padlock-shackle" d="M 32 50 V 28 A 18 18 0 0 1 68 28 V 50" fill="none" stroke="var(--brass-accent)" stroke-width="8" stroke-linecap="round" style="transform-origin: 32px 50px; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);" />
-              <rect x="20" y="48" width="60" height="52" rx="8" ry="8" fill="#121212" stroke="var(--brass-accent)" stroke-width="5" />
-              <circle cx="50" cy="70" r="6" fill="var(--brass-accent)" />
-              <polygon points="46,72 54,72 56,86 44,86" fill="var(--brass-accent)" />
-            </svg>
-          </div>
-        `;
-        document.body.appendChild(animOverlay);
-      } else {
-        animOverlay.style.display = 'flex';
-        animOverlay.style.opacity = '1';
-        const shackle = document.getElementById('unlock-padlock-shackle');
-        const svg = document.getElementById('unlock-padlock-svg');
-        if (shackle) shackle.style.transform = 'rotate(0deg)';
-        if (svg) svg.style.transform = 'rotate(0deg)';
-      }
-
-      const svg = document.getElementById('unlock-padlock-svg');
-      const shackle = document.getElementById('unlock-padlock-shackle');
-
-      if (svg) {
-        svg.style.transition = 'transform 0.7s cubic-bezier(0.45, 0, 0.55, 1)';
-        svg.style.transform = 'rotate(360deg)';
-      }
-
-      setTimeout(() => {
-        if (shackle) {
-          shackle.style.transform = 'rotate(-55deg)';
-        }
-      }, 650);
-
-      setTimeout(() => {
-        if (animOverlay) {
-          animOverlay.style.opacity = '0';
-          setTimeout(() => {
-            animOverlay.style.display = 'none';
-            resolve();
-          }, 300);
-        } else {
-          resolve();
-        }
-      }, 1400);
-    });
-  }
-
-
-  function renderSecDecoyList() {
-    const container = document.getElementById('sec-decoy-list');
-    const addBtn = document.getElementById('sec-add-decoy-btn');
-    const maxMsg = document.getElementById('sec-decoy-max-msg');
-    if (!container) return;
-
-    const list = getDecoyPasswordsStore();
-    container.innerHTML = '';
-
-    if (list.length === 0) {
-      container.innerHTML = `<div style="font-size: 12px; color: var(--text-secondary); font-style: italic;">No decoy passwords currently configured.</div>`;
-    } else {
-      list.forEach((item, idx) => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--surface-border); font-size: 13px;';
-        row.innerHTML = `
-          <span style="font-family: monospace; letter-spacing: 2px;">••••••••</span>
-          <button type="button" class="btn-danger-remove" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px; padding: 2px 6px;">Remove</button>
-        `;
-        row.querySelector('.btn-danger-remove').addEventListener('click', () => {
-          if (confirm('Are you sure you want to remove this decoy password?')) {
-            const updated = getDecoyPasswordsStore().filter(d => d.id !== item.id);
-            saveDecoyPasswordsStore(updated);
-            renderSecDecoyList();
-            logActivity('SECURITY: Decoy password removed.');
-          }
-        });
-        container.appendChild(row);
-      });
-    }
-
-    if (list.length >= 5) {
-      if (addBtn) addBtn.style.display = 'none';
-      if (maxMsg) maxMsg.style.display = 'block';
-    } else {
-      if (addBtn && document.getElementById('sec-decoy-form-wrap').style.display !== 'block') addBtn.style.display = 'block';
-      if (maxMsg) maxMsg.style.display = 'none';
-    }
-  }
 
 
   let decoyUploadedFiles = [];
@@ -2847,7 +2753,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const navDivider = document.querySelector('.nav-divider');
     const toolBtns = document.querySelectorAll('.tool-tab-btn');
 
-    if (activeVaultType === 'decoy') {
+    if (window.window.activeVaultType === 'decoy') {
       if (toolsTitle) toolsTitle.style.display = 'none';
       if (navDivider) navDivider.style.display = 'none';
       toolBtns.forEach(btn => {
@@ -2860,4 +2766,68 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.style.display = 'flex';
       });
     }
+  }
+
+
+  // PART B — Verbatim Unlock Animation
+  async function playUnlockAnimation() {
+    return new Promise((resolve) => {
+      try {
+        let animOverlay = document.getElementById('unlock-animation-overlay');
+        if (!animOverlay) {
+          animOverlay = document.createElement('div');
+          animOverlay.id = 'unlock-animation-overlay';
+          animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 1; transition: opacity 0.3s ease;';
+          animOverlay.innerHTML = `
+            <svg id="lock-svg" width="120" height="120" viewBox="0 0 120 120" style="overflow:visible;">
+              <g id="lock-group" style="transform-origin:60px 68px;">
+                <path id="shackle" d="M 44 58 L 44 40 A 16 16 0 0 1 76 40 L 76 58"
+                  fill="none" stroke="var(--brass-accent, #d4a638)" stroke-width="7" stroke-linecap="round"
+                  style="transform-origin:44px 58px; transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);"/>
+                <rect x="30" y="52" width="60" height="46" rx="8" fill="var(--brass-accent, #d4a638)"/>
+                <circle cx="60" cy="72" r="6" fill="#0a0a0a"/>
+                <rect x="57" y="76" width="6" height="12" rx="2" fill="#0a0a0a"/>
+              </g>
+            </svg>
+          `;
+          document.body.appendChild(animOverlay);
+        } else {
+          animOverlay.style.display = 'flex';
+          animOverlay.style.opacity = '1';
+          const lockGroup = document.getElementById('lock-group');
+          const shackle = document.getElementById('shackle');
+          if (lockGroup) lockGroup.style.transform = 'rotate(0deg)';
+          if (shackle) shackle.style.transform = 'rotate(0deg)';
+        }
+
+        const lockGroup = document.getElementById('lock-group');
+        const shackle = document.getElementById('shackle');
+
+        if (lockGroup && shackle) {
+          lockGroup.style.transition = 'transform 0.7s cubic-bezier(.45,0,.55,1)';
+          lockGroup.style.transform = 'rotate(360deg)';
+
+          setTimeout(() => {
+            shackle.style.transform = 'rotate(-55deg)';
+          }, 650);
+
+          setTimeout(() => {
+            if (animOverlay) {
+              animOverlay.style.opacity = '0';
+              setTimeout(() => {
+                animOverlay.style.display = 'none';
+                resolve();
+              }, 300);
+            } else {
+              resolve();
+            }
+          }, 1300);
+        } else {
+          resolve();
+        }
+      } catch (err) {
+        console.error('Unlock animation error:', err);
+        resolve(); // Always resolve on error to prevent hanging!
+      }
+    });
   }

@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modal) modal.classList.add('hidden');
   }
 
-  checkLockoutActive();
+  const isLockoutOnInit = checkLockoutActive();
 
   // Lock Manager Instance & User Inactivity Listeners
   const savedAutoLockMin = parseInt(localStorage.getItem('vantalock_autolock') || '5', 10);
@@ -739,6 +739,8 @@ document.addEventListener('DOMContentLoaded', () => {
     splashDismissed = true;
 
     const navigateToNextScreen = () => {
+      const isLockout = checkLockoutActive();
+      if (isLockout) return; // Do not show unlock vault view if locked out
       const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
       if (!isFullySetup) {
         showScreen('onboarding');

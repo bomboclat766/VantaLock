@@ -190,9 +190,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const lockStatusText = document.getElementById('lock-status-text');
 
   function triggerPanicLock() {
-    logActivity('USER ACTION: Panic lock triggered.');
+    logActivity('USER ACTION: Vault locked.');
     if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
-    lockMgr.lock('Manual panic lock triggered');
+    window.isDecoySession = false;
+    window.activeVaultType = 'real';
+    localStorage.removeItem('vantalock_unlocked_session');
+    lockMgr.lock('Manual lock triggered');
+    showScreen('unlock-vault');
   }
 
   if (panicLockBtn) {
@@ -796,83 +800,101 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (unlockVaultForm) {
-    unlockVaultForm.addEventListener('submit', async (e) => {
-      if (e) e.preventDefault();
-      const submitBtn = document.getElementById('unlock-btn');
-      const inputElem = unlockMpInput;
-      try {
-        if (submitBtn) submitBtn.disabled = true;
-        const pwdVal = inputElem ? inputElem.value : '';
+
+  async function handleUnlockSubmit(e) {
+    if (e) e.preventDefault();
+    const submitBtn = document.getElementById('unlock-btn');
+    const inputElem = unlockMpInput;
+    try {
+      if (submitBtn) submitBtn.disabled = true;
+      const pwdVal = inputElem ? inputElem.value : '';
+
+      if (checkLockoutActive()) return;
+
+      let isReal = false;
+      let isDecoy = false;
+
+      if (window.api && typeof window.api.verifyMasterPassword === 'function') {
+        isReal = await window.api.verifyMasterPassword(pwdVal);
+      } else {
         const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
         const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
-
         if (storedSaltHex && storedVerifier) {
           const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
           const currDerivedKey = await deriveKey(pwdVal, salt);
-
-          if (checkLockoutActive()) return;
-
-          let isRealMatch = verifyKey(currDerivedKey, storedVerifier);
-          let isDecoyMatch = false;
-
-          const decoyList = getDecoyPasswordsStore();
-          for (const dec of decoyList) {
-            try {
-              const cryptoVault = require('../crypto/vaultCrypto');
-              if (cryptoVault.verifyKey(currDerivedKey, dec.verifier)) {
-                isDecoyMatch = true;
-                break;
-              }
-            } catch(e) {}
-          }
-
-          if (isRealMatch) {
-            window.activeVaultType = 'real';
-            localStorage.setItem('vantalock_failed_attempts', '0');
-          } else if (isDecoyMatch) {
-            window.activeVaultType = 'decoy';
-            localStorage.setItem('vantalock_failed_attempts', '0');
-            ensureDecoyContentPopulated();
-          } else {
-            let failedAttempts = parseInt(localStorage.getItem('vantalock_failed_attempts') || '0', 10) + 1;
-            localStorage.setItem('vantalock_failed_attempts', failedAttempts.toString());
-
-            const threshold = parseInt(localStorage.getItem('vantalock_lockout_threshold') || '5', 10);
-            if (failedAttempts >= threshold) {
-              triggerLockout();
-              return;
-            }
-
-            if (unlockErrorText) unlockErrorText.style.display = 'block';
-            logActivity('SECURITY WARNING: Incorrect password attempt on vault unlock.');
-            return;
-          }
-
-          await playUnlockAnimation();
-        }
-
-        if (unlockErrorText) unlockErrorText.style.display = 'none';
-        unlockVaultForm.reset();
-        showScreen('dashboard');
-      } finally {
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.style.pointerEvents = 'auto';
-        }
-        if (inputElem) {
-          inputElem.disabled = false;
-          inputElem.removeAttribute('readonly');
-          inputElem.classList.remove('disabled', 'read-only', 'locked');
-          inputElem.style.pointerEvents = 'auto';
-          inputElem.style.userSelect = 'text';
-          setTimeout(() => {
-            inputElem.focus();
-            inputElem.select();
-          }, 10);
+          isReal = verifyKey(currDerivedKey, storedVerifier);
         }
       }
-    });
+
+      if (!isReal) {
+        if (window.api && typeof window.api.verifyDecoyPassword === 'function') {
+          isDecoy = await window.api.verifyDecoyPassword(pwdVal);
+        } else {
+          const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
+          if (storedSaltHex) {
+            const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+            const currDerivedKey = await deriveKey(pwdVal, salt);
+            const decoyList = getDecoyPasswordsStore();
+            for (const dec of decoyList) {
+              try {
+                const cryptoVault = require('../crypto/vaultCrypto');
+                if (cryptoVault.verifyKey(currDerivedKey, dec.verifier)) {
+                  isDecoy = true;
+                  break;
+                }
+              } catch(e) {}
+            }
+          }
+        }
+      }
+
+      if (isReal) {
+        window.isDecoySession = false;
+        window.activeVaultType = 'real';
+        localStorage.setItem('vantalock_failed_attempts', '0');
+      } else if (isDecoy) {
+        window.isDecoySession = true;
+        window.activeVaultType = 'decoy';
+        localStorage.setItem('vantalock_failed_attempts', '0');
+        ensureDecoyContentPopulated();
+      } else {
+        let failedAttempts = parseInt(localStorage.getItem('vantalock_failed_attempts') || '0', 10) + 1;
+        localStorage.setItem('vantalock_failed_attempts', failedAttempts.toString());
+
+        const threshold = parseInt(localStorage.getItem('vantalock_lockout_threshold') || '5', 10);
+        if (failedAttempts >= threshold) {
+          triggerLockout();
+          return;
+        }
+
+        if (unlockErrorText) unlockErrorText.style.display = 'block';
+        logActivity('SECURITY WARNING: Incorrect password attempt on vault unlock.');
+        return;
+      }
+
+      const lockGroup = document.getElementById('lock-group');
+      const shackle = document.getElementById('shackle');
+      await playUnlockAnimation(lockGroup, shackle, () => {
+        if (unlockErrorText) unlockErrorText.style.display = 'none';
+        if (unlockVaultForm) unlockVaultForm.reset();
+        showScreen('dashboard');
+      });
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.pointerEvents = 'auto';
+      }
+      if (inputElem) {
+        inputElem.disabled = false;
+        inputElem.removeAttribute('readonly');
+        inputElem.classList.remove('disabled', 'read-only', 'locked');
+      }
+    }
+  }
+  window.handleUnlockSubmit = handleUnlockSubmit;
+
+  if (unlockVaultForm) {
+    unlockVaultForm.addEventListener('submit', handleUnlockSubmit);
   }
 
   if (getStartedBtn) {
@@ -1905,7 +1927,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (seedErr) seedErr.style.display = 'none';
 
             const recoveryKeyVerifyStep = document.getElementById('recovery-key-verify-step');
-            if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
+   if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
+   const recPwdCard = document.getElementById('recovery-password-card') || document.getElementById('recovery-seed-auth-gate');
+   if (recPwdCard) recPwdCard.classList.add('hidden');
+   const seedGridContainer = document.getElementById('seed-grid-container') || document.getElementById('recovery-seed-content-view');
+   if (seedGridContainer) seedGridContainer.classList.remove('hidden');
 
             setupDecoyOnboardingModal();
           contentView.classList.remove('hidden');
@@ -2772,64 +2798,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // PART B — Verbatim Unlock Animation
-  async function playUnlockAnimation() {
-    return new Promise((resolve) => {
-      try {
-        let animOverlay = document.getElementById('unlock-animation-overlay');
-        if (!animOverlay) {
-          animOverlay = document.createElement('div');
-          animOverlay.id = 'unlock-animation-overlay';
-          animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 1; transition: opacity 0.3s ease;';
-          animOverlay.innerHTML = `
-            <svg id="lock-svg" width="120" height="120" viewBox="0 0 120 120" style="overflow:visible;">
-              <g id="lock-group" style="transform-origin:60px 68px;">
-                <path id="shackle" d="M 44 58 L 44 40 A 16 16 0 0 1 76 40 L 76 58"
-                  fill="none" stroke="var(--brass-accent, #d4a638)" stroke-width="7" stroke-linecap="round"
-                  style="transform-origin:44px 58px; transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);"/>
-                <rect x="30" y="52" width="60" height="46" rx="8" fill="var(--brass-accent, #d4a638)"/>
-                <circle cx="60" cy="72" r="6" fill="#0a0a0a"/>
-                <rect x="57" y="76" width="6" height="12" rx="2" fill="#0a0a0a"/>
-              </g>
-            </svg>
-          `;
-          document.body.appendChild(animOverlay);
-        } else {
-          animOverlay.style.display = 'flex';
-          animOverlay.style.opacity = '1';
-          const lockGroup = document.getElementById('lock-group');
-          const shackle = document.getElementById('shackle');
-          if (lockGroup) lockGroup.style.transform = 'rotate(0deg)';
-          if (shackle) shackle.style.transform = 'rotate(0deg)';
-        }
 
-        const lockGroup = document.getElementById('lock-group');
-        const shackle = document.getElementById('shackle');
+  function playUnlockAnimation(lockGroup, shackle, onComplete) {
+    let animOverlay = document.getElementById('unlock-animation-overlay');
+    if (!animOverlay) {
+      animOverlay = document.createElement('div');
+      animOverlay.id = 'unlock-animation-overlay';
+      animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; opacity: 1; transition: opacity 0.3s ease;';
+      animOverlay.innerHTML = `
+        <svg id="lock-svg" width="120" height="120" viewBox="0 0 120 120" style="overflow:visible;">
+          <g id="lock-group" style="transform-origin:60px 68px;">
+            <path id="shackle" d="M 44 58 L 44 40 A 16 16 0 0 1 76 40 L 76 58"
+              fill="none" stroke="#d4a638" stroke-width="7" stroke-linecap="round"
+              style="transform-origin:44px 58px; transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);"/>
+            <rect x="30" y="52" width="60" height="46" rx="8" fill="#d4a638"/>
+            <circle cx="60" cy="72" r="6" fill="#0a0a0a"/>
+            <rect x="57" y="76" width="6" height="12" rx="2" fill="#0a0a0a"/>
+          </g>
+        </svg>
+      `;
+      document.body.appendChild(animOverlay);
+    } else {
+      animOverlay.style.display = 'flex';
+      animOverlay.style.opacity = '1';
+    }
 
-        if (lockGroup && shackle) {
-          lockGroup.style.transition = 'transform 0.7s cubic-bezier(.45,0,.55,1)';
-          lockGroup.style.transform = 'rotate(360deg)';
+    const lGroup = lockGroup || document.getElementById('lock-group');
+    const lShackle = shackle || document.getElementById('shackle');
 
+    if (lGroup && lShackle) {
+      lGroup.style.transition = 'transform 0.7s cubic-bezier(.45,0,.55,1)';
+      lGroup.style.transform = 'rotate(360deg)';
+
+      setTimeout(() => {
+        lShackle.style.transform = 'rotate(-55deg)';
+      }, 650);
+
+      setTimeout(() => {
+        if (animOverlay) {
+          animOverlay.style.opacity = '0';
           setTimeout(() => {
-            shackle.style.transform = 'rotate(-55deg)';
-          }, 650);
-
-          setTimeout(() => {
-            if (animOverlay) {
-              animOverlay.style.opacity = '0';
-              setTimeout(() => {
-                animOverlay.style.display = 'none';
-                resolve();
-              }, 300);
-            } else {
-              resolve();
-            }
-          }, 1300);
+            animOverlay.style.display = 'none';
+            if (typeof onComplete === 'function') onComplete();
+          }, 300);
         } else {
-          resolve();
+          if (typeof onComplete === 'function') onComplete();
         }
-      } catch (err) {
-        console.error('Unlock animation error:', err);
-        resolve(); // Always resolve on error to prevent hanging!
-      }
-    });
+      }, 1300);
+    } else {
+      if (typeof onComplete === 'function') onComplete();
+    }
   }
+  window.playUnlockAnimation = playUnlockAnimation;

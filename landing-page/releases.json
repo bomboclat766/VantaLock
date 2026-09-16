@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.1.48",
+    "date": "2026-09-15",
+    "title": "v1.1.48 — Master QA Audit & Security Stabilization",
+    "highlights": [
+      "Dual-Vault Routing Engine & Authentication Fixes",
+      "Un-nested and Centered Decoy Vault Onboarding Modal",
+      "Recovery Seed Password Box Dismissal Fix",
+      "Verbatim 360-Degree Lock Spin & Shackle Open Animation",
+      "Session Revocation & Header Panic Lock Bindings",
+      "Deterministic Lockout Timer Startup Sequence"
+    ]
+  },
+  {
     "version": "1.1.47",
     "date": "2026-09-14",
     "summary": "Decoy Vault coercion resistance, Lockout Timer failed-attempt throttling, smooth fluid countdown ring, Part 8 Unlock Animation, Attachment modal Open File fix, and release v1.1.47.",

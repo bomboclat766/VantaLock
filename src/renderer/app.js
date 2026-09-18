@@ -808,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputWrap = document.createElement('div');
       inputWrap.innerHTML = `
         <label class="form-label">Enter Word #${i + 1}</label>
-        <input type="text" class="input-field rk-verify-input" data-index="${i}" placeholder="Word #${i + 1}" required />
+        <input type="text" class="input-field rk-verify-input" data-index="${i}" placeholder="Word #${i + 1}" />
       `;
       rkVerifyInputs.appendChild(inputWrap);
     });
@@ -1386,11 +1386,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Security Settings</h3>
 
-          <form id="change-mp-form" style="margin-bottom: 24px;">
+          <form id="change-mp-form" novalidate style="margin-bottom: 24px;">
             <div class="form-group">
               <label class="form-label">Current Master Password</label>
               <div style="position: relative;">
-                <input type="password" id="current-mp-input" class="input-field" placeholder="Enter current password..." required />
+                <input type="password" id="current-mp-input" class="input-field" placeholder="Enter current password..." />
                 <button type="button" class="pwd-toggle-btn" data-target="current-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
@@ -1398,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-group">
               <label class="form-label">New Master Password</label>
               <div style="position: relative;">
-                <input type="password" id="sec-new-mp-input" class="input-field" placeholder="Enter new password..." required />
+                <input type="password" id="sec-new-mp-input" class="input-field" placeholder="Enter new password..." />
                 <button type="button" class="pwd-toggle-btn" data-target="sec-new-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
               <div class="strength-meter">
@@ -1410,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-group">
               <label class="form-label">Confirm New Master Password</label>
               <div style="position: relative;">
-                <input type="password" id="sec-confirm-mp-input" class="input-field" placeholder="Confirm new password..." required />
+                <input type="password" id="sec-confirm-mp-input" class="input-field" placeholder="Confirm new password..." />
                 <button type="button" class="pwd-toggle-btn" data-target="sec-confirm-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
@@ -1650,11 +1650,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="setup-desc">Re-displaying your recovery phrase requires master password confirmation.</p>
 
           <div id="seed-gate-view">
-            <form id="seed-gate-form">
+            <form id="seed-gate-form" novalidate>
               <div class="form-group">
                 <label class="form-label">Enter Master Password</label>
                 <div style="position: relative;">
-                  <input type="password" id="seed-mp-confirm" class="input-field" placeholder="Enter password to reveal..." required />
+                  <input type="password" id="seed-mp-confirm" class="input-field" placeholder="Enter password to reveal..." />
                   <button type="button" class="pwd-toggle-btn" data-target="seed-mp-confirm" style="position: absolute; right: 34px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                   <button type="button" id="seed-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                 </div>

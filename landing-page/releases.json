@@ -1,5 +1,24 @@
 [
   {
+    "version": "1.1.49",
+    "date": "September 12, 2026",
+    "summary": "Dual-Vault Decoy System, Lockout Timer, Smooth Unlock Transitions, and Section 2 Health Scan Engine fixes.",
+    "downloads": [
+      {
+        "platform": "Windows",
+        "file": "VantaLock-Setup-1.1.49.exe"
+      },
+      {
+        "platform": "macOS (Apple Silicon)",
+        "file": "VantaLock-1.1.49-arm64.dmg"
+      },
+      {
+        "platform": "Linux",
+        "file": "VantaLock-1.1.49.AppImage"
+      }
+    ]
+  },
+  {
     "version": "1.1.44",
     "date": "2026-09-12",
     "summary": "Strict password-only asset targeting, brass font typography alignment across Security Center cards, and v1.1.44 release.",

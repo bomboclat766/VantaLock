@@ -22,6 +22,24 @@ if (url.startsWith('file:')) {
       featured INTEGER NOT NULL DEFAULT 0
     );
   `).catch(err => console.error('Migration error:', err));
+
+  client.execute(`
+    CREATE TABLE IF NOT EXISTS decoy_passwords (
+      id TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `).catch(err => console.error('Decoy passwords migration error:', err));
+
+  client.execute(`
+    CREATE TABLE IF NOT EXISTS decoy_vault_data (
+      id TEXT PRIMARY KEY,
+      vault TEXT NOT NULL,
+      title TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `).catch(err => console.error('Decoy vault data migration error:', err));
 }
 
 const db = drizzle(client, { schema });

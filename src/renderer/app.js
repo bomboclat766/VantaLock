@@ -1056,36 +1056,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
             if (storedSaltHex && storedVerifier) {
-          const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
-          const currDerivedKey = await deriveKey(pwdVal, salt);
-
-          let isMasterMatch = verifyKey(currDerivedKey, storedVerifier);
-          let isDecoyMatch = false;
-
-          // Multi-hash verification set (always check decoys to maintain constant time)
-          const decoys = getDecoyPasswords();
-          for (const d of decoys) {
-            if (d && d.password) {
-              if (pwdVal === d.password) {
-                isDecoyMatch = true;
+              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const currDerivedKey = await deriveKey(pwd, salt);
+              if (verifyKey(currDerivedKey, storedVerifier)) {
+                logActivity('SECURITY: Vault unlocked via Biometrics.');
+                showScreen('dashboard');
               }
             }
           }
+        } catch (err) {
+          console.error('Biometric auto-unlock error:', err);
+        }
+      }, 150);
+    }
+  }
 
-          if (isMasterMatch) {
-            window.activeVaultType = 'real';
-            resetFailedAttempts();
-          } else if (isDecoyMatch) {
-            window.activeVaultType = 'decoy';
-            resetFailedAttempts();
-            generateDecoyContent();
-          } else {
-            recordFailedAttempt();
-            if (unlockErrorText) unlockErrorText.style.display = 'block';
-            logActivity('SECURITY WARNING: Incorrect password on vault unlock.');
-            return;
-          }
-        }ealthModal;
+  window.openPasswordHealthModal = openPasswordHealthModal;
 
   // Global password focus reset & error clearing helper
 

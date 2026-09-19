@@ -910,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: `App Version: 1.1.49 | License: Activated | Zero-Cloud Encryption`
+      desc: `App Version: 1.1.44 | License: Activated | Zero-Cloud Encryption`
     }
   };
 
@@ -1105,59 +1105,56 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial View Determination after splash dismiss
 
   // Immediate Defensive Splash Dismissal & App Boot Trigger
-
-
-  // Unified Splash Screen Dismissal & Initial View Navigation
   let splashDismissed = false;
   function dismissSplash() {
     if (splashDismissed) return;
     splashDismissed = true;
 
-    const overlay = document.getElementById('splash-overlay');
+    const overlay = document.getElementById('splash-overlay') || splashOverlay;
 
     const navigateToNextScreen = () => {
-      try {
-        const isLockoutActive = typeof triggerLockoutModal === 'function' ? triggerLockoutModal() : false;
-        if (isLockoutActive) return;
+      const isLockoutActive = typeof triggerLockoutModal === 'function' ? triggerLockoutModal() : false;
+      if (isLockoutActive) return;
 
-        const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
-        if (!isFullySetup) {
-          showScreen('onboarding');
-        } else {
-          showScreen('unlock-vault');
-        }
-      } catch (e) {
-        console.error('[Boot Navigation Error]:', e);
-        if (typeof showScreen === 'function') showScreen('unlock-vault');
+      const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
+      if (!isFullySetup) {
+        showScreen('onboarding');
+      } else {
+        showScreen('unlock-vault');
       }
     };
 
     if (overlay) {
-      overlay.style.transition = 'opacity 0.5s ease';
+      overlay.style.transition = 'opacity 0.3s ease, pointer-events 0.3s ease';
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
       setTimeout(() => {
-        if (overlay && overlay.parentNode) {
-          overlay.parentNode.removeChild(overlay);
-        }
+        overlay.style.display = 'none';
         navigateToNextScreen();
-      }, 500);
+      }, 300);
     } else {
       navigateToNextScreen();
     }
   }
 
-  // Trigger splash dismissal after DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(dismissSplash, 800);
+      setTimeout(dismissSplash, 600);
     });
   } else {
-    setTimeout(dismissSplash, 800);
+    setTimeout(dismissSplash, 600);
   }
 
-  // Backup timer
-  setTimeout(dismissSplash, 2000);
+  // Backup fallback timers to guarantee splash overlay is dismissed
+  setTimeout(dismissSplash, 1200);
+  setTimeout(dismissSplash, 2500);
+
+  document.addEventListener('click', (e) => {
+    const overlay = document.getElementById('splash-overlay');
+    if (overlay && !splashDismissed && overlay.contains(e.target)) {
+      dismissSplash();
+    }
+  }, { capture: true });
 
 // Vault Unlock Form Handler
   let isVerificationFromUnlock = false;

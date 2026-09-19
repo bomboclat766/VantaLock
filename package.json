@@ -6,6 +6,7 @@
   "scripts": {
     "start": "electron .",
     "test": "jest",
+    "dev": "vite",
     "dist": "electron-builder --linux tar.gz",
     "build": "electron-builder"
   },
@@ -41,7 +42,8 @@
     "playwright": "^1.63.0",
     "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
   },
   "build": {
     "appId": "com.vantalock.app",

@@ -5,3 +5,4 @@ build/
 *.log
 .DS_Store
 landing-page/downloads/linux-unpacked/
+.env

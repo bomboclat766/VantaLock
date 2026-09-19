@@ -83,7 +83,13 @@ function showScreen(screenName) {
   const targetId = screenMap[screenName];
   if (targetId) {
     const target = document.getElementById(targetId);
-    if (target) target.classList.remove('hidden');
+    if (target) {
+      target.classList.remove('hidden');
+      target.classList.add('stagger-cascade');
+      Array.from(target.children).forEach((child, idx) => {
+        child.style.setProperty('--stagger-index', Math.min(idx, 8));
+      });
+    }
   }
 }
 
@@ -1753,6 +1759,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const allEntries = getActiveVaultEntries();
     const currentVaultEntries = allEntries.filter(e => e.vault === activeVault);
     if (currentVaultEntries.length === 0) {
+      entryListContainer.classList.remove('stagger-cascade');
       entryListContainer.innerHTML = `
         <div class="empty-vault-card">
           <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1767,7 +1774,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     entryListContainer.innerHTML = '';
-    currentVaultEntries.forEach(entry => {
+    entryListContainer.classList.add('stagger-cascade');
+    currentVaultEntries.forEach((entry, idx) => {
+      const card = document.createElement('div');
+      card.className = 'entry-card';
+      card.style.setProperty('--stagger-index', Math.min(idx, 10));
       const card = document.createElement('div');
       card.className = 'entry-card';
 
@@ -3227,12 +3238,86 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('[Password Health Check] renderHealthCheckResults error:', e);
     }
   }
-    // Decoy Vault Sidebar Restrictions
-    const toolsSection = document.getElementById('sidebar-tools-section');
-    if (toolsSection) {
-      if (window.activeVaultType === 'decoy') {
-        toolsSection.style.display = 'none';
-      } else {
-        toolsSection.style.display = 'block';
+
+/* ==========================================
+   CRYPTO CORE CANVAS ANIMATION ENGINE
+   ========================================== */
+(function initCryptoCoreCanvas() {
+  const canvas = document.getElementById('crypto-core-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let width, height;
+  function resize() {
+    width = canvas.width = canvas.offsetWidth || window.innerWidth;
+    height = canvas.height = canvas.offsetHeight || window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const particles = [];
+  const particleCount = 45;
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: (Math.random() - 0.5) * 0.8,
+      radius: Math.random() * 2 + 1,
+      alpha: Math.random() * 0.5 + 0.3
+    });
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.strokeStyle = 'rgba(201, 162, 74, 0.08)';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0 || p.x > width) p.vx *= -1;
+      if (p.y < 0 || p.y > height) p.vy *= -1;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201, 162, 74, ${p.alpha})`;
+      ctx.fill();
+
+      for (let j = i + 1; j < particles.length; j++) {
+        const p2 = particles[j];
+        const dx = p2.x - p.x;
+        const dy = p2.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
       }
     }
+
+    if (document.getElementById('splash-overlay') && document.getElementById('splash-overlay').style.display !== 'none') {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  requestAnimationFrame(animate);
+})();
+
+/* Dynamic Entry Card Specular Light Tracking */
+document.addEventListener('mousemove', (e) => {
+  const cards = document.querySelectorAll('.entry-card');
+  cards.forEach(card => {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    card.style.setProperty('--mouse-x', `${x}px`);
+    card.style.setProperty('--mouse-y', `${y}px`);
+  });
+});

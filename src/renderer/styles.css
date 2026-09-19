@@ -765,3 +765,85 @@ html, body {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ==========================================
+   CINEMATIC MOTION CHOREOGRAPHY & STAGGER
+   ========================================== */
+
+#crypto-core-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.85;
+}
+
+#splash-overlay .black-ore-logo,
+#splash-overlay .futuristic-title,
+#splash-overlay .futuristic-sub {
+  position: relative;
+  z-index: 2;
+}
+
+/* Staggered Slide-and-Fade Entry Cascade */
+.stagger-cascade > * {
+  opacity: 0;
+  transform: translateY(18px) scale(0.98);
+  animation: staggerSlideFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger-index, 0) * 45ms);
+}
+
+@keyframes staggerSlideFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Interactive Card Motion, Glassmorphism & Light Reflection */
+.entry-card {
+  position: relative;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s ease,
+              background 0.35s ease;
+  will-change: transform, box-shadow;
+  overflow: hidden;
+}
+
+.entry-card::after {
+  content: '';
+  position: absolute;
+  top: var(--mouse-y, -100px);
+  left: var(--mouse-x, -100px);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(201, 162, 74, 0.15) 0%, rgba(201, 162, 74, 0) 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 50%;
+}
+
+.entry-card:hover::after {
+  opacity: 1;
+}
+
+.entry-card:hover {
+  transform: translateY(-3px) scale(1.008);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(201, 162, 74, 0.15);
+  border-color: rgba(201, 162, 74, 0.4);
+}
+
+/* Fluid View & Accordion Expansion */
+.full-view-screen,
+.setup-card-wrap {
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -245,6 +245,7 @@ function showScreen(screenName) {
     const listElem = document.getElementById('decoy-passwords-list');
     const addForm = document.getElementById('decoy-add-form');
     const maxMsg = document.getElementById('decoy-max-msg');
+    const counterElem = document.getElementById('decoy-cap-counter');
 
     if (!listElem) return;
     const decoys = getDecoyPasswords();
@@ -272,9 +273,17 @@ function showScreen(screenName) {
       };
     });
 
+    if (counterElem) {
+      if (decoys.length >= 5) {
+        counterElem.textContent = "5/5 decoy vault passwords added. That's enough decoy passwords, no one would hack you now.";
+      } else {
+        counterElem.textContent = `${decoys.length}/5 decoy vault passwords added.`;
+      }
+    }
+
     if (decoys.length >= 5) {
       if (addForm) addForm.style.display = 'none';
-      if (maxMsg) maxMsg.style.display = 'block';
+      if (maxMsg) maxMsg.style.display = 'none';
     } else {
       if (addForm) addForm.style.display = 'flex';
       if (maxMsg) maxMsg.style.display = 'none';
@@ -361,8 +370,11 @@ function showScreen(screenName) {
       resetFailedAttempts();
       const modal = document.getElementById('lockout-modal-overlay');
       if (modal) modal.style.display = 'none';
+      if (unlockVaultView) unlockVaultView.classList.remove('hidden');
       return false;
     }
+
+    if (unlockVaultView) unlockVaultView.classList.add('hidden');
 
     let modal = document.getElementById('lockout-modal-overlay');
     if (!modal) {
@@ -967,8 +979,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function setActiveView(targetView) {
     const titlebarBar = document.getElementById('titlebar-bar');
     if (titlebarBar) {
-      titlebarBar.style.visibility = 'visible';
-      titlebarBar.style.opacity = '1';
+      if (targetView === 'dashboard') {
+        titlebarBar.classList.add('unlocked');
+      } else {
+        titlebarBar.classList.remove('unlocked');
+      }
     }
     setupPasswordToggles();
 
@@ -1216,17 +1231,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
         const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
+        // Check decoy passwords
+        const decoyList = getDecoyPasswords();
+        const matchedDecoy = decoyList.find(d => d.password === pwdVal);
+
+        if (matchedDecoy) {
+          window.activeVaultType = 'decoy';
+          resetFailedAttempts();
+          if (unlockErrorText) unlockErrorText.style.display = 'none';
+          unlockVaultForm.reset();
+          playUnlockAnimation(() => { showScreen('dashboard'); });
+          return;
+        }
+
         if (storedSaltHex && storedVerifier) {
           const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
           const currDerivedKey = await deriveKey(pwdVal, salt);
 
           if (!verifyKey(currDerivedKey, storedVerifier)) {
+            recordFailedAttempt();
             if (unlockErrorText) unlockErrorText.style.display = 'block';
             logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
             return;
           }
         }
 
+        window.activeVaultType = 'real';
+        resetFailedAttempts();
         if (unlockErrorText) unlockErrorText.style.display = 'none';
         unlockVaultForm.reset();
         playUnlockAnimation(() => { showScreen('dashboard'); });
@@ -1719,7 +1750,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderVaultEntries() {
-    const currentVaultEntries = vaultEntries.filter(e => e.vault === activeVault);
+    const allEntries = getActiveVaultEntries();
+    const currentVaultEntries = allEntries.filter(e => e.vault === activeVault);
     if (currentVaultEntries.length === 0) {
       entryListContainer.innerHTML = `
         <div class="empty-vault-card">
@@ -2006,10 +2038,14 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Add passwords someone might guess if they were trying to impersonate you. Entering any of them opens a separate vault with harmless-looking data instead of your real one.</p>
 
+            <div id="decoy-cap-counter" style="font-size: 13px; font-weight: 600; color: var(--brass-accent); margin-bottom: 12px;">0/5 decoy vault passwords added.</div>
             <div id="decoy-passwords-list" style="margin-bottom: 14px;"></div>
 
             <div id="decoy-add-form" style="display: flex; gap: 10px; margin-bottom: 10px;">
-              <input type="password" id="new-decoy-pwd-input" class="input-field" placeholder="Enter decoy password..." style="flex: 1;" />
+              <div style="position: relative; flex: 1;">
+                <input type="password" id="new-decoy-pwd-input" class="input-field" placeholder="Enter decoy password..." style="width: 100%;" />
+                <button type="button" class="pwd-toggle-btn" data-target="new-decoy-pwd-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              </div>
               <button type="button" id="add-decoy-pwd-btn" class="btn-primary" style="width: auto; padding: 0 16px;">Add Decoy Password</button>
             </div>
             <div id="decoy-max-msg" style="display: none; font-size: 12px; color: var(--brass-accent); margin-top: 6px;">Maximum of 5 decoy passwords reached.</div>

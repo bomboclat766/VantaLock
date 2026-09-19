@@ -9,7 +9,7 @@
 <body class="theme-default">
 
   <!-- Top Window Bar -->
-  <div id="titlebar-bar" class="titlebar" style="visibility: hidden; opacity: 0; transition: opacity 0.2s;">
+  <div id="titlebar-bar" class="titlebar">
     <div class="brand-badge">
       <svg class="brand-logo-small" viewBox="0 0 100 100">
         <polygon fill="#0d0d0d" stroke="#c9a24a" stroke-width="6" points="50,5 90,25 95,70 50,95 10,70 5,25" />
@@ -119,7 +119,10 @@
         <form id="master-password-form" novalidate>
           <div class="form-group">
             <label class="form-label" for="mp-input">Master Password</label>
-            <input type="password" id="mp-input" class="input-field" placeholder="Enter master password..." />
+            <div style="position: relative;">
+              <input type="password" id="mp-input" class="input-field" placeholder="Enter master password..." />
+              <button type="button" class="pwd-toggle-btn" data-target="mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
             <div class="strength-meter">
               <div id="strength-bar" class="strength-bar"></div>
             </div>
@@ -128,7 +131,10 @@
 
           <div class="form-group">
             <label class="form-label" for="mp-confirm-input">Confirm Master Password</label>
-            <input type="password" id="mp-confirm-input" class="input-field" placeholder="Confirm master password..." />
+            <div style="position: relative;">
+              <input type="password" id="mp-confirm-input" class="input-field" placeholder="Confirm master password..." />
+              <button type="button" class="pwd-toggle-btn" data-target="mp-confirm-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
             <div id="mp-error-text" class="error-text">Passwords do not match.</div>
           </div>
 

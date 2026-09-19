@@ -501,27 +501,7 @@
   </div>
 
 
-  <script>
-    (function() {
-      function forceKillSplash() {
-        var splash = document.getElementById('splash-overlay');
-        if (splash) {
-          splash.style.opacity = '0';
-          splash.style.pointerEvents = 'none';
-          setTimeout(function() {
-            if (splash && splash.parentNode) {
-              splash.parentNode.removeChild(splash);
-            }
-          }, 300);
-        }
-      }
-      window.addEventListener('DOMContentLoaded', function() {
-        setTimeout(forceKillSplash, 500);
-      });
-      setTimeout(forceKillSplash, 1000);
-      setTimeout(forceKillSplash, 2000);
-    })();
-  </script>
+
 
   <script src="app.js"></script>
 </body>

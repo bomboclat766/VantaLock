@@ -1106,7 +1106,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Immediate Defensive Splash Dismissal & App Boot Trigger
 
-  // Immediate Failsafe Splash Dismissal & View Transition
+
+  // Unified Splash Screen Dismissal & Initial View Navigation
   let splashDismissed = false;
   function dismissSplash() {
     if (splashDismissed) return;
@@ -1126,12 +1127,13 @@ document.addEventListener('DOMContentLoaded', () => {
           showScreen('unlock-vault');
         }
       } catch (e) {
-        console.error('Error during navigateToNextScreen:', e);
-        showScreen('unlock-vault');
+        console.error('[Boot Navigation Error]:', e);
+        if (typeof showScreen === 'function') showScreen('unlock-vault');
       }
     };
 
     if (overlay) {
+      overlay.style.transition = 'opacity 0.5s ease';
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
       setTimeout(() => {
@@ -1139,23 +1141,23 @@ document.addEventListener('DOMContentLoaded', () => {
           overlay.parentNode.removeChild(overlay);
         }
         navigateToNextScreen();
-      }, 250);
+      }, 500);
     } else {
       navigateToNextScreen();
     }
   }
 
-  // Execute dismissSplash immediately and with failsafe timers
-  if (document.readyState === 'interactive' || document.readyState === 'complete') {
-    setTimeout(dismissSplash, 300);
-  } else {
+  // Trigger splash dismissal after DOM is ready
+  if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(dismissSplash, 300);
+      setTimeout(dismissSplash, 800);
     });
+  } else {
+    setTimeout(dismissSplash, 800);
   }
 
-  setTimeout(dismissSplash, 800);
-  setTimeout(dismissSplash, 1500);
+  // Backup timer
+  setTimeout(dismissSplash, 2000);
 
 // Vault Unlock Form Handler
   let isVerificationFromUnlock = false;

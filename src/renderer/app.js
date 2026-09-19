@@ -910,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: `App Version: 1.1.44 | License: Activated | Zero-Cloud Encryption`
+      desc: `App Version: 1.1.49 | License: Activated | Zero-Cloud Encryption`
     }
   };
 

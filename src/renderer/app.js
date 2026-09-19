@@ -1103,12 +1103,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initial View Determination after splash dismiss
+
+  // Immediate Defensive Splash Dismissal & App Boot Trigger
   let splashDismissed = false;
   function dismissSplash() {
     if (splashDismissed) return;
     splashDismissed = true;
 
+    const overlay = document.getElementById('splash-overlay') || splashOverlay;
+
     const navigateToNextScreen = () => {
+      const isLockoutActive = typeof triggerLockoutModal === 'function' ? triggerLockoutModal() : false;
+      if (isLockoutActive) return;
+
       const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
       if (!isFullySetup) {
         showScreen('onboarding');
@@ -1117,11 +1124,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    if (splashOverlay) {
-      splashOverlay.style.opacity = '0';
-      splashOverlay.style.pointerEvents = 'none';
+    if (overlay) {
+      overlay.style.transition = 'opacity 0.3s ease, pointer-events 0.3s ease';
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
       setTimeout(() => {
-        splashOverlay.style.display = 'none';
+        overlay.style.display = 'none';
         navigateToNextScreen();
       }, 300);
     } else {
@@ -1129,14 +1137,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  setTimeout(dismissSplash, 1000);
-  setTimeout(dismissSplash, 2000);
-
-  if (splashOverlay) {
-    splashOverlay.addEventListener('click', dismissSplash);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(dismissSplash, 600);
+    });
+  } else {
+    setTimeout(dismissSplash, 600);
   }
 
-  // Vault Unlock Form Handler
+  // Backup fallback timers to guarantee splash overlay is dismissed
+  setTimeout(dismissSplash, 1200);
+  setTimeout(dismissSplash, 2500);
+
+  document.addEventListener('click', (e) => {
+    const overlay = document.getElementById('splash-overlay');
+    if (overlay && !splashDismissed && overlay.contains(e.target)) {
+      dismissSplash();
+    }
+  }, { capture: true });
+
+// Vault Unlock Form Handler
   let isVerificationFromUnlock = false;
 
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');

@@ -52,6 +52,41 @@
   }
 
 
+
+function showScreen(screenName) {
+  const setupContainer = document.getElementById('setup-view-container');
+  const dashboardContainer = document.getElementById('dashboard-view-container');
+
+  const screenMap = {
+    'onboarding': 'onboarding-container',
+    'unlock-vault': 'unlock-vault-view',
+    'master-password': 'master-password-modal',
+    'biometric-optin': 'biometric-optin-modal',
+    'recovery-key-reveal': 'recovery-key-reveal-step',
+    'recovery-key-verify': 'recovery-key-verify-step'
+  };
+
+  if (screenName === 'dashboard') {
+    if (setupContainer) setupContainer.classList.add('hidden');
+    if (dashboardContainer) dashboardContainer.classList.remove('hidden');
+    return;
+  }
+
+  if (dashboardContainer) dashboardContainer.classList.add('hidden');
+  if (setupContainer) setupContainer.classList.remove('hidden');
+
+  Object.values(screenMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+
+  const targetId = screenMap[screenName];
+  if (targetId) {
+    const target = document.getElementById(targetId);
+    if (target) target.classList.remove('hidden');
+  }
+}
+
   // Top-Level Un-Nested Decoy Vault Onboarding Modal Handler
   function showDecoyVaultOnboardingModal(onComplete) {
     let existing = document.getElementById('decoy-onboarding-modal-root');

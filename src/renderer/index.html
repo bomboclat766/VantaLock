@@ -91,11 +91,11 @@
         <h2 class="setup-title">Unlock VantaLock Vault</h2>
         <p class="setup-desc">Enter your master password to decrypt and open your local vault.</p>
 
-        <form id="unlock-vault-form">
+        <form id="unlock-vault-form" novalidate>
           <div class="form-group">
             <label class="form-label" for="unlock-mp-input">Master Password</label>
             <div style="position: relative;">
-              <input type="password" id="unlock-mp-input" class="input-field" placeholder="Enter master password..." required />
+              <input type="password" id="unlock-mp-input" class="input-field" placeholder="Enter master password..." />
               <button type="button" class="pwd-toggle-btn" data-target="unlock-mp-input" style="position: absolute; right: 34px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               <button type="button" id="unlock-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
             </div>
@@ -116,10 +116,10 @@
         <h2 class="setup-title">Set Master Password</h2>
         <p class="setup-desc">Choose a strong master password. This password will derive your vault's AES-256 key via Argon2id and is never saved anywhere.</p>
 
-        <form id="master-password-form">
+        <form id="master-password-form" novalidate>
           <div class="form-group">
             <label class="form-label" for="mp-input">Master Password</label>
-            <input type="password" id="mp-input" class="input-field" placeholder="Enter master password..." required />
+            <input type="password" id="mp-input" class="input-field" placeholder="Enter master password..." />
             <div class="strength-meter">
               <div id="strength-bar" class="strength-bar"></div>
             </div>
@@ -128,7 +128,7 @@
 
           <div class="form-group">
             <label class="form-label" for="mp-confirm-input">Confirm Master Password</label>
-            <input type="password" id="mp-confirm-input" class="input-field" placeholder="Confirm master password..." required />
+            <input type="password" id="mp-confirm-input" class="input-field" placeholder="Confirm master password..." />
             <div id="mp-error-text" class="error-text">Passwords do not match.</div>
           </div>
 
@@ -211,15 +211,15 @@
         <button id="close-file-modal-btn" class="btn-secondary" style="width: auto; padding: 4px 12px;">✕</button>
       </div>
 
-      <form id="file-upload-form">
+      <form id="file-upload-form" novalidate>
         <div class="form-group">
           <label class="form-label">Choose File</label>
-          <input type="file" id="file-picker-input" class="input-field" required />
+          <input type="file" id="file-picker-input" class="input-field" />
         </div>
 
         <div class="form-group">
           <label class="form-label">Title of File</label>
-          <input type="text" id="file-title-input" class="input-field" placeholder="e.g. Passport Scan / Deed Document" required />
+          <input type="text" id="file-title-input" class="input-field" placeholder="e.g. Passport Scan / Deed Document" />
         </div>
 
         <div class="form-group">
@@ -366,10 +366,10 @@
         <div id="type-chips-grid" class="type-chips-grid"></div>
       </div>
 
-      <form id="entry-dynamic-form">
+      <form id="entry-dynamic-form" novalidate>
         <div class="form-group">
           <label class="form-label">Entry Title / Label</label>
-          <input type="text" id="entry-title-input" class="input-field" placeholder="e.g. Primary Checking Account" required />
+          <input type="text" id="entry-title-input" class="input-field" placeholder="e.g. Primary Checking Account" />
         </div>
 
         <div id="dynamic-fields-container"></div>

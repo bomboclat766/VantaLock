@@ -1,3 +1,513 @@
+
+  // Padlock Unlock Animation Handler
+  function playUnlockAnimation(onComplete) {
+    let animOverlay = document.getElementById('unlock-padlock-anim-overlay');
+    if (!animOverlay) {
+      animOverlay = document.createElement('div');
+      animOverlay.id = 'unlock-padlock-anim-overlay';
+      animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0a0a0a; z-index: 999999; display: flex; align-items: center; justify-content: center;';
+      animOverlay.innerHTML = `
+        <div id="padlock-anim-container" style="position: relative; width: 120px; height: 120px;">
+          <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+            <g id="lock-group" style="transform-origin: 60px 68px;">
+              <!-- Shackle -->
+              <path id="shackle" d="M 44 58 V 38 C 44 26, 76 26, 76 38 V 50" stroke="#d4a638" stroke-width="8" stroke-linecap="round" fill="none" style="transform-origin: 44px 58px; transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);" />
+              <!-- Body -->
+              <rect x="30" y="52" width="60" height="48" rx="8" fill="#141414" stroke="#d4a638" stroke-width="6" />
+              <!-- Keyhole -->
+              <circle cx="60" cy="72" r="5" fill="#d4a638" />
+              <rect x="58" y="72" width="4" height="12" rx="2" fill="#d4a638" />
+            </g>
+          </svg>
+        </div>
+      `;
+      document.body.appendChild(animOverlay);
+    }
+
+    animOverlay.style.display = 'flex';
+    const lockGroup = animOverlay.querySelector('#lock-group');
+    const shackle = animOverlay.querySelector('#shackle');
+
+    if (lockGroup) {
+      lockGroup.style.transition = 'transform 0.7s cubic-bezier(.45,0,.55,1)';
+      lockGroup.style.transform = 'rotate(360deg)';
+    }
+
+    setTimeout(() => {
+      if (shackle) {
+        shackle.style.transform = 'rotate(-55deg)';
+      }
+    }, 650);
+
+    setTimeout(() => {
+      if (animOverlay) animOverlay.style.display = 'none';
+      if (typeof onComplete === 'function') {
+        try {
+          onComplete();
+        } catch (err) {
+          console.error('Unlock navigation transition error:', err);
+        }
+      }
+    }, 1300);
+  }
+
+
+  // Top-Level Un-Nested Decoy Vault Onboarding Modal Handler
+  function showDecoyVaultOnboardingModal(onComplete) {
+    let existing = document.getElementById('decoy-onboarding-modal-root');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'decoy-onboarding-modal-root';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);';
+
+    overlay.innerHTML = `
+      <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--surface-card, #141414); border: 1px solid var(--surface-border, #262626); border-radius: 12px; padding: 32px; max-width: 520px; width: 90%; color: var(--text-primary, #ffffff); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
+        <h2 style="font-family: var(--font-heading, Georgia, serif); font-size: 22px; color: var(--brass-accent, #c9a24a); margin-bottom: 12px;">Set Up a Decoy Vault</h2>
+        <p style="font-size: 13px; color: var(--text-secondary, #888888); line-height: 1.6; margin-bottom: 20px;">
+          Add up to 5 passwords you think a hacker might guess. If you're ever forced to unlock VantaLock, hand over one of these instead — it opens a decoy vault that looks real but holds none of your actual data.
+        </p>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px;">How many decoy passwords would you like to add?</label>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <select id="decoy-count-stepper" class="input-field" style="width: 100px;">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="decoy-input-pairs-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; max-height: 200px; overflow-y: auto;">
+          <div>
+            <input type="password" class="input-field decoy-pwd-field" placeholder="Decoy password #1..." style="width: 100%; margin-bottom: 6px;" />
+            <input type="password" class="input-field decoy-confirm-field" placeholder="Confirm decoy password #1..." style="width: 100%;" />
+          </div>
+        </div>
+
+        <div id="decoy-modal-error-msg" style="display: none; color: #ef4444; font-size: 12px; margin-bottom: 16px;"></div>
+
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--text-primary);">
+            <input type="checkbox" id="use-custom-files-toggle" style="accent-color: var(--brass-accent);" />
+            <span>Use your own files instead of auto-generated data</span>
+          </label>
+          <div id="custom-file-browse-wrapper" style="display: none; margin-top: 10px;">
+            <button type="button" id="browse-custom-decoy-files-btn" class="btn-secondary" style="width: 100%;">Browse Files</button>
+            <div id="custom-files-selected-text" style="font-size: 11px; color: var(--brass-accent); margin-top: 6px;"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; gap: 12px;">
+          <button type="button" id="skip-decoy-setup-btn" class="btn-secondary" style="flex: 1;">Skip for now</button>
+          <button type="button" id="save-decoy-setup-btn" class="btn-primary" style="flex: 1;">Save Decoy Vault</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const countSelect = overlay.querySelector('#decoy-count-stepper');
+    const pairsContainer = overlay.querySelector('#decoy-input-pairs-container');
+    const toggleCustom = overlay.querySelector('#use-custom-files-toggle');
+    const browseWrapper = overlay.querySelector('#custom-file-browse-wrapper');
+    const browseBtn = overlay.querySelector('#browse-custom-decoy-files-btn');
+    const selectedText = overlay.querySelector('#custom-files-selected-text');
+    const errorMsg = overlay.querySelector('#decoy-modal-error-msg');
+    const skipBtn = overlay.querySelector('#skip-decoy-setup-btn');
+    const saveBtn = overlay.querySelector('#save-decoy-setup-btn');
+
+    let customUploadedFiles = null;
+
+    countSelect.onchange = () => {
+      const count = parseInt(countSelect.value, 10);
+      pairsContainer.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const div = document.createElement('div');
+        div.innerHTML = `
+          <input type="password" class="input-field decoy-pwd-field" placeholder="Decoy password #${i}..." style="width: 100%; margin-bottom: 6px;" />
+          <input type="password" class="input-field decoy-confirm-field" placeholder="Confirm decoy password #${i}..." style="width: 100%;" />
+        `;
+        pairsContainer.appendChild(div);
+      }
+    };
+
+    toggleCustom.onchange = () => {
+      browseWrapper.style.display = toggleCustom.checked ? 'block' : 'none';
+    };
+
+    browseBtn.onclick = () => {
+      const fileInp = document.createElement('input');
+      fileInp.type = 'file';
+      fileInp.multiple = true;
+      fileInp.onchange = () => {
+        if (fileInp.files && fileInp.files.length > 0) {
+          customUploadedFiles = Array.from(fileInp.files);
+          selectedText.textContent = `${customUploadedFiles.length} file(s) selected: ` + customUploadedFiles.map(f => f.name).join(', ');
+        }
+      };
+      fileInp.click();
+    };
+
+    skipBtn.onclick = () => {
+      overlay.remove();
+      if (typeof onComplete === 'function') onComplete();
+    };
+
+    saveBtn.onclick = () => {
+      errorMsg.style.display = 'none';
+      const pwdFields = overlay.querySelectorAll('.decoy-pwd-field');
+      const confirmFields = overlay.querySelectorAll('.decoy-confirm-field');
+      const list = [];
+
+      for (let i = 0; i < pwdFields.length; i++) {
+        const p = pwdFields[i].value.trim();
+        const c = confirmFields[i].value.trim();
+
+        if (!p || !c) {
+          errorMsg.textContent = 'Please fill out all decoy password fields or click "Skip for now".';
+          errorMsg.style.display = 'block';
+          return;
+        }
+
+        if (p !== c) {
+          errorMsg.textContent = `Decoy password #${i + 1} and confirm password do not match.`;
+          errorMsg.style.display = 'block';
+          return;
+        }
+
+        list.push({ id: 'decoy-' + Date.now() + '-' + i, password: p, createdAt: new Date().toISOString() });
+      }
+
+      saveDecoyPasswords(list);
+
+      if (toggleCustom.checked && customUploadedFiles && customUploadedFiles.length > 0) {
+        const customEntries = customUploadedFiles.map((file, idx) => ({
+          id: 'custom-decoy-' + idx,
+          vault: idx % 3 === 0 ? 'financial' : (idx % 3 === 1 ? 'legal' : 'personal'),
+          title: file.name,
+          typeName: 'Uploaded File',
+          fileName: file.name,
+          fileSize: (file.size / 1024).toFixed(1) + ' KB',
+          createdAt: new Date().toISOString()
+        }));
+        saveDecoyVaultData(customEntries);
+      } else {
+        generateDecoyContent();
+      }
+
+      overlay.remove();
+      if (typeof onComplete === 'function') onComplete();
+    };
+  }
+
+
+  // Bind Security Center Decoy & Lockout Card Controls
+  function renderDecoyListUI() {
+    const listElem = document.getElementById('decoy-passwords-list');
+    const addForm = document.getElementById('decoy-add-form');
+    const maxMsg = document.getElementById('decoy-max-msg');
+
+    if (!listElem) return;
+    const decoys = getDecoyPasswords();
+    listElem.innerHTML = '';
+
+    decoys.forEach((d, idx) => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--surface-border);';
+      item.innerHTML = `
+        <span style="font-family: var(--font-mono); color: var(--text-primary); font-size: 13px;">••••••••••••</span>
+        <button type="button" class="btn-secondary delete-decoy-btn" data-index="${idx}" style="width: auto; padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #ef4444;">Remove</button>
+      `;
+      listElem.appendChild(item);
+    });
+
+    listElem.querySelectorAll('.delete-decoy-btn').forEach(btn => {
+      btn.onclick = () => {
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        if (confirm('Are you sure you want to remove this decoy password?')) {
+          const list = getDecoyPasswords();
+          list.splice(idx, 1);
+          saveDecoyPasswords(list);
+          renderDecoyListUI();
+        }
+      };
+    });
+
+    if (decoys.length >= 5) {
+      if (addForm) addForm.style.display = 'none';
+      if (maxMsg) maxMsg.style.display = 'block';
+    } else {
+      if (addForm) addForm.style.display = 'flex';
+      if (maxMsg) maxMsg.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      renderDecoyListUI();
+
+      const addBtn = document.getElementById('add-decoy-pwd-btn');
+      const inputInp = document.getElementById('new-decoy-pwd-input');
+      if (addBtn && inputInp) {
+        addBtn.onclick = () => {
+          const val = inputInp.value.trim();
+          if (!val) return;
+          const list = getDecoyPasswords();
+          if (list.length >= 5) return;
+
+          list.push({ id: 'decoy-' + Date.now(), password: val, createdAt: new Date().toISOString() });
+          saveDecoyPasswords(list);
+          inputInp.value = '';
+          generateDecoyContent();
+          renderDecoyListUI();
+        };
+      }
+
+      const threshSel = document.getElementById('lockout-threshold-select');
+      const durSel = document.getElementById('lockout-duration-select');
+      if (threshSel) {
+        threshSel.value = localStorage.getItem('vantalock_lockout_threshold') || '5';
+        threshSel.onchange = () => {
+          localStorage.setItem('vantalock_lockout_threshold', threshSel.value);
+        };
+      }
+      if (durSel) {
+        durSel.value = localStorage.getItem('vantalock_lockout_duration') || '5';
+        durSel.onchange = () => {
+          localStorage.setItem('vantalock_lockout_duration', durSel.value);
+        };
+      }
+    }, 500);
+  });
+
+
+  // Lockout Timer State Management
+  function getLockoutSettings() {
+    return {
+      threshold: parseInt(localStorage.getItem('vantalock_lockout_threshold') || '5', 10),
+      durationMinutes: parseInt(localStorage.getItem('vantalock_lockout_duration') || '5', 10)
+    };
+  }
+
+  function getFailedAttemptCount() {
+    return parseInt(localStorage.getItem('vantalock_failed_attempts') || '0', 10);
+  }
+
+  function recordFailedAttempt() {
+    let count = getFailedAttemptCount() + 1;
+    localStorage.setItem('vantalock_failed_attempts', String(count));
+    const settings = getLockoutSettings();
+    if (count >= settings.threshold) {
+      const durationMs = settings.durationMinutes * 60 * 1000;
+      const expiresAt = Date.now() + durationMs;
+      localStorage.setItem('vantalock_lockout_expires_at', String(expiresAt));
+      localStorage.setItem('vantalock_lockout_total_ms', String(durationMs));
+      triggerLockoutModal();
+    }
+  }
+
+  function resetFailedAttempts() {
+    localStorage.setItem('vantalock_failed_attempts', '0');
+    localStorage.removeItem('vantalock_lockout_expires_at');
+    localStorage.removeItem('vantalock_lockout_total_ms');
+  }
+
+  let lockoutAnimFrame = null;
+
+  function triggerLockoutModal() {
+    const expiresAt = parseInt(localStorage.getItem('vantalock_lockout_expires_at') || '0', 10);
+    const totalMs = parseInt(localStorage.getItem('vantalock_lockout_total_ms') || '300000', 10);
+
+    if (Date.now() >= expiresAt) {
+      resetFailedAttempts();
+      const modal = document.getElementById('lockout-modal-overlay');
+      if (modal) modal.style.display = 'none';
+      return false;
+    }
+
+    let modal = document.getElementById('lockout-modal-overlay');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'lockout-modal-overlay';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #0a0a0a;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+      `;
+      modal.innerHTML = `
+        <div style="background: var(--surface-card, #141414); border: 1px solid var(--surface-border, #222222); border-radius: 12px; padding: 40px; text-align: center; max-width: 420px; width: 90%;">
+          <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <svg class="brand-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent, #c9a24a)" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div style="position: relative; width: 160px; height: 160px; margin: 0 auto 24px auto;">
+            <svg width="160" height="160" viewBox="0 0 160 160" style="transform: rotate(-90deg);">
+              <circle cx="80" cy="80" r="70" stroke="var(--surface-border, #262626)" stroke-width="8" fill="none" />
+              <circle id="lockout-timer-ring" cx="80" cy="80" r="70" stroke="var(--brass-accent, #c9a24a)" stroke-width="8" fill="none" stroke-dasharray="439.82" stroke-dashoffset="0" stroke-linecap="round" />
+            </svg>
+            <div id="lockout-digits-display" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; font-family: var(--font-mono, monospace); color: var(--brass-accent, #c9a24a);">
+              00:00
+            </div>
+          </div>
+          <h2 style="font-family: var(--font-heading, Georgia, serif); font-size: 22px; margin-bottom: 8px; color: var(--text-primary, #ffffff);">Too many attempts.</h2>
+          <p style="font-size: 14px; color: var(--text-secondary, #888888); margin: 0;">Try again in the time shown above.</p>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    modal.style.display = 'flex';
+
+    const ring = document.getElementById('lockout-timer-ring');
+    const digits = document.getElementById('lockout-digits-display');
+    const circumference = 439.82;
+
+    function updateFrame() {
+      const remainingMs = expiresAt - Date.now();
+      if (remainingMs <= 0) {
+        resetFailedAttempts();
+        if (modal) modal.style.display = 'none';
+        if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+        return;
+      }
+
+      const fraction = remainingMs / totalMs;
+      const offset = circumference * (1 - fraction);
+      if (ring) ring.style.strokeDashoffset = offset;
+
+      const totalSec = Math.ceil(remainingMs / 1000);
+      const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      if (digits) digits.textContent = `${m}:${s}`;
+
+      lockoutAnimFrame = requestAnimationFrame(updateFrame);
+    }
+
+    if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+    updateFrame();
+    return true;
+  }
+
+
+  // Single Canonical State Variable for Dual Vault
+  window.activeVaultType = 'real';
+
+  function getDecoyPasswords() {
+    try {
+      const raw = localStorage.getItem('vantalock_decoy_passwords');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveDecoyPasswords(list) {
+    if (list.length > 5) list = list.slice(0, 5);
+    localStorage.setItem('vantalock_decoy_passwords', JSON.stringify(list));
+  }
+
+  function getDecoyVaultData() {
+    try {
+      const raw = localStorage.getItem('vantalock_decoy_vault_data');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveDecoyVaultData(entries) {
+    localStorage.setItem('vantalock_decoy_vault_data', JSON.stringify(entries));
+  }
+
+  function generateDecoyContent() {
+    const existing = getDecoyVaultData();
+    if (existing && existing.length > 0) return existing;
+
+    const fakeEntries = [
+      {
+        id: 'decoy-fin-1',
+        vault: 'financial',
+        title: 'City Power & Light - Utility Account',
+        typeName: 'Login',
+        username: 'user_48921@citypower.com',
+        password: 'Password123!',
+        notes: 'Monthly billing cycle on 15th',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'decoy-fin-2',
+        vault: 'financial',
+        title: 'First National Savings Summary',
+        typeName: 'Bank Account',
+        accountNumber: '4892-1092-8821',
+        routingNumber: '021000021',
+        notes: 'Primary emergency savings balance: $12,450.00',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'decoy-fin-3',
+        vault: 'financial',
+        title: 'Apex Investment Banking Login',
+        typeName: 'Login',
+        username: 'investor_jason',
+        password: 'SecureInvestment2025!',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'decoy-leg-1',
+        vault: 'legal',
+        title: 'Residential Lease Agreement (Unit 4B)',
+        typeName: 'Legal Deed',
+        notes: 'Standard 12-month lease agreement. Rent: $1,850/mo.',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'decoy-leg-2',
+        vault: 'legal',
+        title: 'Auto Insurance Policy Reference',
+        typeName: 'Insurance',
+        policyNumber: 'POL-99201-AX',
+        notes: 'Comprehensive coverage provider contact: 1-800-555-0199',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'decoy-per-1',
+        vault: 'personal',
+        title: 'Personal Webmail Access',
+        typeName: 'Login',
+        username: 'jason.vault.test@mailnet.com',
+        password: 'MyMailPassword2025#',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'decoy-per-2',
+        vault: 'personal',
+        title: 'StreamFlix Family Subscription',
+        typeName: 'Login',
+        username: 'family_streamer',
+        password: 'StreamingService99!',
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    saveDecoyVaultData(fakeEntries);
+    return fakeEntries;
+  }
+
 let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
 let generateRecoveryKey, ClipboardManager, clipboardMgr, exportEncryptedVault, importEncryptedVault, LockManager;
 
@@ -511,26 +1021,36 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
-              const currDerivedKey = await deriveKey(pwd, salt);
-              if (verifyKey(currDerivedKey, storedVerifier)) {
-                logActivity('SECURITY: Vault unlocked via Biometrics.');
-                showScreen('dashboard');
+          const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+          const currDerivedKey = await deriveKey(pwdVal, salt);
+
+          let isMasterMatch = verifyKey(currDerivedKey, storedVerifier);
+          let isDecoyMatch = false;
+
+          // Multi-hash verification set (always check decoys to maintain constant time)
+          const decoys = getDecoyPasswords();
+          for (const d of decoys) {
+            if (d && d.password) {
+              if (pwdVal === d.password) {
+                isDecoyMatch = true;
               }
             }
           }
-        } catch (err) {
-          console.error('Biometric auto-unlock error:', err);
-        }
-      }, 150);
-    }
-  }
 
-  function showScreen(screen) {
-    setActiveView(screen);
-  }
-  window.showScreen = showScreen;
-  window.openPasswordHealthModal = openPasswordHealthModal;
+          if (isMasterMatch) {
+            window.activeVaultType = 'real';
+            resetFailedAttempts();
+          } else if (isDecoyMatch) {
+            window.activeVaultType = 'decoy';
+            resetFailedAttempts();
+            generateDecoyContent();
+          } else {
+            recordFailedAttempt();
+            if (unlockErrorText) unlockErrorText.style.display = 'block';
+            logActivity('SECURITY WARNING: Incorrect password on vault unlock.');
+            return;
+          }
+        }ealthModal;
 
   // Global password focus reset & error clearing helper
 
@@ -583,12 +1103,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initial View Determination after splash dismiss
+
+  // Immediate Defensive Splash Dismissal & App Boot Trigger
   let splashDismissed = false;
   function dismissSplash() {
     if (splashDismissed) return;
     splashDismissed = true;
 
+    const overlay = document.getElementById('splash-overlay') || splashOverlay;
+
     const navigateToNextScreen = () => {
+      const isLockoutActive = typeof triggerLockoutModal === 'function' ? triggerLockoutModal() : false;
+      if (isLockoutActive) return;
+
       const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
       if (!isFullySetup) {
         showScreen('onboarding');
@@ -597,11 +1124,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    if (splashOverlay) {
-      splashOverlay.style.opacity = '0';
-      splashOverlay.style.pointerEvents = 'none';
+    if (overlay) {
+      overlay.style.transition = 'opacity 0.3s ease, pointer-events 0.3s ease';
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
       setTimeout(() => {
-        splashOverlay.style.display = 'none';
+        overlay.style.display = 'none';
         navigateToNextScreen();
       }, 300);
     } else {
@@ -609,14 +1137,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  setTimeout(dismissSplash, 1000);
-  setTimeout(dismissSplash, 2000);
-
-  if (splashOverlay) {
-    splashOverlay.addEventListener('click', dismissSplash);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(dismissSplash, 600);
+    });
+  } else {
+    setTimeout(dismissSplash, 600);
   }
 
-  // Vault Unlock Form Handler
+  // Backup fallback timers to guarantee splash overlay is dismissed
+  setTimeout(dismissSplash, 1200);
+  setTimeout(dismissSplash, 2500);
+
+  document.addEventListener('click', (e) => {
+    const overlay = document.getElementById('splash-overlay');
+    if (overlay && !splashDismissed && overlay.contains(e.target)) {
+      dismissSplash();
+    }
+  }, { capture: true });
+
+// Vault Unlock Form Handler
   let isVerificationFromUnlock = false;
 
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
@@ -668,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (unlockErrorText) unlockErrorText.style.display = 'none';
         unlockVaultForm.reset();
-        showScreen('dashboard');
+        playUnlockAnimation(() => { showScreen('dashboard'); });
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;
@@ -808,7 +1348,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputWrap = document.createElement('div');
       inputWrap.innerHTML = `
         <label class="form-label">Enter Word #${i + 1}</label>
-        <input type="text" class="input-field rk-verify-input" data-index="${i}" placeholder="Word #${i + 1}" required />
+        <input type="text" class="input-field rk-verify-input" data-index="${i}" placeholder="Word #${i + 1}" />
       `;
       rkVerifyInputs.appendChild(inputWrap);
     });
@@ -849,7 +1389,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('vantalock_setup_complete', 'true');
       if (activeRecoveryKeyWords.length) localStorage.setItem('vantalock_seed_phrase', activeRecoveryKeyWords.join(' '));
       logActivity('SECURITY: 24-word recovery phrase backup verified.');
-      showScreen('dashboard');
+      showDecoyVaultOnboardingModal(() => { showScreen('dashboard'); });
     });
   }
 
@@ -1386,11 +1926,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Security Settings</h3>
 
-          <form id="change-mp-form" style="margin-bottom: 24px;">
+          <form id="change-mp-form" novalidate style="margin-bottom: 24px;">
             <div class="form-group">
               <label class="form-label">Current Master Password</label>
               <div style="position: relative;">
-                <input type="password" id="current-mp-input" class="input-field" placeholder="Enter current password..." required />
+                <input type="password" id="current-mp-input" class="input-field" placeholder="Enter current password..." />
                 <button type="button" class="pwd-toggle-btn" data-target="current-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
@@ -1398,7 +1938,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-group">
               <label class="form-label">New Master Password</label>
               <div style="position: relative;">
-                <input type="password" id="sec-new-mp-input" class="input-field" placeholder="Enter new password..." required />
+                <input type="password" id="sec-new-mp-input" class="input-field" placeholder="Enter new password..." />
                 <button type="button" class="pwd-toggle-btn" data-target="sec-new-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
               <div class="strength-meter">
@@ -1410,7 +1950,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="form-group">
               <label class="form-label">Confirm New Master Password</label>
               <div style="position: relative;">
-                <input type="password" id="sec-confirm-mp-input" class="input-field" placeholder="Confirm new password..." required />
+                <input type="password" id="sec-confirm-mp-input" class="input-field" placeholder="Confirm new password..." />
                 <button type="button" class="pwd-toggle-btn" data-target="sec-confirm-mp-input" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
             </div>
@@ -1436,7 +1976,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
           <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 20px 0;" />
 
-          <!-- Password Health Check Card -->
+
+          <!-- Decoy Vault Card -->
+          <div style="background: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 8px; padding: 20px; margin-top: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4m0 4h.01"/></svg>
+              <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--brass-accent); margin: 0; text-transform: uppercase; letter-spacing: 1px;">Decoy Vault</h3>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Add passwords someone might guess if they were trying to impersonate you. Entering any of them opens a separate vault with harmless-looking data instead of your real one.</p>
+
+            <div id="decoy-passwords-list" style="margin-bottom: 14px;"></div>
+
+            <div id="decoy-add-form" style="display: flex; gap: 10px; margin-bottom: 10px;">
+              <input type="password" id="new-decoy-pwd-input" class="input-field" placeholder="Enter decoy password..." style="flex: 1;" />
+              <button type="button" id="add-decoy-pwd-btn" class="btn-primary" style="width: auto; padding: 0 16px;">Add Decoy Password</button>
+            </div>
+            <div id="decoy-max-msg" style="display: none; font-size: 12px; color: var(--brass-accent); margin-top: 6px;">Maximum of 5 decoy passwords reached.</div>
+          </div>
+
+          <!-- Lockout Timer Card -->
+          <div style="background: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 8px; padding: 20px; margin-top: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--brass-accent); margin: 0; text-transform: uppercase; letter-spacing: 1px;">Lockout Timer</h3>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Temporarily lock password entry after too many failed attempts.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px;">Failed attempts threshold</label>
+                <select id="lockout-threshold-select" class="input-field" style="width: 100%;">
+                  <option value="5">5 Failed Attempts (Default)</option>
+                  <option value="10">10 Failed Attempts</option>
+                  <option value="15">15 Failed Attempts</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 4px;">Lockout duration</label>
+                <select id="lockout-duration-select" class="input-field" style="width: 100%;">
+                  <option value="5">5 Minutes (Default)</option>
+                  <option value="10">10 Minutes</option>
+                  <option value="15">15 Minutes</option>
+                  <option value="30">30 Minutes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+<!-- Password Health Check Card -->
           <div style="background: var(--surface-card); border: 1px solid var(--surface-border); border-radius: 8px; padding: 20px; margin-top: 20px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -1650,11 +2237,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="setup-desc">Re-displaying your recovery phrase requires master password confirmation.</p>
 
           <div id="seed-gate-view">
-            <form id="seed-gate-form">
+            <form id="seed-gate-form" novalidate>
               <div class="form-group">
                 <label class="form-label">Enter Master Password</label>
                 <div style="position: relative;">
-                  <input type="password" id="seed-mp-confirm" class="input-field" placeholder="Enter password to reveal..." required />
+                  <input type="password" id="seed-mp-confirm" class="input-field" placeholder="Enter password to reveal..." />
                   <button type="button" class="pwd-toggle-btn" data-target="seed-mp-confirm" style="position: absolute; right: 34px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                   <button type="button" id="seed-reset-btn" title="Reset Field" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                 </div>
@@ -1725,7 +2312,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const seedErr = document.getElementById('seed-error-msg');
             if (seedErr) seedErr.style.display = 'none';
-            gateView.classList.add('hidden');
+            gateView.classList.add('hidden'); gateView.style.display = 'none'; gateForm.style.display = 'none';
           contentView.classList.remove('hidden');
           logActivity('SECURITY: Recovery seed revealed following valid password verification.');
 
@@ -2255,6 +2842,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getActiveVaultEntries() {
+    if (window.activeVaultType === 'decoy') {
+      let decoyData = getDecoyVaultData();
+      if (!decoyData || decoyData.length === 0) {
+        decoyData = generateDecoyContent();
+      }
+      return decoyData;
+    }
     if (typeof window !== 'undefined' && window.vaultEntries && Array.isArray(window.vaultEntries)) return window.vaultEntries;
     if (typeof vaultEntries !== 'undefined' && Array.isArray(vaultEntries)) return vaultEntries;
     return typeof loadSavedVaultEntries === 'function' ? (loadSavedVaultEntries() || []) : [];
@@ -2576,3 +3170,12 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('[Password Health Check] renderHealthCheckResults error:', e);
     }
   }
+    // Decoy Vault Sidebar Restrictions
+    const toolsSection = document.getElementById('sidebar-tools-section');
+    if (toolsSection) {
+      if (window.activeVaultType === 'decoy') {
+        toolsSection.style.display = 'none';
+      } else {
+        toolsSection.style.display = 'block';
+      }
+    }

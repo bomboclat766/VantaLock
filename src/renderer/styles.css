@@ -1,3 +1,11 @@
+
+#titlebar-bar {
+  display: none !important;
+}
+
+#titlebar-bar.unlocked {
+  display: flex !important;
+}
 /* CSS Variables & Themes */
 :root {
   --bg-primary: #000000;

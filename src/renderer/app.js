@@ -3227,12 +3227,3 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('[Password Health Check] renderHealthCheckResults error:', e);
     }
   }
-    // Decoy Vault Sidebar Restrictions
-    const toolsSection = document.getElementById('sidebar-tools-section');
-    if (toolsSection) {
-      if (window.activeVaultType === 'decoy') {
-        toolsSection.style.display = 'none';
-      } else {
-        toolsSection.style.display = 'block';
-      }
-    }

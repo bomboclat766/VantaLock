@@ -8,15 +8,13 @@ const crypto = require('crypto');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const TARGET_ADMIN_PASSWORD = '(5TZAx-cU1d6hD2l=Ke6)fZ+ml^!K6&R';
-
 function verifyAdminPassword(inputPassword) {
   if (typeof inputPassword !== 'string' || !inputPassword || inputPassword.trim() === '') {
     return false;
   }
   const cleanInput = inputPassword.trim();
   const envPass = process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.trim();
-  return cleanInput === TARGET_ADMIN_PASSWORD || (envPass && cleanInput === envPass);
+  return !!envPass && cleanInput === envPass;
 }
 
 app.use(express.json());

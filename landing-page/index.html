@@ -817,12 +817,12 @@
     .reveal {
       opacity: 1;
       transform: translateY(0);
-      transition: opacity .9s var(--ease-cinematic), transform .9s var(--ease-cinematic);
+      transition: opacity .58s var(--ease-cinematic), transform .58s var(--ease-cinematic);
     }
 
     .reveal:not(.is-visible) {
-      opacity: .82;
-      transform: translateY(12px);
+      opacity: .72;
+      transform: translateY(20px);
     }
 
     .reveal .char {
@@ -834,6 +834,17 @@
     .reveal.is-visible .char {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    .motion-child {
+      opacity: .72;
+      transform: translateY(18px) scale(.985);
+      transition: opacity .62s var(--ease-cinematic), transform .62s var(--ease-cinematic);
+    }
+
+    .motion-child.is-motion-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
 
     @media (max-width: 700px) {
@@ -1343,6 +1354,29 @@
         element.style.transitionDelay = `${Math.min((index % 4) * 0.08, 0.24)}s`;
       });
 
+      sections.forEach((section) => {
+        const motionElements = section.querySelectorAll([
+          '.section-subtitle',
+          '.vault-card',
+          '.content-box',
+          '.step-card',
+          '.faq-item',
+          '.vault-card > *',
+          '.content-box > h3',
+          '.content-box > p',
+          '.content-box > .tech-list',
+          '.tech-list > li',
+          '.vault-data-list > li',
+          '.step-card > *',
+          '.faq-item > *',
+          '.specs-table tr'
+        ].join(', '));
+        motionElements.forEach((element, index) => {
+          element.classList.add('motion-child');
+          element.style.transitionDelay = `${Math.min(index * 0.045, 0.36)}s`;
+        });
+      });
+
       function revealSection(section) {
         if (section.dataset.revealed === 'true') return;
         section.dataset.revealed = 'true';
@@ -1351,6 +1385,9 @@
             element.style.transitionDelay = `${Math.min(index * 0.08, 0.42)}s`;
             requestAnimationFrame(() => element.classList.add('is-visible'));
           });
+        section.querySelectorAll('.motion-child').forEach((element) => {
+          requestAnimationFrame(() => element.classList.add('is-motion-visible'));
+        });
       }
 
       const sectionObserver = new IntersectionObserver((entries) => {
@@ -1374,9 +1411,18 @@
       revealSectionsOnScroll();
 
       if (hero) {
-        hero.querySelector('h1')?.classList.add('reveal', 'is-visible');
-        hero.querySelector('p')?.classList.add('reveal', 'is-visible');
-        hero.querySelector('.download-group')?.classList.add('reveal', 'is-visible');
+        const heroMotion = [
+          hero.querySelector('h1'),
+          hero.querySelector('p'),
+          hero.querySelector('.download-group')
+        ].filter(Boolean);
+        heroMotion.forEach((element, index) => {
+          element.classList.add('reveal', 'motion-child');
+          element.style.transitionDelay = `${index * 0.12}s`;
+          requestAnimationFrame(() => {
+            element.classList.add('is-visible', 'is-motion-visible');
+          });
+        });
       }
 
       document.querySelectorAll('.vault-card, .content-box, .step-card, .faq-item').forEach((panel) => {

@@ -590,7 +590,10 @@
       margin: 0;
       opacity: .72;
       transform: translate(0, -52%);
-      filter: drop-shadow(0 0 70px rgba(201,162,74,.10));
+      background: transparent;
+      filter: none;
+      mix-blend-mode: normal;
+      overflow: visible;
       pointer-events: none;
     }
 
@@ -628,7 +631,6 @@
     .ore-polygon {
       stroke-width: 1.2;
       fill: rgba(8,8,8,.72);
-      filter: drop-shadow(0 0 28px rgba(201,162,74,.45));
     }
 
     .hero h1,
@@ -706,15 +708,6 @@
       min-height: min(860px, 100svh);
       margin: 0 auto;
       padding: 110px 0;
-    }
-
-    @media (min-width: 701px) {
-      .section-container {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        background: linear-gradient(180deg, rgba(5,5,5,.98) 0%, rgba(5,5,5,.93) 88%, rgba(5,5,5,0) 100%);
-      }
     }
 
     .section-container::before {

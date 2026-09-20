@@ -582,13 +582,14 @@
     .black-ore-container {
       position: absolute;
       top: 50%;
-      left: 50%;
+      right: -2%;
+      left: auto;
       z-index: -1;
       width: min(48vw, 570px);
       height: min(48vw, 570px);
       margin: 0;
       opacity: .72;
-      transform: translate(-50%, -52%);
+      transform: translate(0, -52%);
       filter: drop-shadow(0 0 70px rgba(201,162,74,.10));
       pointer-events: none;
     }
@@ -830,7 +831,14 @@
       .hero { min-height: 780px; padding: 90px 0 88px; }
       .hero::before { top: 26px; font-size: 8px; }
       .hero::after { bottom: 28px; }
-      .black-ore-container { width: 100vw; height: 100vw; opacity: .58; }
+      .black-ore-container {
+        right: auto;
+        left: 50%;
+        width: 100vw;
+        height: 100vw;
+        opacity: .58;
+        transform: translate(-50%, -52%);
+      }
       .hero h1 { font-size: clamp(48px, 15vw, 82px); }
       .download-group { display: grid; grid-template-columns: 1fr; }
       .cta-btn-secondary { width: 100%; }
@@ -1364,7 +1372,8 @@
           const heading = hero.querySelector('h1');
           const copy = hero.querySelector('p');
           if (ore) {
-            ore.style.transform = `translate(-50%, calc(-52% + ${heroProgress * 12}px)) scale(${1 - heroProgress * .28}) rotate(${heroProgress * 18}deg)`;
+            const horizontalOffset = window.innerWidth <= 700 ? '-50%' : '0';
+            ore.style.transform = `translate(${horizontalOffset}, calc(-52% + ${heroProgress * 12}px)) scale(${1 - heroProgress * .28}) rotate(${heroProgress * 18}deg)`;
             ore.style.opacity = `${Math.max(.08, .72 - heroProgress * .78)}`;
           }
           if (heading) heading.style.transform = `translate3d(0, ${heroProgress * -58}px, 0)`;

@@ -1343,17 +1343,35 @@
         element.style.transitionDelay = `${Math.min((index % 4) * 0.08, 0.24)}s`;
       });
 
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add('is-visible');
-        });
-      }, { threshold: 0.01, rootMargin: '0px 0px 12% 0px' });
+      function revealSection(section) {
+        if (section.dataset.revealed === 'true') return;
+        section.dataset.revealed = 'true';
+        section.querySelectorAll('.section-title, .section-subtitle, .vault-card, .content-box, .step-card, .faq-item')
+          .forEach((element, index) => {
+            element.style.transitionDelay = `${Math.min(index * 0.08, 0.42)}s`;
+            requestAnimationFrame(() => element.classList.add('is-visible'));
+          });
+      }
 
-      revealTargets.forEach((element) => observer.observe(element));
-      document.querySelectorAll('.section-title').forEach((element) => observer.observe(element));
-      window.setTimeout(() => {
-        document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
-      }, 2600);
+      const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) revealSection(entry.target);
+        });
+      }, { threshold: 0.01, rootMargin: '0px 0px -4% 0px' });
+
+      sections.forEach((section) => sectionObserver.observe(section));
+
+      function revealSectionsOnScroll() {
+        sections.forEach((section) => {
+          const bounds = section.getBoundingClientRect();
+          if (bounds.top < window.innerHeight * 0.92 && bounds.bottom > 0) {
+            revealSection(section);
+          }
+        });
+      }
+
+      window.addEventListener('scroll', revealSectionsOnScroll, { passive: true });
+      revealSectionsOnScroll();
 
       if (hero) {
         hero.querySelector('h1')?.classList.add('reveal', 'is-visible');

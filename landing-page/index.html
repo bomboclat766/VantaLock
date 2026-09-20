@@ -585,8 +585,8 @@
       right: -2%;
       left: auto;
       z-index: -1;
-      width: min(48vw, 570px);
-      height: min(48vw, 570px);
+      width: min(38vw, 460px);
+      height: min(38vw, 460px);
       margin: 0;
       opacity: .72;
       transform: translate(0, -52%);
@@ -705,7 +705,7 @@
       justify-content: center;
       width: min(1180px, 100%);
       max-width: 1180px;
-      min-height: min(860px, 100svh);
+      min-height: auto;
       margin: 0 auto;
       padding: 110px 0;
     }
@@ -1305,6 +1305,7 @@
       }
 
       document.querySelectorAll('.hero h1, .section-title').forEach(splitIntoLetters);
+      document.querySelectorAll('.section-title').forEach((element) => element.classList.add('reveal'));
       revealTargets.forEach((element, index) => {
         element.classList.add('reveal');
         element.style.transitionDelay = `${Math.min((index % 4) * 0.08, 0.24)}s`;
@@ -1318,6 +1319,9 @@
 
       revealTargets.forEach((element) => observer.observe(element));
       document.querySelectorAll('.section-title').forEach((element) => observer.observe(element));
+      window.setTimeout(() => {
+        document.querySelectorAll('.reveal').forEach((element) => element.classList.add('is-visible'));
+      }, 2600);
 
       if (hero) {
         hero.querySelector('h1')?.classList.add('reveal', 'is-visible');

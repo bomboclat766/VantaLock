@@ -1172,12 +1172,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navigateToNextScreen();
     if (overlay) {
-      overlay.style.transition = 'opacity 0.3s ease, pointer-events 0.3s ease';
+      overlay.style.display = 'none';
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-      }, 300);
     }
   }
 
@@ -1185,6 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', dismissSplash);
   }
+  window.addEventListener('load', dismissSplash);
 
   // Backup fallback timers to guarantee splash overlay is dismissed
   setTimeout(dismissSplash, 1200);

@@ -56,6 +56,15 @@
 function showScreen(screenName) {
   const setupContainer = document.getElementById('setup-view-container');
   const dashboardContainer = document.getElementById('dashboard-view-container');
+  const titlebarBar = document.getElementById('titlebar-bar');
+
+  if (titlebarBar) {
+    if (screenName === 'dashboard') {
+      titlebarBar.classList.add('unlocked');
+    } else {
+      titlebarBar.classList.remove('unlocked');
+    }
+  }
 
   const screenMap = {
     'onboarding': 'onboarding-container',
@@ -275,7 +284,7 @@ function showScreen(screenName) {
 
     if (counterElem) {
       if (decoys.length >= 5) {
-        counterElem.textContent = "5/5 decoy vault passwords added. That's enough decoy passwords, no one would hack you now.";
+        counterElem.textContent = "That's enough decoy passwords, no one would hack you now.";
       } else {
         counterElem.textContent = `${decoys.length}/5 decoy vault passwords added.`;
       }
@@ -374,7 +383,8 @@ function showScreen(screenName) {
       return false;
     }
 
-    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    const uvElem = document.getElementById('unlock-vault-view') || unlockVaultView;
+    if (uvElem) uvElem.classList.add('hidden');
 
     let modal = document.getElementById('lockout-modal-overlay');
     if (!modal) {
@@ -706,7 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeChipsGrid = document.getElementById('type-chips-grid');
   const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
   const entryDynamicForm = document.getElementById('entry-dynamic-form');
-  const entryListContainer = document.getElementById('entry-list-container');
+  const elContainer = document.getElementById('entry-list-container');
 
   let activeRecoveryKeyWords = [];
   let verificationIndices = [];
@@ -994,7 +1004,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (onboardingContainer) onboardingContainer.classList.add('hidden');
     if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
     if (biometricOptinModal) biometricOptinModal.classList.add('hidden');
-    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    const uvElem = document.getElementById('unlock-vault-view') || unlockVaultView;
+    if (uvElem) uvElem.classList.add('hidden');
     if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
     if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
 
@@ -1119,23 +1130,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Global password toggle button binding helper
+  // Global password toggle delegation & helper
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pwd-toggle-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const targetId = btn.getAttribute('data-target');
+    const targetInput = targetId ? document.getElementById(targetId) : btn.parentElement ? btn.parentElement.querySelector('input') : null;
+    if (targetInput) {
+      const isPwd = targetInput.type === 'password';
+      targetInput.type = isPwd ? 'text' : 'password';
+      btn.innerHTML = isPwd ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    }
+  });
+
   function setupPasswordToggles() {
-    document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-      btn.replaceWith(btn.cloneNode(true));
-    });
-    document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const targetId = btn.getAttribute('data-target');
-        const targetInput = document.getElementById(targetId);
-        if (targetInput) {
-          const isPwd = targetInput.type === 'password';
-          targetInput.type = isPwd ? 'text' : 'password';
-          btn.innerHTML = isPwd ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-        }
-      });
-    });
+    // Retained for compatibility; delegated handler above manages clicks dynamically.
   }
 
   // Initial View Determination after splash dismiss
@@ -1160,26 +1170,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
+    navigateToNextScreen();
     if (overlay) {
-      overlay.style.transition = 'opacity 0.3s ease, pointer-events 0.3s ease';
+      overlay.style.display = 'none';
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        navigateToNextScreen();
-      }, 300);
-    } else {
-      navigateToNextScreen();
     }
   }
 
+  dismissSplash();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(dismissSplash, 600);
-    });
-  } else {
-    setTimeout(dismissSplash, 600);
+    document.addEventListener('DOMContentLoaded', dismissSplash);
   }
+  window.addEventListener('load', dismissSplash);
 
   // Backup fallback timers to guarantee splash overlay is dismissed
   setTimeout(dismissSplash, 1200);
@@ -1750,10 +1753,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderVaultEntries() {
+    const elContainer = document.getElementById("entry-list-container") || elContainer;
     const allEntries = getActiveVaultEntries();
     const currentVaultEntries = allEntries.filter(e => e.vault === activeVault);
     if (currentVaultEntries.length === 0) {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="empty-vault-card">
           <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -1766,7 +1770,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    entryListContainer.innerHTML = '';
+    elContainer.innerHTML = '';
     currentVaultEntries.forEach(entry => {
       const card = document.createElement('div');
       card.className = 'entry-card';
@@ -1859,7 +1863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${entry.notes ? `<div style="font-size: 13px; color: var(--text-secondary); background: #121212; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--surface-border);"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
       `;
 
-      entryListContainer.appendChild(card);
+      elContainer.appendChild(card);
     });
 
     // Eye toggle handlers
@@ -1975,7 +1979,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Render Tool View Component
   function renderToolView(toolKey) {
     if (toolKey === 'security') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Security Settings</h3>
 
@@ -2288,7 +2292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'seed') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">24-Word Recovery Phrase</h3>
           <p class="setup-desc">Re-displaying your recovery phrase requires master password confirmation.</p>
@@ -2439,7 +2443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'export') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Backup & Export Vault</h3>
           <p class="setup-desc">Export an encrypted local JSON copy of all vault entries.</p>
@@ -2473,7 +2477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'import') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Import Vault</h3>
           <p class="setup-desc">Restore or import vault entries from an encrypted JSON file.</p>
@@ -2520,7 +2524,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'activity') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 640px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Activity Log</h3>
 
@@ -2560,7 +2564,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'about') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto; text-align: center;">
           <h3 class="setup-title" style="font-size: 20px;">VantaLock Desktop</h3>
           <p class="setup-desc">Sovereign Encrypted Storage • Pure Black Edition</p>

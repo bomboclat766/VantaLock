@@ -1181,12 +1181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  dismissSplash();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(dismissSplash, 600);
-    });
-  } else {
-    setTimeout(dismissSplash, 600);
+    document.addEventListener('DOMContentLoaded', dismissSplash);
   }
 
   // Backup fallback timers to guarantee splash overlay is dismissed

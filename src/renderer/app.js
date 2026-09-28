@@ -2622,21 +2622,33 @@ document.addEventListener('DOMContentLoaded', () => {
   if (enableBiometricsBtn) {
     enableBiometricsBtn.addEventListener('click', async () => {
       try {
-        if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
-          const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
-          if (authenticated && pendingMasterPassword) {
-            const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
-            localStorage.setItem('vantalock_secure_token', token);
-            localStorage.setItem('vantalock_biometrics_enabled', 'true');
-            logActivity('SECURITY: Biometric unlock enabled during onboarding.');
+        const supported = await checkBiometricsSupport();
+        if (supported) {
+          if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+            const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+            if (authenticated && pendingMasterPassword) {
+              const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
+              localStorage.setItem('vantalock_secure_token', token);
+              localStorage.setItem('vantalock_biometrics_enabled', 'true');
+              logActivity('SECURITY: Biometric unlock enabled during onboarding.');
+            } else {
+              localStorage.setItem('vantalock_biometrics_enabled', 'false');
+            }
           } else {
-            localStorage.setItem('vantalock_biometrics_enabled', 'false');
+            localStorage.setItem('vantalock_biometrics_enabled', 'true');
           }
+          pendingMasterPassword = '';
+          setupRecoveryKeyScreen();
+        } else {
+          showBiometricAlertModal(
+            'Biometric Support Not Available',
+            "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows)."
+          );
+          localStorage.setItem('vantalock_biometrics_enabled', 'false');
         }
       } catch (e) {
         console.error('Biometric enablement failed:', e);
         localStorage.setItem('vantalock_biometrics_enabled', 'false');
-      } finally {
         pendingMasterPassword = '';
         setupRecoveryKeyScreen();
       }
@@ -2774,8 +2786,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.classList.remove('hidden');
 
     const hide = () => modal.classList.add('hidden');
-    if (closeBtn) closeBtn.onclick = hide;
-    if (okBtn) okBtn.onclick = hide;
+    if (closeBtn) closeBtn.onclick = () => { hide(); pendingMasterPassword = ''; setupRecoveryKeyScreen(); };
+    if (okBtn) okBtn.onclick = () => { hide(); pendingMasterPassword = ''; setupRecoveryKeyScreen(); };
   }
 
   function evaluatePasswordEntropy(pwd) {

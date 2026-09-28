@@ -112,3 +112,20 @@ describe('Application Startup & Verification Suite (15 Tests)', () => {
     expect(splashDismissed).toBe(true);
   });
 });
+
+describe('Electron Context Isolation & Bridge Assertions', () => {
+  test('Test 16: Main window configuration requires contextIsolation: true and nodeIntegration: false', () => {
+    const fs = require('fs');
+    const mainCode = fs.readFileSync('src/main/main.js', 'utf8');
+    expect(mainCode).toContain('contextIsolation: true');
+    expect(mainCode).toContain('nodeIntegration: false');
+    expect(mainCode).toContain('sandbox: true');
+  });
+
+  test('Test 17: Preload script exposes electronAPI via contextBridge', () => {
+    const fs = require('fs');
+    const preloadCode = fs.readFileSync('src/main/preload.js', 'utf8');
+    expect(preloadCode).toContain("contextBridge.exposeInMainWorld('electronAPI'");
+    expect(preloadCode).toContain('getAppVersion');
+  });
+});

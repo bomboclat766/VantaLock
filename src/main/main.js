@@ -19,7 +19,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false
+      sandbox: true
     }
   });
 
@@ -112,4 +112,8 @@ ipcMain.handle('retrieve-secure-token', async (event, encryptedBase64) => {
   } catch (err) {
     throw err;
   }
+});
+
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
 });

@@ -1082,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const salt = storedSaltHex;
               const currDerivedKey = await deriveKey(pwd, salt);
               if (verifyKey(currDerivedKey, storedVerifier)) {
                 logActivity('SECURITY: Vault unlocked via Biometrics.');
@@ -1248,7 +1248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (storedSaltHex && storedVerifier) {
-          const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+          const salt = storedSaltHex;
           const currDerivedKey = await deriveKey(pwdVal, salt);
 
           if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -2156,7 +2156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const salt = storedSaltHex;
               const currDerivedKey = await deriveKey(currPwd, salt);
 
               if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -2360,7 +2360,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const salt = storedSaltHex;
               const currDerivedKey = await deriveKey(pwdVal, salt);
 
               if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -2457,7 +2457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (exportBtn) {
         exportBtn.addEventListener('click', () => {
           try {
-            const mockKey = Buffer.alloc(32, 'a');
+            const mockKey = new Uint8Array(32);
             const exportedStr = exportEncryptedVault(vaultEntries, mockKey);
             const blob = new Blob([exportedStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -2508,7 +2508,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const reader = new FileReader();
           reader.onload = (e) => {
             try {
-              const mockKey = Buffer.alloc(32, 'a');
+              const mockKey = new Uint8Array(32);
               const importedEntries = importEncryptedVault(e.target.result, mockKey);
               vaultEntries = vaultEntries.concat(importedEntries);
               saveVaultEntriesToStorage();

@@ -379,11 +379,11 @@ function showScreen(screenName) {
       resetFailedAttempts();
       const modal = document.getElementById('lockout-modal-overlay');
       if (modal) modal.style.display = 'none';
-      if (unlockVaultView) unlockVaultView.classList.remove('hidden');
+      const uvElemClear = document.getElementById('unlock-vault-view'); if (uvElemClear) uvElemClear.classList.remove('hidden');
       return false;
     }
 
-    const uvElem = document.getElementById('unlock-vault-view') || unlockVaultView;
+    const uvElem = document.getElementById('unlock-vault-view');
     if (uvElem) uvElem.classList.add('hidden');
 
     let modal = document.getElementById('lockout-modal-overlay');
@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (onboardingContainer) onboardingContainer.classList.add('hidden');
     if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
     if (biometricOptinModal) biometricOptinModal.classList.add('hidden');
-    const uvElem = document.getElementById('unlock-vault-view') || unlockVaultView;
+    const uvElem = document.getElementById('unlock-vault-view');
     if (uvElem) uvElem.classList.add('hidden');
     if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
     if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
@@ -1043,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (targetView === 'biometric-optin') {
         if (biometricOptinModal) biometricOptinModal.classList.remove('hidden');
       } else if (targetView === 'unlock-vault') {
-        if (unlockVaultView) unlockVaultView.classList.remove('hidden');
+        const uvElemClear = document.getElementById('unlock-vault-view'); if (uvElemClear) uvElemClear.classList.remove('hidden');
         if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
         triggerAutoBiometricsUnlock();
       } else if (targetView === 'recovery-key-reveal') {
@@ -2582,7 +2582,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      const pkg = require('../../package.json');
+      const pkg = { version: '1.1.49' };
       const currentVerTag = `v${pkg.version || '1.0.0'}`;
       const localVerSpan = document.getElementById('about-local-ver');
       const latestVerSpan = document.getElementById('about-latest-ver');

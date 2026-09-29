@@ -78,6 +78,19 @@ function showScreen(screenName) {
   if (screenName === 'dashboard') {
     if (setupContainer) setupContainer.classList.add('hidden');
     if (dashboardContainer) dashboardContainer.classList.remove('hidden');
+
+    const isDecoy = window.activeVaultType === 'decoy';
+    document.querySelectorAll('.tool-tab-btn').forEach(btn => {
+      btn.style.display = isDecoy ? 'none' : 'flex';
+    });
+    document.querySelectorAll('.nav-section-title').forEach(title => {
+      if (title.textContent.trim().toLowerCase() === 'tools') {
+        title.style.display = isDecoy ? 'none' : 'block';
+      }
+    });
+    document.querySelectorAll('.nav-divider').forEach(div => {
+      div.style.display = isDecoy ? 'none' : 'block';
+    });
     return;
   }
 
@@ -93,6 +106,12 @@ function showScreen(screenName) {
   if (targetId) {
     const target = document.getElementById(targetId);
     if (target) target.classList.remove('hidden');
+  }
+
+  if (screenName === 'recovery-key-reveal') {
+    if (typeof window.setupRecoveryKeyScreen === 'function') {
+      setupRecoveryKeyScreen();
+    }
   }
 }
 
@@ -406,10 +425,8 @@ function showScreen(screenName) {
       `;
       modal.innerHTML = `
         <div style="background: var(--surface-card, #141414); border: 1px solid var(--surface-border, #222222); border-radius: 12px; padding: 40px; text-align: center; max-width: 420px; width: 90%;">
-          <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-            <svg class="brand-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent, #c9a24a)" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div class="futuristic-title" style="font-size: 28px; letter-spacing: 5px; color: var(--brass-accent, #c9a24a); margin: 0;">VantaLock</div>
           </div>
           <div style="position: relative; width: 160px; height: 160px; margin: 0 auto 24px auto;">
             <svg width="160" height="160" viewBox="0 0 160 160" style="transform: rotate(-90deg);">
@@ -494,75 +511,112 @@ function showScreen(screenName) {
     const existing = getDecoyVaultData();
     if (existing && existing.length > 0) return existing;
 
-    const fakeEntries = [
-      {
-        id: 'decoy-fin-1',
-        vault: 'financial',
-        title: 'City Power & Light - Utility Account',
-        typeName: 'Login',
-        username: 'user_48921@citypower.com',
-        password: 'Password123!',
-        notes: 'Monthly billing cycle on 15th',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-fin-2',
-        vault: 'financial',
-        title: 'First National Savings Summary',
-        typeName: 'Bank Account',
-        accountNumber: '4892-1092-8821',
-        routingNumber: '021000021',
-        notes: 'Primary emergency savings balance: $12,450.00',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-fin-3',
-        vault: 'financial',
-        title: 'Apex Investment Banking Login',
-        typeName: 'Login',
-        username: 'investor_jason',
-        password: 'SecureInvestment2025!',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-leg-1',
-        vault: 'legal',
-        title: 'Residential Lease Agreement (Unit 4B)',
-        typeName: 'Legal Deed',
-        notes: 'Standard 12-month lease agreement. Rent: $1,850/mo.',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-leg-2',
-        vault: 'legal',
-        title: 'Auto Insurance Policy Reference',
-        typeName: 'Insurance',
-        policyNumber: 'POL-99201-AX',
-        notes: 'Comprehensive coverage provider contact: 1-800-555-0199',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-per-1',
-        vault: 'personal',
-        title: 'Personal Webmail Access',
-        typeName: 'Login',
-        username: 'jason.vault.test@mailnet.com',
-        password: 'MyMailPassword2025#',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-per-2',
-        vault: 'personal',
-        title: 'StreamFlix Family Subscription',
-        typeName: 'Login',
-        username: 'family_streamer',
-        password: 'StreamingService99!',
-        createdAt: new Date().toISOString()
-      }
+    const firstNames = ["James", "Sarah", "Michael", "Emily", "David", "Jessica", "Robert", "Amanda", "William", "Ashley"];
+    const lastNames = ["Miller", "Davis", "Wilson", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin"];
+    const domains = ["mailnet-service.org", "fastmail-vault.net", "secureconnect-portal.com", "apex-cloudhub.org", "metro-utilities-bill.net"];
+
+    const financialTitles = [
+      "Apex Mutual Savings Account", "Metro Municipal Utility Portal", "Highland Credit Union Visa",
+      "Pinnacle Retirement 401k", "Starlight Electric & Gas", "Summit Investment Portfolio",
+      "Vanguard Index Growth Fund", "Cascade Auto Finance Loan", "Harbor Federal Checking", "Northwest Property Tax Portal"
     ];
 
-    saveDecoyVaultData(fakeEntries);
-    return fakeEntries;
+    const legalTitles = [
+      "Residential Lease Agreement 2024", "Auto Insurance Policy Schedule", "Homeowners Property Policy",
+      "Power of Attorney Designation", "Estate Planning Memorandum", "Vehicle Title Certificate (SUV)",
+      "Employment Non-Disclosure Agreement", "Health Insurance Member ID Card", "Passport Renewal Record 2023", "Commercial Sublease Copy"
+    ];
+
+    const personalTitles = [
+      "Personal Webmail Account", "Family Cloud Storage Vault", "Home Wi-Fi Network Passcode",
+      "Gym Membership Portal", "Subscription Streaming Access", "Smart Home Hub Gateway",
+      "Travel Rewards Loyalty Card", "Medical Portal Access Credentials", "Personal Blog Admin Access", "Online Library Card Record"
+    ];
+
+    function getRandomPastDate(monthsAgoMin, monthsAgoMax) {
+      const now = Date.now();
+      const minMs = monthsAgoMin * 30 * 24 * 60 * 60 * 1000;
+      const maxMs = monthsAgoMax * 30 * 24 * 60 * 60 * 1000;
+      const pastTime = now - (minMs + Math.floor(Math.random() * (maxMs - minMs)));
+      return new Date(pastTime).toISOString();
+    }
+
+    function createEntriesForCompartment(vaultName, titleList, targetCount) {
+      const entries = [];
+      const shuffled = [...titleList].sort(() => 0.5 - Math.random());
+
+      for (let i = 0; i < targetCount; i++) {
+        const title = shuffled[i];
+        const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const dom = domains[Math.floor(Math.random() * domains.length)];
+        const date = getRandomPastDate(1, 18);
+        const entryId = 'decoy-' + vaultName.slice(0,3) + '-' + (i + 1) + '-' + Math.floor(Math.random() * 10000);
+
+        if (i % 3 === 0 && vaultName !== 'personal') {
+          // Card / Account Style Entry
+          entries.push({
+            id: entryId,
+            vault: vaultName,
+            title: title,
+            type: 'card',
+            typeName: 'Payment Card',
+            fields: {
+              cardholder: `${fn} ${ln}`,
+              number: `4000 1234 5678 ${1000 + Math.floor(Math.random() * 8999)}`,
+              expiry: `0${1 + Math.floor(Math.random() * 8)}/2${8 + Math.floor(Math.random() * 2)}`,
+              cvv: `${100 + Math.floor(Math.random() * 899)}`
+            },
+            notes: `Primary ${vaultName} payment card account. Auto-pay active.`,
+            createdAt: date
+          });
+        } else if (i % 4 === 0) {
+          // File Stub Entry
+          const fileExt = i % 2 === 0 ? 'pdf' : 'png';
+          entries.push({
+            id: entryId,
+            vault: vaultName,
+            title: title,
+            type: 'file',
+            typeName: 'Encrypted File',
+            notes: `Scanned copy of ${title.toLowerCase()} document.`,
+            fileDataUrl: fileExt === 'png' ? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' : 'data:application/pdf;base64,JVBERi0xLjEKMSAwIG9iag4KPDwLKSBvYmoKZW5kb2JqCnRyYWlsZXIKPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==',
+            fields: {
+              filename: `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.${fileExt}`,
+              filesize: `${(0.8 + Math.random() * 2.4).toFixed(1)} MB`,
+              filetype: fileExt === 'png' ? 'image/png' : 'application/pdf'
+            },
+            createdAt: date
+          });
+        } else {
+          // Login Entry
+          entries.push({
+            id: entryId,
+            vault: vaultName,
+            title: title,
+            type: 'login',
+            typeName: 'Login',
+            fields: {
+              username: `${fn.toLowerCase()}.${ln.toLowerCase()}@${dom}`,
+              password: `${fn}Pass#20${23 + Math.floor(Math.random() * 3)}!`,
+              url: `https://www.${dom}/login`
+            },
+            notes: `Verified portal login for ${title}. Keep password secure.`,
+            createdAt: date
+          });
+        }
+      }
+      return entries;
+    }
+
+    const generated = [
+      ...createEntriesForCompartment('financial', financialTitles, 8),
+      ...createEntriesForCompartment('legal', legalTitles, 7),
+      ...createEntriesForCompartment('personal', personalTitles, 9)
+    ];
+
+    saveDecoyVaultData(generated);
+    return generated;
   }
 
 let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
@@ -1014,6 +1068,20 @@ document.addEventListener('DOMContentLoaded', () => {
       panicLockBtn.style.display = targetView === 'dashboard' ? 'flex' : 'none';
     }
 
+    // Decoy Vault Guard: Hide Tools section in sidebar ONLY when in decoy vault mode
+    const isDecoy = window.activeVaultType === 'decoy';
+    document.querySelectorAll('.tool-tab-btn').forEach(btn => {
+      btn.style.display = isDecoy ? 'none' : 'flex';
+    });
+    document.querySelectorAll('.nav-section-title').forEach(title => {
+      if (title.textContent.trim().toLowerCase() === 'tools') {
+        title.style.display = isDecoy ? 'none' : 'block';
+      }
+    });
+    document.querySelectorAll('.nav-divider').forEach(div => {
+      div.style.display = isDecoy ? 'none' : 'block';
+    });
+
     // 3. Reveal target view
     if (targetView === 'dashboard') {
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
@@ -1240,6 +1308,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (matchedDecoy) {
           window.activeVaultType = 'decoy';
+          const decoyData = getDecoyVaultData();
+          if (!decoyData || decoyData.length === 0) {
+            generateDecoyContent();
+          }
           resetFailedAttempts();
           if (unlockErrorText) unlockErrorText.style.display = 'none';
           unlockVaultForm.reset();
@@ -1334,20 +1406,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function setupRecoveryKeyScreen() {
-    const rawPhrase = generateRecoveryKey();
-    activeRecoveryKeyWords = Array.isArray(rawPhrase) ? rawPhrase : (typeof rawPhrase === 'string' ? rawPhrase.trim().split(/\s+/) : []);
+  window.setupRecoveryKeyScreen = function setupRecoveryKeyScreen() {
+    const gridElem = document.getElementById('recovery-words-grid') || recoveryWordsGrid;
+    let rawPhrase = localStorage.getItem('vantalock_seed_phrase');
+    if (!rawPhrase) {
+      rawPhrase = generateRecoveryKey();
+      if (Array.isArray(rawPhrase)) rawPhrase = rawPhrase.join(' ');
+      localStorage.setItem('vantalock_seed_phrase', rawPhrase);
+    }
+    activeRecoveryKeyWords = typeof rawPhrase === 'string' ? rawPhrase.trim().split(/\s+/) : (Array.isArray(rawPhrase) ? rawPhrase : []);
 
-    recoveryWordsGrid.innerHTML = '';
-    activeRecoveryKeyWords.forEach((word, idx) => {
-      const chip = document.createElement('div');
-      chip.className = 'word-chip';
-      chip.innerHTML = `<span class="word-num">${idx + 1}.</span> <span>${word}</span>`;
-      recoveryWordsGrid.appendChild(chip);
-    });
+    if (gridElem) {
+      gridElem.innerHTML = '';
+      activeRecoveryKeyWords.forEach((word, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'word-chip';
+        chip.innerHTML = `<span class="word-num">${idx + 1}.</span> <span>${word}</span>`;
+        gridElem.appendChild(chip);
+      });
+    }
 
     logActivity('SECURITY: 24-word recovery phrase generated.');
-    showScreen('recovery-key-reveal');
   }
 
   if (copyRkBtn) {

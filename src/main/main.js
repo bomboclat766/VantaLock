@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, systemPreferences } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, safeStorage, systemPreferences } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -116,4 +116,30 @@ ipcMain.handle('retrieve-secure-token', async (event, encryptedBase64) => {
 
 ipcMain.handle("get-app-version", () => {
   return app.getVersion();
+});
+
+ipcMain.handle("open-file-native", async (event, { dataUrl, filename }) => {
+  try {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const tempDir = os.tmpdir();
+    const cleanFilename = filename || 'vault_temp_file.txt';
+    const filePath = path.join(tempDir, cleanFilename);
+
+    let base64Data = dataUrl || '';
+    if (base64Data.includes(',')) {
+      base64Data = base64Data.split(',')[1];
+    }
+    const buffer = Buffer.from(base64Data, 'base64');
+    fs.writeFileSync(filePath, buffer);
+
+    const errorMsg = await shell.openPath(filePath);
+    if (errorMsg) {
+      return { success: false, error: errorMsg };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });

@@ -122,7 +122,7 @@ function showScreen(screenName) {
 
     const overlay = document.createElement('div');
     overlay.id = 'decoy-onboarding-modal-root';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000 !important; z-index: 9999; display: flex; align-items: center; justify-content: center;';
 
     overlay.innerHTML = `
       <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--surface-card, #141414); border: 1px solid var(--surface-border, #262626); border-radius: 12px; padding: 32px; max-width: 520px; width: 90%; color: var(--text-primary, #ffffff); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
@@ -1609,8 +1609,21 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      fileModalDownloadLink.href = entry.fileDataUrl;
-      fileModalDownloadLink.download = (entry.fields && entry.fields.filename) ? entry.fields.filename : 'vault-file';
+      const openBtn = document.getElementById('file-modal-open-link');
+      if (openBtn) {
+        openBtn.onclick = async () => {
+          const fname = (entry.fields && entry.fields.filename) ? entry.fields.filename : 'vault_document.pdf';
+          if (window.electronAPI && typeof window.electronAPI.openFileNative === 'function') {
+            await window.electronAPI.openFileNative({ dataUrl: entry.fileDataUrl, filename: fname });
+          } else {
+            // Web browser fallback
+            const link = document.createElement('a');
+            link.href = entry.fileDataUrl;
+            link.download = fname;
+            link.click();
+          }
+        };
+      }
     } else {
       fileModalPreviewContainer.innerHTML = '<div style="color: var(--text-secondary);">No file preview payload found.</div>';
     }

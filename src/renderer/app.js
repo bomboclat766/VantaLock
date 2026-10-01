@@ -2734,7 +2734,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           showBiometricAlertModal(
             'Biometric Support Not Available',
-            "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows)."
+            "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows).",
+            () => { pendingMasterPassword = ''; setupRecoveryKeyScreen(); }
           );
           localStorage.setItem('vantalock_biometrics_enabled', 'false');
         }
@@ -2861,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let activeHealthScanInterval = null;
 
-  function showBiometricAlertModal(title, message) {
+  function showBiometricAlertModal(title, message, onDismiss) {
     const modal = document.getElementById('biometric-notice-modal');
     const titleElem = document.getElementById('bio-notice-title');
     const msgElem = document.getElementById('bio-notice-message');
@@ -2870,6 +2871,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!modal) {
       alert(title + '\n\n' + message);
+      if (typeof onDismiss === 'function') onDismiss();
       return;
     }
 
@@ -2877,9 +2879,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (msgElem) msgElem.textContent = message;
     modal.classList.remove('hidden');
 
-    const hide = () => modal.classList.add('hidden');
-    if (closeBtn) closeBtn.onclick = () => { hide(); pendingMasterPassword = ''; setupRecoveryKeyScreen(); };
-    if (okBtn) okBtn.onclick = () => { hide(); pendingMasterPassword = ''; setupRecoveryKeyScreen(); };
+    const hide = () => {
+      modal.classList.add('hidden');
+      if (typeof onDismiss === 'function') onDismiss();
+    };
+    if (closeBtn) closeBtn.onclick = hide;
+    if (okBtn) okBtn.onclick = hide;
   }
 
   function evaluatePasswordEntropy(pwd) {

@@ -100,4 +100,20 @@ describe('Renderer unlock and lockout wiring', () => {
     expect(selectedEntries).toHaveLength(2);
     expect(realEntries).toEqual([{ id: 'real-1', title: 'Actual Private Entry' }]);
   }, 15000);
+
+  test('expires a persisted lockout after restart and clears its timer state', () => {
+    const storage = createMemoryStorage();
+    const onExpired = jest.fn();
+    storage.setItem('vantalock_failed_attempts', '5');
+    storage.setItem('vantalock_lockout_expires_at', '2000');
+    storage.setItem('vantalock_lockout_total_ms', '300000');
+
+    const resumedLockout = createLockoutState(storage, jest.fn(), onExpired);
+    expect(resumedLockout.expireIfElapsed(2000)).toBe(true);
+    expect(storage.getItem('vantalock_failed_attempts')).toBe('0');
+    expect(storage.getItem('vantalock_lockout_expires_at')).toBeNull();
+    expect(storage.getItem('vantalock_lockout_total_ms')).toBeNull();
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(resumedLockout.expireIfElapsed(2001)).toBe(false);
+  });
 });

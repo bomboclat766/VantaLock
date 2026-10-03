@@ -364,9 +364,24 @@ function showScreen(screenName) {
 
 
   // Lockout Timer State Management
+  let lockoutAnimFrame = null;
+
+  function showUnlockAfterLockout() {
+    const modal = document.getElementById('lockout-modal-overlay');
+    if (modal) modal.style.display = 'none';
+    if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+    lockoutAnimFrame = null;
+    showScreen('unlock-vault');
+    setTimeout(() => {
+      const passwordInput = document.getElementById('unlock-mp-input');
+      if (passwordInput) passwordInput.focus();
+    }, 0);
+  }
+
   const lockoutState = window.VantaLockLockoutState.createLockoutState(
     localStorage,
-    () => triggerLockoutModal()
+    () => triggerLockoutModal(),
+    showUnlockAfterLockout
   );
 
   function getLockoutSettings() {
@@ -385,17 +400,17 @@ function showScreen(screenName) {
     lockoutState.resetFailedAttempts();
   }
 
-  let lockoutAnimFrame = null;
-
   function triggerLockoutModal() {
     const expiresAt = parseInt(localStorage.getItem('vantalock_lockout_expires_at') || '0', 10);
     const totalMs = parseInt(localStorage.getItem('vantalock_lockout_total_ms') || '300000', 10);
 
-    if (Date.now() >= expiresAt) {
-      resetFailedAttempts();
-      const modal = document.getElementById('lockout-modal-overlay');
-      if (modal) modal.style.display = 'none';
-      const uvElemClear = document.getElementById('unlock-vault-view'); if (uvElemClear) uvElemClear.classList.remove('hidden');
+    if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+      const existingModal = document.getElementById('lockout-modal-overlay');
+      if (existingModal) existingModal.style.display = 'none';
+      return false;
+    }
+
+    if (expiresAt > 0 && lockoutState.expireIfElapsed()) {
       return false;
     }
 
@@ -450,9 +465,7 @@ function showScreen(screenName) {
     function updateFrame() {
       const remainingMs = expiresAt - Date.now();
       if (remainingMs <= 0) {
-        resetFailedAttempts();
-        if (modal) modal.style.display = 'none';
-        if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+        lockoutState.expireIfElapsed();
         return;
       }
 

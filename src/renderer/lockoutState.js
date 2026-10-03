@@ -3,7 +3,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.VantaLockLockoutState = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createLockoutStateModule() {
-  function createLockoutState(storage, onThresholdReached) {
+  function createLockoutState(storage, onThresholdReached, onExpired = () => {}) {
     function getSettings() {
       const threshold = Number.parseInt(storage.getItem('vantalock_lockout_threshold') || '5', 10);
       const durationMinutes = Number.parseInt(storage.getItem('vantalock_lockout_duration') || '5', 10);
@@ -37,7 +37,15 @@
       storage.removeItem('vantalock_lockout_total_ms');
     }
 
-    return { getSettings, getFailedAttemptCount, recordFailedAttempt, resetFailedAttempts };
+    function expireIfElapsed(now = Date.now()) {
+      const expiresAt = Number.parseInt(storage.getItem('vantalock_lockout_expires_at') || '0', 10);
+      if (!Number.isFinite(expiresAt) || expiresAt <= 0 || now < expiresAt) return false;
+      resetFailedAttempts();
+      onExpired();
+      return true;
+    }
+
+    return { getSettings, getFailedAttemptCount, recordFailedAttempt, resetFailedAttempts, expireIfElapsed };
   }
 
   return { createLockoutState };

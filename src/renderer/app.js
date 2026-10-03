@@ -311,50 +311,48 @@ function showScreen(screenName) {
 
     if (decoys.length >= 5) {
       if (addForm) addForm.style.display = 'none';
-      if (maxMsg) maxMsg.style.display = 'none';
+      if (maxMsg) maxMsg.style.display = 'block';
     } else {
       if (addForm) addForm.style.display = 'flex';
       if (maxMsg) maxMsg.style.display = 'none';
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      renderDecoyListUI();
+  function bindSecurityCenterControls() {
+    renderDecoyListUI();
 
-      const addBtn = document.getElementById('add-decoy-pwd-btn');
-      const inputInp = document.getElementById('new-decoy-pwd-input');
-      if (addBtn && inputInp) {
-        addBtn.addEventListener('click', () => {
-          const val = inputInp.value.trim();
-          if (!val) return;
-          const list = getDecoyPasswords();
-          if (list.length >= 5) return;
+    const addBtn = document.getElementById('add-decoy-pwd-btn');
+    const inputInp = document.getElementById('new-decoy-pwd-input');
+    if (addBtn && inputInp) {
+      addBtn.addEventListener('click', () => {
+        const val = inputInp.value.trim();
+        if (!val) return;
+        const list = getDecoyPasswords();
+        if (list.length >= 5) return;
 
-          list.push({ id: 'decoy-' + Date.now(), password: val, createdAt: new Date().toISOString() });
-          saveDecoyPasswords(list);
-          inputInp.value = '';
-          generateDecoyContent();
-          renderDecoyListUI();
-        });
-      }
+        list.push({ id: 'decoy-' + Date.now(), password: val, createdAt: new Date().toISOString() });
+        saveDecoyPasswords(list);
+        inputInp.value = '';
+        generateDecoyContent();
+        renderDecoyListUI();
+      });
+    }
 
-      const threshSel = document.getElementById('lockout-threshold-select');
-      const durSel = document.getElementById('lockout-duration-select');
-      if (threshSel) {
-        threshSel.value = localStorage.getItem('vantalock_lockout_threshold') || '5';
-        threshSel.onchange = () => {
-          localStorage.setItem('vantalock_lockout_threshold', threshSel.value);
-        };
-      }
-      if (durSel) {
-        durSel.value = localStorage.getItem('vantalock_lockout_duration') || '5';
-        durSel.onchange = () => {
-          localStorage.setItem('vantalock_lockout_duration', durSel.value);
-        };
-      }
-    }, 500);
-  });
+    const threshSel = document.getElementById('lockout-threshold-select');
+    const durSel = document.getElementById('lockout-duration-select');
+    if (threshSel) {
+      threshSel.value = localStorage.getItem('vantalock_lockout_threshold') || '5';
+      threshSel.addEventListener('change', () => {
+        localStorage.setItem('vantalock_lockout_threshold', threshSel.value);
+      });
+    }
+    if (durSel) {
+      durSel.value = localStorage.getItem('vantalock_lockout_duration') || '5';
+      durSel.addEventListener('change', () => {
+        localStorage.setItem('vantalock_lockout_duration', durSel.value);
+      });
+    }
+  }
 
 
   // Lockout Timer State Management
@@ -2446,6 +2444,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       }
+      bindSecurityCenterControls();
     } else if (toolKey === 'seed') {
       elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">

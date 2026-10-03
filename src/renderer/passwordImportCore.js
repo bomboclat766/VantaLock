@@ -38,6 +38,18 @@
     return mapping;
   }
 
+  function reuseMappingForMatchingHeaders(sourceHeaders, sourceMapping, targetHeaders) {
+    if (sourceHeaders.length !== targetHeaders.length ||
+        sourceHeaders.some((header, index) => header !== targetHeaders[index])) {
+      return null;
+    }
+    const mapping = Object.create(null);
+    targetHeaders.forEach(header => {
+      mapping[header] = sourceMapping[header] || 'ignore';
+    });
+    return mapping;
+  }
+
   function getMappedValue(row, mapping, target) {
     const source = Object.keys(mapping).find(header => mapping[header] === target);
     return source ? String(row[source] || '') : '';
@@ -135,5 +147,13 @@
     return combined;
   }
 
-  return { TARGETS, buildPreview, createHeaderMapping, createVaultEntries, guessTarget, persistImport };
+  return {
+    TARGETS,
+    buildPreview,
+    createHeaderMapping,
+    createVaultEntries,
+    guessTarget,
+    persistImport,
+    reuseMappingForMatchingHeaders
+  };
 });

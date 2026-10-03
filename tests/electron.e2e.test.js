@@ -674,6 +674,60 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       });
       await reopenedPage.locator('[data-tool="import"]').click();
       await reopenedPage.locator('[data-import-choice="external"]').click();
+      await reopenedPage.locator('#external-import-files').setInputFiles([
+        {
+          name: 'mixed-generic.csv',
+          mimeType: 'text/csv',
+          buffer: Buffer.from('name,url,username,password,notes\nCSV Entry,https://csv.test,alice,csv-secret,csv note')
+        },
+        {
+          name: 'mixed-bitwarden.json',
+          mimeType: 'application/json',
+          buffer: Buffer.from(JSON.stringify({
+            items: [{
+              type: 1,
+              name: 'JSON Entry',
+              notes: 'json note',
+              login: {
+                username: 'bob',
+                password: 'json-secret',
+                uris: [{ uri: 'https://json.test' }]
+              }
+            }]
+          }))
+        }
+      ]);
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      expect(await reopenedPage.locator('.import-file-heading').textContent())
+        .toContain('File 1 of 2: mixed-generic.csv');
+      await reopenedPage.locator('[aria-label="Map password"]').selectOption('ignore');
+      await reopenedPage.locator('.import-reuse-mapping-checkbox').check();
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForFunction(() =>
+        document.querySelector('.import-file-heading')?.textContent.includes('File 2 of 2:')
+      );
+      expect(await reopenedPage.locator('.import-format-name').textContent()).toBe('Bitwarden (JSON)');
+      expect(await reopenedPage.locator('[aria-label="Map password"]').inputValue()).toBe('ignore');
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForSelector('.import-preview-list');
+      expect(await reopenedPage.locator('.import-preview-counts').textContent())
+        .toContain('0 logins, 2 secure notes ready');
+      expect(await reopenedPage.locator('.import-file-summary').count()).toBe(2);
+      expect(await reopenedPage.locator('.import-format-badge').allTextContents())
+        .toEqual(['Generic CSV', 'Bitwarden (JSON)']);
+      expect(await reopenedPage.locator('.import-file-summary-counts').allTextContents())
+        .toEqual([
+          '0 logins, 1 secure notes, 0 rows skipped',
+          '0 logins, 1 secure notes, 0 rows skipped'
+        ]);
+      expect(await reopenedPage.evaluate(() => localStorage.getItem('vantalock_entries_store')))
+        .toEqual(JSON.stringify(importedEntries));
+      await reopenedPage.locator('.import-cancel').click();
+      expect(await reopenedPage.evaluate(() => localStorage.getItem('vantalock_entries_store')))
+        .toEqual(JSON.stringify(importedEntries));
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="external"]').click();
       await reopenedPage.locator('#external-import-files').setInputFiles({
         name: 'chrome-export.csv',
         mimeType: 'text/csv',

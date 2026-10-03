@@ -2,7 +2,8 @@ const {
   buildPreview,
   createHeaderMapping,
   createVaultEntries,
-  persistImport
+  persistImport,
+  reuseMappingForMatchingHeaders
 } = require('../src/renderer/passwordImportCore');
 
 describe('password import mapping and preview', () => {
@@ -53,6 +54,14 @@ describe('password import mapping and preview', () => {
         'Web Site': 'website',
         Comments: 'notes'
       });
+  });
+
+  test('reuses user mappings only for identical ordered headers', () => {
+    const headers = ['name', 'url', 'username', 'password'];
+    const mapping = { name: 'ignore', url: 'website', username: 'username', password: 'password' };
+    expect(reuseMappingForMatchingHeaders(headers, mapping, headers)).toEqual(mapping);
+    expect(reuseMappingForMatchingHeaders(headers, mapping, ['name', 'username', 'url', 'password']))
+      .toBeNull();
   });
 
   test('creates logins with passwords, notes without passwords, and URL-host title fallback', () => {

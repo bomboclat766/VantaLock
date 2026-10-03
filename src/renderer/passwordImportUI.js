@@ -175,6 +175,13 @@
           </p>
           <div class="import-mapping-headings"><span>CSV column</span><span></span><span>Saved as</span></div>
           <div class="import-mapping-grid"></div>
+          ${parsedFiles.slice(currentMappingIndex + 1).some(nextFile =>
+            core.reuseMappingForMatchingHeaders(file.parsed.headers, mapping, nextFile.parsed.headers)
+          ) ? `
+            <label class="import-reuse-mapping">
+              <input type="checkbox" class="import-reuse-mapping-checkbox" />
+              Reuse this mapping for files with matching columns
+            </label>` : ''}
           <p class="import-warning" role="status"></p>
           <p class="import-error" role="alert"></p>
           <div class="import-footer">
@@ -264,6 +271,18 @@
         }
       });
       container.querySelector('[data-action="continue"]').addEventListener('click', () => {
+        const reuseMapping = container.querySelector('.import-reuse-mapping-checkbox');
+        if (reuseMapping && reuseMapping.checked) {
+          parsedFiles.slice(currentMappingIndex + 1).forEach((nextFile, offset) => {
+            const nextIndex = currentMappingIndex + 1 + offset;
+            const reusedMapping = core.reuseMappingForMatchingHeaders(
+              file.parsed.headers,
+              mapping,
+              nextFile.parsed.headers
+            );
+            if (reusedMapping) mappings[nextIndex] = reusedMapping;
+          });
+        }
         if (currentMappingIndex + 1 < parsedFiles.length) {
           currentMappingIndex++;
           showMapping();
@@ -277,15 +296,29 @@
       const allEntries = [];
       let emptyRowsSkipped = 0;
       const skippedItems = [];
+      const fileSummaries = [];
       parsedFiles.forEach((file, index) => {
         const preview = core.buildPreview(file.parsed, mappings[index]);
         allEntries.push(...preview.entries);
         emptyRowsSkipped += preview.emptyRowsSkipped;
         skippedItems.push(...preview.skippedItems);
         skippedItems.push(...file.parsed.skippedItems.filter(item => item.reason !== 'Empty row'));
+        const logins = preview.entries.filter(entry => entry.type === 'login').length;
+        const secureNotes = preview.entries.length - logins;
+        const skippedRows = preview.emptyRowsSkipped + preview.skippedItems.length +
+          file.parsed.skippedItems.filter(item =>
+            item.reason !== 'Empty row' && item.reason !== 'One-time-code secret is not stored'
+          ).length;
+        fileSummaries.push({
+          name: file.name,
+          format: formats[index],
+          logins,
+          secureNotes,
+          skippedRows
+        });
       });
       previewEntries = allEntries;
-      previewCounts = { emptyRowsSkipped, skippedItems };
+      previewCounts = { emptyRowsSkipped, skippedItems, fileSummaries };
       compartment = 'personal';
       showPreview();
     }
@@ -298,6 +331,7 @@
           <button type="button" class="import-back-link" data-action="back">Back</button>
           <h3 class="setup-title">Review import</h3>
           <div class="import-save-into"><span>Save into</span><button type="button" class="is-selected" data-compartment="personal">Personal</button></div>
+          <div class="import-file-summaries" aria-label="Files included in this import"></div>
           <div class="import-preview-list"></div>
           <p class="import-preview-counts"></p>
           <p class="import-preview-skips"></p>
@@ -308,6 +342,23 @@
           </div>
         </section>`;
       const list = container.querySelector('.import-preview-list');
+      const fileSummaries = container.querySelector('.import-file-summaries');
+      previewCounts.fileSummaries.forEach(summary => {
+        const row = document.createElement('div');
+        row.className = 'import-file-summary';
+        const name = document.createElement('span');
+        name.className = 'import-file-summary-name';
+        name.textContent = summary.name;
+        const badge = document.createElement('span');
+        badge.className = 'import-format-badge';
+        badge.textContent = FORMAT_LABELS[summary.format] || FORMAT_LABELS['generic-csv'];
+        const counts = document.createElement('span');
+        counts.className = 'import-file-summary-counts';
+        counts.textContent =
+          `${summary.logins} logins, ${summary.secureNotes} secure notes, ${summary.skippedRows} rows skipped`;
+        row.append(name, badge, counts);
+        fileSummaries.appendChild(row);
+      });
       previewEntries.slice(0, 10).forEach(entry => {
         const row = document.createElement('div');
         row.className = 'import-preview-row';

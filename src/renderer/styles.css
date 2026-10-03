@@ -1098,6 +1098,20 @@ button {
   align-items: center;
 }
 
+.import-reuse-mapping {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: #8a8a85;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.import-reuse-mapping input {
+  accent-color: #c9a24a;
+}
+
 .import-source-field {
   overflow: hidden;
   padding: 6px 10px;
@@ -1189,6 +1203,47 @@ button {
 .import-save-into button.is-selected {
   border: 1px solid #c9a24a;
   color: #c9a24a;
+}
+
+.import-file-summaries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.import-file-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  background: #0a0a0a;
+}
+
+.import-file-summary-name {
+  overflow: hidden;
+  color: #e8e6e0;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-format-badge {
+  padding: 3px 7px;
+  border: 1px solid #3a3320;
+  border-radius: 10px;
+  color: #c9a24a;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.import-file-summary-counts {
+  grid-column: 1 / -1;
+  color: #8a8a85;
+  font-size: 11px;
 }
 
 .import-preview-list {

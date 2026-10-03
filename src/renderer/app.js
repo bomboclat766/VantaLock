@@ -778,11 +778,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let vaultEntries = loadSavedVaultEntries();
   window.vaultEntries = vaultEntries;
   window.getActiveVaultEntries = () => {
-    if (window.activeVaultType === 'decoy') {
-      const decoyEntries = getDecoyVaultData();
-      return decoyEntries.length > 0 ? decoyEntries : generateDecoyContent();
-    }
-    return vaultEntries;
+    return window.VantaLockAuthFlow.getEntriesForVault(
+      window.activeVaultType,
+      vaultEntries,
+      getDecoyVaultData(),
+      generateDecoyContent
+    );
   };
   window.persistActiveVaultEntries = () => {
     if (window.activeVaultType === 'decoy') {
@@ -1637,8 +1638,8 @@ document.addEventListener('DOMContentLoaded', () => {
           createdAt: new Date().toISOString()
         };
 
-        vaultEntries.push(newFileEntry);
-        saveVaultEntriesToStorage();
+        window.getActiveVaultEntries().push(newFileEntry);
+        window.persistActiveVaultEntries();
         logActivity(`VAULT FILE ADDED: attached ${file.name} to ${activeVault} vault.`);
         if (addFileModal) addFileModal.classList.add('hidden');
         fileUploadForm.reset();
@@ -1870,10 +1871,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (errBanner) errBanner.remove();
 
       if (editingEntryId) {
-        const existingIdx = vaultEntries.findIndex(e => e.id === editingEntryId);
+        const activeEntries = window.getActiveVaultEntries();
+        const existingIdx = activeEntries.findIndex(e => e.id === editingEntryId);
         if (existingIdx !== -1) {
-          vaultEntries[existingIdx] = {
-            ...vaultEntries[existingIdx],
+          activeEntries[existingIdx] = {
+            ...activeEntries[existingIdx],
             vault: activeVault,
             type: activeEntryType.id,
             typeName: activeEntryType.label,
@@ -1895,11 +1897,11 @@ document.addEventListener('DOMContentLoaded', () => {
           fields: fieldValues,
           createdAt: new Date().toISOString()
         };
-        vaultEntries.push(newEntry);
+        window.getActiveVaultEntries().push(newEntry);
         logActivity(`VAULT ENTRY ADDED: ${title} in ${activeVault} vault.`);
       }
 
-      saveVaultEntriesToStorage();
+      window.persistActiveVaultEntries();
       addEntryModal.classList.add('hidden');
       entryDynamicForm.reset();
       editingEntryId = null;
@@ -2077,7 +2079,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.edit-entry-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
-        const targetEntry = vaultEntries.find(e => e.id === id);
+        const targetEntry = window.getActiveVaultEntries().find(e => e.id === id);
         if (targetEntry) {
           openAddEntryModal(targetEntry);
         }
@@ -2088,7 +2090,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.view-file-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
-        const fileEntry = vaultEntries.find(e => e.id === id);
+        const fileEntry = window.getActiveVaultEntries().find(e => e.id === id);
         if (fileEntry) {
           openFileViewer(fileEntry);
         }
@@ -2099,8 +2101,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.delete-entry-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-id');
-        vaultEntries = vaultEntries.filter(e => e.id !== id);
-        saveVaultEntriesToStorage();
+        const activeEntries = window.getActiveVaultEntries();
+        const entryIndex = activeEntries.findIndex(e => e.id === id);
+        if (entryIndex !== -1) activeEntries.splice(entryIndex, 1);
+        window.persistActiveVaultEntries();
         logActivity(`VAULT ITEM DELETED: ID ${id}`);
         renderVaultEntries();
       });

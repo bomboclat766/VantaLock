@@ -1,5 +1,5 @@
 const { registerVaultIpc } = require('../src/main/vaultIpc');
-const { authenticatePassword } = require('../src/renderer/authFlow');
+const { authenticatePassword, getEntriesForVault } = require('../src/renderer/authFlow');
 const { createLockoutState } = require('../src/renderer/lockoutState');
 
 function createMemoryStorage() {
@@ -92,5 +92,12 @@ describe('Renderer unlock and lockout wiring', () => {
     })).resolves.toEqual({ accepted: true, vaultType: 'decoy' });
     expect(verifyMasterPassword).not.toHaveBeenCalled();
     expect(lockout.getFailedAttemptCount()).toBe(0);
+
+    const realEntries = [{ id: 'real-1', title: 'Actual Private Entry' }];
+    const decoyEntries = [{ id: 'decoy-1', title: 'Harmless Decoy Entry' }];
+    const selectedEntries = getEntriesForVault('decoy', realEntries, decoyEntries, () => []);
+    selectedEntries.push({ id: 'decoy-2', title: 'Another Decoy Entry' });
+    expect(selectedEntries).toHaveLength(2);
+    expect(realEntries).toEqual([{ id: 'real-1', title: 'Actual Private Entry' }]);
   }, 15000);
 });

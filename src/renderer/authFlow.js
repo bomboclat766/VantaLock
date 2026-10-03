@@ -36,5 +36,12 @@
     return { accepted: true, vaultType: 'real' };
   }
 
-  return { authenticatePassword };
+  function getEntriesForVault(vaultType, realEntries, decoyEntries, createDecoyEntries) {
+    if (vaultType === 'decoy') {
+      return decoyEntries.length > 0 ? decoyEntries : createDecoyEntries();
+    }
+    return realEntries;
+  }
+
+  return { authenticatePassword, getEntriesForVault };
 });

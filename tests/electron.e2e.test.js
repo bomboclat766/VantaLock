@@ -132,17 +132,227 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
           },
           createdAt: new Date().toISOString()
         });
+        window.vaultEntries.push(
+          {
+            id: 'e2e-bank-icon',
+            vault: 'financial',
+            type: 'bank',
+            typeName: 'Bank Account',
+            title: 'Bank Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-loan-icon',
+            vault: 'financial',
+            type: 'loan',
+            typeName: 'Loan & Mortgage',
+            title: 'Loan Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-id-icon',
+            vault: 'legal',
+            type: 'ssn',
+            typeName: 'Identity / SSN / ID',
+            title: 'Identity Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-imported-bank-icon',
+            vault: 'financial',
+            type: 'bank_account',
+            typeName: 'Bank Account',
+            title: 'Imported Bank Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-card-icon',
+            vault: 'financial',
+            type: 'card',
+            typeName: 'Payment Card',
+            title: 'Card Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-crypto-icon',
+            vault: 'financial',
+            type: 'crypto',
+            typeName: 'Crypto Wallet',
+            title: 'Crypto Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-tax-icon',
+            vault: 'financial',
+            type: 'tax',
+            typeName: 'Tax Document',
+            title: 'Tax Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-passport-icon',
+            vault: 'legal',
+            type: 'passport',
+            typeName: 'Passport',
+            title: 'Passport Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-contract-icon',
+            vault: 'legal',
+            type: 'contract',
+            typeName: 'Legal Contract',
+            title: 'Contract Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-deed-icon',
+            vault: 'legal',
+            type: 'deed',
+            typeName: 'Property Deed / Title',
+            title: 'Deed Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-will-icon',
+            vault: 'legal',
+            type: 'will',
+            typeName: 'Will & Estate Plan',
+            title: 'Will Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-login-icon',
+            vault: 'personal',
+            type: 'login',
+            typeName: 'Login / Password',
+            title: 'Login Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-note-icon',
+            vault: 'personal',
+            type: 'note',
+            typeName: 'Secure Note',
+            title: 'Note Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-medical-icon',
+            vault: 'personal',
+            type: 'medical',
+            typeName: 'Medical & Prescription Info',
+            title: 'Medical Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-emergency-icon',
+            vault: 'personal',
+            type: 'emergency',
+            typeName: 'Emergency Instruction',
+            title: 'Emergency Icon Entry',
+            fields: {}
+          },
+          {
+            id: 'e2e-file-icon',
+            vault: 'personal',
+            type: 'file',
+            typeName: 'Encrypted File',
+            title: 'File Icon Entry',
+            fields: { filename: 'scan.pdf', filetype: 'application/pdf' }
+          }
+        );
         window.persistActiveVaultEntries();
         window.renderVaultEntries();
       });
 
       await page.locator('[data-display-mode="list"]').click();
+      const bankIcon = await page.locator('[data-vault-entry-id="e2e-bank-icon"] .entry-list-icon svg').evaluate(element => element.outerHTML);
+      const loanIcon = await page.locator('[data-vault-entry-id="e2e-loan-icon"] .entry-list-icon svg').evaluate(element => element.outerHTML);
+      const importedBankIcon = await page.locator('[data-vault-entry-id="e2e-imported-bank-icon"] .entry-list-icon svg').evaluate(element => element.outerHTML);
+      expect(bankIcon).not.toBe(loanIcon);
+      expect(importedBankIcon).toBe(bankIcon);
+      const iconCases = [
+        ['financial', 'e2e-bank-icon'],
+        ['financial', 'e2e-card-icon'],
+        ['financial', 'e2e-crypto-icon'],
+        ['financial', 'e2e-loan-icon'],
+        ['financial', 'e2e-tax-icon'],
+        ['legal', 'e2e-passport-icon'],
+        ['legal', 'e2e-id-icon'],
+        ['legal', 'e2e-contract-icon'],
+        ['legal', 'e2e-deed-icon'],
+        ['legal', 'e2e-will-icon'],
+        ['personal', 'e2e-login-icon'],
+        ['personal', 'e2e-note-icon'],
+        ['personal', 'e2e-medical-icon'],
+        ['personal', 'e2e-emergency-icon'],
+        ['personal', 'e2e-file-icon']
+      ];
+      const renderedIcons = [];
+      let selectedCompartment = 'financial';
+      for (const [compartment, entryId] of iconCases) {
+        if (compartment !== selectedCompartment) {
+          await page.locator(`[data-vault="${compartment}"]`).click();
+          selectedCompartment = compartment;
+        }
+        const icon = page.locator(`[data-vault-entry-id="${entryId}"] .entry-list-icon svg`);
+        expect(await icon.count()).toBe(1);
+        const svg = await icon.evaluate(element => element.outerHTML);
+        expect(svg).toContain('<svg');
+        renderedIcons.push({ entryId, svg });
+      }
+      const duplicateIcons = renderedIcons.flatMap((icon, index) => {
+        const firstIndex = renderedIcons.findIndex(candidate => candidate.svg === icon.svg);
+        return firstIndex !== index
+          ? [{ first: renderedIcons[firstIndex].entryId, duplicate: icon.entryId }]
+          : [];
+      });
+      expect(duplicateIcons).toEqual([]);
+
+      await page.locator('[data-display-mode="card"]').click();
+      const cardRenderedIcons = [];
+      selectedCompartment = 'personal';
+      for (const [compartment, entryId] of iconCases) {
+        if (compartment !== selectedCompartment) {
+          await page.locator(`[data-vault="${compartment}"]`).click();
+          selectedCompartment = compartment;
+        }
+        const icon = page.locator(`[data-vault-entry-id="${entryId}"] .category-badge svg`);
+        const iconCount = await icon.count();
+        if (iconCount !== 1) throw new Error(`Expected one Card view SVG for ${entryId}, found ${iconCount}`);
+        const svg = await icon.evaluate(element => element.outerHTML);
+        expect(svg).toContain('<svg');
+        cardRenderedIcons.push({ entryId, svg });
+      }
+      const duplicateCardIcons = cardRenderedIcons.flatMap((icon, index) => {
+        const firstIndex = cardRenderedIcons.findIndex(candidate => candidate.svg === icon.svg);
+        return firstIndex !== index
+          ? [{ first: cardRenderedIcons[firstIndex].entryId, duplicate: icon.entryId }]
+          : [];
+      });
+      expect(duplicateCardIcons).toEqual([]);
+      await page.locator('[data-vault="financial"]').click();
+      const cardBankIcon = cardRenderedIcons.find(icon => icon.entryId === 'e2e-bank-icon');
+      const cardImportedBankIcon = await page.locator('[data-vault-entry-id="e2e-imported-bank-icon"] .category-badge svg')
+        .evaluate(element => element.outerHTML);
+      expect(cardImportedBankIcon).toBe(cardBankIcon.svg);
+
+      await page.locator('[data-display-mode="list"]').click();
+
       const listSummary = page.locator('.entry-list-summary').filter({ hasText: 'E2E Search Card' });
       expect(await listSummary.isVisible()).toBe(true);
       expect(await listSummary.textContent()).toContain('9021');
       expect(await listSummary.textContent()).not.toContain('4111111111119021');
       await listSummary.click();
       expect(await listSummary.getAttribute('aria-expanded')).toBe('true');
+      const expandedStyle = await listSummary.evaluate(element => {
+        const item = element.closest('.entry-list-item');
+        const style = getComputedStyle(item);
+        return { overflow: style.overflow, zIndex: style.zIndex };
+      });
+      expect(expandedStyle.overflow).toBe('visible');
+      expect(expandedStyle.zIndex).toBe('1');
       expect(await page.evaluate(() => localStorage.getItem('vantalock_entry_display_mode'))).toBe('list');
 
       await page.locator('[data-display-mode="list"]').focus();

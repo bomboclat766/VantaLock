@@ -861,10 +861,15 @@ button {
 }
 
 .entry-list-item {
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
   border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: var(--surface-card);
+}
+
+.entry-list-item.is-expanded {
+  z-index: 1;
 }
 
 .entry-list-summary {
@@ -895,6 +900,12 @@ button {
   border: 1px solid var(--surface-border);
   border-radius: 6px;
   color: var(--brass-accent);
+}
+
+.entry-list-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .entry-list-title {

@@ -590,18 +590,17 @@ function parseKeePassXml(content) {
     throw importError('KeePass XML files containing DOCTYPE or entity declarations are not allowed.');
   }
   let document;
-  let parseError = '';
+  let hasParseError = false;
   try {
     document = new DOMParser({
-      onError(_level, message) {
-        parseError = message;
+      onError() {
+        hasParseError = true;
       }
     }).parseFromString(content, 'application/xml');
   } catch (_error) {
-    if (parseError) throw importError(`The KeePass XML file is malformed: ${parseError}`);
     throw importError('The KeePass XML file is malformed.');
   }
-  if (parseError) throw importError(`The KeePass XML file is malformed: ${parseError}`);
+  if (hasParseError) throw importError('The KeePass XML file is malformed.');
   const root = document && document.documentElement;
   if (!root || root.nodeName !== 'KeePassFile') {
     throw importError('The XML file is not a KeePass 2.x export.');

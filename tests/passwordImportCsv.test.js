@@ -322,7 +322,7 @@ describe('generic CSV password import parser', () => {
     expect(() => parsePasswordImportFile({
       fileName: 'broken.xml',
       content: '<KeePassFile><Root></KeePassFile>'
-    })).toThrow('The KeePass XML file is malformed:');
+    })).toThrow('The KeePass XML file is malformed.');
   });
 
   test('refuses KeePass KDBX by binary content, independent of filename', () => {

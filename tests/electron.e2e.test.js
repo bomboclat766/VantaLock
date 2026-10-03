@@ -7,7 +7,7 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
   (process.platform !== 'linux' || Boolean(process.env.DISPLAY));
 
 (canRunElectronE2E ? test : test.skip)(
-  'onboards, skips biometrics, reaches the vault, locks, and rejects a wrong password',
+  'completes setup, rejects a wrong password, unlocks, and reopens the existing vault',
   async () => {
     const { _electron: electron } = require('playwright');
     const profileDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'vantalock-e2e-'));
@@ -18,12 +18,18 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         args: [workspaceRoot, `--user-data-dir=${profileDirectory}`, '--no-sandbox']
       });
       const page = await app.firstWindow();
+      const pageErrors = [];
+      page.on('pageerror', error => pageErrors.push(error.message));
       await page.waitForSelector('#get-started-btn');
       await page.evaluate(() => {
         localStorage.clear();
         sessionStorage.clear();
       });
       await page.reload();
+      await page.waitForFunction(() => {
+        const splash = document.getElementById('splash-overlay');
+        return splash && splash.style.display === 'none';
+      }, null, { timeout: 10000 });
 
       await page.locator('#get-started-btn').click();
       await page.waitForFunction(() => {
@@ -85,6 +91,34 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       });
       expect(await page.evaluate(() => localStorage.getItem('vantalock_failed_attempts'))).toBe('1');
       expect(await page.evaluate(() => window.activeVaultType)).toBe('real');
+
+      await page.locator('#unlock-mp-input').fill(masterPassword);
+      await page.locator('#unlock-btn').click();
+      await page.waitForFunction(() => {
+        const dashboard = document.getElementById('dashboard-view-container');
+        return dashboard && !dashboard.classList.contains('hidden');
+      });
+      expect(await page.evaluate(() => localStorage.getItem('vantalock_failed_attempts'))).toBe('0');
+
+      await app.close();
+      app = await electron.launch({
+        args: [workspaceRoot, `--user-data-dir=${profileDirectory}`, '--no-sandbox']
+      });
+      const reopenedPage = await app.firstWindow();
+      reopenedPage.on('pageerror', error => pageErrors.push(error.message));
+      await reopenedPage.waitForFunction(() => {
+        const splash = document.getElementById('splash-overlay');
+        const unlock = document.getElementById('unlock-vault-view');
+        return splash && splash.style.display === 'none' &&
+          unlock && !unlock.classList.contains('hidden');
+      }, null, { timeout: 10000 });
+      await reopenedPage.locator('#unlock-mp-input').fill(masterPassword);
+      await reopenedPage.locator('#unlock-btn').click();
+      await reopenedPage.waitForFunction(() => {
+        const dashboard = document.getElementById('dashboard-view-container');
+        return dashboard && !dashboard.classList.contains('hidden');
+      });
+      expect(pageErrors).toEqual([]);
     } finally {
       if (app) await app.close();
       fs.rmSync(profileDirectory, { recursive: true, force: true });

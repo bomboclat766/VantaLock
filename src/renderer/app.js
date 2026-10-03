@@ -149,15 +149,6 @@ function showScreen(screenName) {
       window.setupRecoveryKeyScreen();
     }
   }
-  if (screenName === 'unlock-vault') {
-    updateBiometricUnlockButton()
-      .then(visible => {
-        if (visible) triggerAutoBiometricsUnlock();
-      })
-      .catch(error => {
-        console.error('Could not check biometric unlock availability:', error);
-      });
-  }
 }
 
   // Top-Level Un-Nested Decoy Vault Onboarding Modal Handler
@@ -408,7 +399,7 @@ function showScreen(screenName) {
     if (modal) modal.style.display = 'none';
     if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
     lockoutAnimFrame = null;
-    showScreen('unlock-vault');
+    showUnlockScreen();
     setTimeout(() => {
       const passwordInput = document.getElementById('unlock-mp-input');
       if (passwordInput) passwordInput.focus();
@@ -702,7 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.electronAPI.onVaultLocked((reason) => {
     logActivity(`VAULT LOCKED: ${reason}`);
     localStorage.removeItem('vantalock_unlocked_session');
-    showScreen('unlock-vault');
+    showUnlockScreen();
   });
 
   ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
@@ -1207,6 +1198,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  function showUnlockScreen() {
+    showScreen('unlock-vault');
+    updateBiometricUnlockButton()
+      .then(visible => {
+        if (visible) triggerAutoBiometricsUnlock();
+      })
+      .catch(error => {
+        console.error('Could not check biometric unlock availability:', error);
+      });
+  }
+
   let pendingMasterPassword = '';
   let pendingBiometricsSupported = false;
   let biometricUnlockInProgress = false;
@@ -1298,16 +1300,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startupFinished) return;
     startupFinished = true;
     const overlay = document.getElementById('splash-overlay') || splashOverlay;
-    const isLockoutActive = triggerLockoutModal();
-    if (!isLockoutActive) {
-      const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
-      showScreen(isFullySetup ? 'unlock-vault' : 'onboarding');
-    }
-    if (overlay) {
-      overlay.style.opacity = '0';
-      overlay.style.pointerEvents = 'none';
-      setTimeout(() => { overlay.style.display = 'none'; }, 800);
-    }
+    window.VantaLockStartupFlow.finishStartup({
+      route: () => {
+        const isLockoutActive = triggerLockoutModal();
+        if (!isLockoutActive) {
+          const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
+          if (isFullySetup) {
+            showUnlockScreen();
+          } else {
+            showScreen('onboarding');
+          }
+        }
+      },
+      dismiss: () => {
+        if (!overlay) return;
+        overlay.style.opacity = '0';
+        overlay.style.visibility = 'hidden';
+        overlay.style.pointerEvents = 'none';
+        setTimeout(() => { overlay.style.display = 'none'; }, 800);
+      },
+      onError: error => {
+        console.error('Application startup routing failed:', error);
+        const message = document.querySelector('#splash-overlay .futuristic-sub');
+        if (message) message.textContent = 'Startup could not complete. Please restart VantaLock.';
+      }
+    });
   }
 
   function dismissSplash() {
@@ -1633,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (backToSeedBtn) {
     backToSeedBtn.addEventListener('click', () => {
       if (isVerificationFromUnlock) {
-        showScreen('unlock-vault');
+        showUnlockScreen();
       } else {
         showScreen('recovery-key-reveal');
       }

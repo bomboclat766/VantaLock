@@ -821,13 +821,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function saveVaultEntriesToStorage() {
+  function saveVaultEntriesToStorage(entries = vaultEntries) {
     try {
-      localStorage.setItem('vantalock_entries_store', JSON.stringify(vaultEntries));
-      window.vaultEntries = vaultEntries;
-      updateSidebarStats();
+      localStorage.setItem('vantalock_entries_store', JSON.stringify(entries));
+      window.vaultEntries = entries;
+      updateSidebarStats(entries);
+      return true;
     } catch (err) {
       console.error('Storage error:', err);
+      return false;
     }
   }
 
@@ -1075,15 +1077,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  function updateSidebarStats() {
+  function updateSidebarStats(entries = vaultEntries) {
     const statVaultSize = document.getElementById('stat-vault-size');
     const statEntryCount = document.getElementById('stat-entry-count');
-    const totalEntries = vaultEntries.length;
+    const totalEntries = entries.length;
     if (statEntryCount) {
       statEntryCount.textContent = `Entries: ${totalEntries} total`;
     }
     if (statVaultSize) {
-      const approxBytes = JSON.stringify(vaultEntries).length;
+      const approxBytes = JSON.stringify(entries).length;
       const sizeKb = (approxBytes / 1024).toFixed(1);
       statVaultSize.textContent = `Vault Size: ${sizeKb} KB`;
     }
@@ -2819,8 +2821,11 @@ document.addEventListener('DOMContentLoaded', () => {
               }
 
               const importedEntries = result.entries;
-              vaultEntries = vaultEntries.concat(importedEntries);
-              saveVaultEntriesToStorage();
+              vaultEntries = window.VantaLockVaultImport.persistImportedEntries(
+                vaultEntries,
+                importedEntries,
+                saveVaultEntriesToStorage
+              );
               importMsg.style.color = '#10b981';
               importMsg.textContent = result.migrated
                 ? `Imported ${importedEntries.length} entries. A re-encrypted, password-protected backup was downloaded.`

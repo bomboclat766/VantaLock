@@ -57,6 +57,11 @@ function showScreen(screenName) {
   const setupContainer = document.getElementById('setup-view-container');
   const dashboardContainer = document.getElementById('dashboard-view-container');
   const titlebarBar = document.getElementById('titlebar-bar');
+  const panicLockButton = document.getElementById('panic-lock-btn');
+  const lockStatus = document.getElementById('lock-status-text');
+
+  if (panicLockButton) panicLockButton.style.display = screenName === 'dashboard' ? 'flex' : 'none';
+  if (lockStatus) lockStatus.textContent = screenName === 'dashboard' ? 'VAULT UNLOCKED' : 'VAULT SECURED';
 
   if (titlebarBar) {
     if (screenName === 'dashboard') {

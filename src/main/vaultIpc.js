@@ -7,7 +7,7 @@ const {
   decryptData
 } = require('../crypto/vaultCrypto');
 const { generateRecoveryKey } = require('../crypto/recoveryKey');
-const { exportEncryptedVault, importEncryptedVault } = require('../crypto/vaultBackup');
+const { exportEncryptedVault } = require('../crypto/vaultBackup');
 
 function parseSalt(saltHex) {
   if (typeof saltHex !== 'string' || !/^[0-9a-f]{32}$/i.test(saltHex)) {
@@ -21,6 +21,31 @@ async function derivePasswordKey(password, saltHex) {
     throw new Error('A password is required');
   }
   return deriveKey(password, parseSalt(saltHex));
+}
+
+function importFailure(code, message, detail) {
+  return { ok: false, code, message, detail: detail || message };
+}
+
+function isEncryptedPayload(payload) {
+  return Boolean(
+    payload &&
+    typeof payload.ciphertext === 'string' && /^[0-9a-f]+$/i.test(payload.ciphertext) &&
+    typeof payload.iv === 'string' && /^[0-9a-f]{24}$/i.test(payload.iv) &&
+    typeof payload.tag === 'string' && /^[0-9a-f]{32}$/i.test(payload.tag)
+  );
+}
+
+function validateBackupData(data) {
+  if (!data || typeof data !== 'object' || data.formatVersion !== 1) {
+    const error = new Error('Unsupported backup data version');
+    error.code = 'UNSUPPORTED_FORMAT';
+    throw error;
+  }
+  if (!Array.isArray(data.entries)) {
+    throw new Error('Backup entries must be an array');
+  }
+  return data.entries;
 }
 
 function registerVaultIpc(ipcMain, { lockManager, clipboard }) {
@@ -64,10 +89,74 @@ function registerVaultIpc(ipcMain, { lockManager, clipboard }) {
   });
 
   ipcMain.handle('import-encrypted-vault', async (_event, { exportString, password, fallbackSalt }) => {
-    const parsedPackage = JSON.parse(exportString);
-    const salt = parsedPackage.salt || fallbackSalt;
-    const derivedKey = await derivePasswordKey(password, salt);
-    return importEncryptedVault(exportString, derivedKey);
+    let parsedPackage;
+    try {
+      parsedPackage = JSON.parse(exportString);
+    } catch (error) {
+      return importFailure('CORRUPTED_FILE', 'Corrupted backup file: the file is not valid JSON.', error.message);
+    }
+
+    if (!parsedPackage || typeof parsedPackage !== 'object' || Array.isArray(parsedPackage)) {
+      return importFailure('UNSUPPORTED_FORMAT', 'Unsupported backup format.');
+    }
+    if (parsedPackage.cipher !== 'AES-256-GCM' || parsedPackage.kdf !== 'Argon2id') {
+      return importFailure('UNSUPPORTED_FORMAT', 'Unsupported backup format or encryption algorithm.');
+    }
+    const params = parsedPackage.kdfParams;
+    if (!params || params.memoryCost !== 65536 || params.timeCost !== 3 || params.parallelism !== 4) {
+      return importFailure('UNSUPPORTED_FORMAT', 'Unsupported backup key-derivation parameters.');
+    }
+    if (!isEncryptedPayload(parsedPackage.encryptedData)) {
+      return importFailure('CORRUPTED_FILE', 'Corrupted backup file: encrypted payload is incomplete or malformed.');
+    }
+
+    if (parsedPackage.salt === null) {
+      let entries;
+      try {
+        const legacyKey = Buffer.alloc(32);
+        entries = validateBackupData(decryptData(parsedPackage.encryptedData, legacyKey));
+      } catch (error) {
+        const code = error.code === 'UNSUPPORTED_FORMAT' ? error.code : 'CORRUPTED_FILE';
+        const message = code === 'UNSUPPORTED_FORMAT'
+          ? 'Unsupported legacy backup data version.'
+          : 'Corrupted legacy backup file: encrypted payload could not be authenticated.';
+        return importFailure(code, message, error.message);
+      }
+
+      let migratedBackup;
+      try {
+        const migratedSalt = generateSalt();
+        const migratedKey = await deriveKey(password, migratedSalt);
+        migratedBackup = exportEncryptedVault(entries, migratedKey, { salt: migratedSalt });
+      } catch (error) {
+        return importFailure('WRONG_PASSWORD', 'A current master password is required to protect the migrated backup.', error.message);
+      }
+      return { ok: true, entries, migrated: true, migratedBackup };
+    }
+
+    if (typeof parsedPackage.salt !== 'string' || !/^[0-9a-f]{32}$/i.test(parsedPackage.salt)) {
+      return importFailure('CORRUPTED_FILE', 'Corrupted backup file: salt is missing or malformed.');
+    }
+
+    let derivedKey;
+    try {
+      derivedKey = await derivePasswordKey(password, parsedPackage.salt);
+    } catch (error) {
+      return importFailure('WRONG_PASSWORD', 'Wrong password or invalid password input.', error.message);
+    }
+
+    try {
+      const entries = validateBackupData(decryptData(parsedPackage.encryptedData, derivedKey));
+      return { ok: true, entries, migrated: false, migratedBackup: null };
+    } catch (error) {
+      if (error.code === 'UNSUPPORTED_FORMAT') {
+        return importFailure('UNSUPPORTED_FORMAT', 'Unsupported backup data version.', error.message);
+      }
+      if (error.message === 'Backup entries must be an array') {
+        return importFailure('CORRUPTED_FILE', 'Corrupted backup file: entries are malformed.', error.message);
+      }
+      return importFailure('WRONG_PASSWORD', 'Wrong password: this backup could not be authenticated.', error.message);
+    }
   });
 
   ipcMain.handle('lock-manager-activity', () => {

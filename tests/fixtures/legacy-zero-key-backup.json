@@ -1,0 +1,15 @@
+{
+  "cipher": "AES-256-GCM",
+  "kdf": "Argon2id",
+  "kdfParams": {
+    "memoryCost": 65536,
+    "timeCost": 3,
+    "parallelism": 4
+  },
+  "salt": null,
+  "encryptedData": {
+    "ciphertext": "377a8fcb2b7d6791fab9631bf3d42d84710d4204354a3340616914ab48bf2fb740fbc2ef991f6c0ada8513a8d4190a463a5f11caddcc392ac4babd438b10675407d36e65e9e94ec868a7bf78e6ed071f269a2a06189aa8a0e3879b80e423b6e2333efb965eb7c863e023c73a9a16232d2539d6958e2167e1f267ae95c4beafd61281156a05edbe1255ec2ccd616ce19e135b1caded79a5a4fd5adc06f0dfb7e42dfdbc3c0c89e9c567baefbd8eb6fc93d000fda81bae356d2bd139fb6c0dd7bd6124dd26d995cafe962e3ea6f48ee9c1545885217c92287d40b5bc030a809ba3f2f01fbdafd6229f8e0f134fcdf5fe41a7aecb416c5586376c81ab188c3ad3f13d80669b41fe29dd1d6b86",
+    "iv": "5a5a5a5a5a5a5a5a5a5a5a5a",
+    "tag": "8f25395963cbca023bba152ec664131f"
+  }
+}

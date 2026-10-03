@@ -1,4 +1,5 @@
 const { registerVaultIpc } = require('../src/main/vaultIpc');
+const legacyBackupFixture = require('./fixtures/legacy-zero-key-backup.json');
 
 describe('Vault crypto IPC wiring', () => {
   const handlers = new Map();
@@ -72,15 +73,64 @@ describe('Vault crypto IPC wiring', () => {
 
     expect(JSON.parse(backup).salt).toBe(credentials.salt);
     expect(backup).not.toContain('never plaintext');
-    await expect(invoke('import-encrypted-vault', {
+    const imported = await invoke('import-encrypted-vault', {
       exportString: backup,
       password,
       fallbackSalt: credentials.salt
-    })).resolves.toEqual(entries);
-    await expect(invoke('import-encrypted-vault', {
+    });
+    expect(imported).toMatchObject({ ok: true, migrated: false, entries });
+
+    const wrongPassword = await invoke('import-encrypted-vault', {
       exportString: backup,
       password: 'WrongPassword!2026',
       fallbackSalt: credentials.salt
-    })).rejects.toThrow();
+    });
+    expect(wrongPassword).toMatchObject({ ok: false, code: 'WRONG_PASSWORD' });
   }, 15000);
+
+  test('imports a legacy zero-key fixture and returns a new password-protected backup', async () => {
+    const password = 'CurrentMasterPassword!2026';
+    const result = await invoke('import-encrypted-vault', {
+      exportString: JSON.stringify(legacyBackupFixture),
+      password,
+      fallbackSalt: null
+    });
+
+    expect(result).toMatchObject({ ok: true, migrated: true });
+    expect(result.entries).toEqual([{
+      id: 'legacy-1',
+      title: 'Legacy Fixture',
+      vault: 'personal',
+      type: 'login',
+      typeName: 'Login',
+      fields: { username: 'fixture-user', password: 'fixture-secret' },
+      notes: 'Legacy encrypted fixture'
+    }]);
+    const migratedPackage = JSON.parse(result.migratedBackup);
+    expect(migratedPackage.salt).toMatch(/^[0-9a-f]{32}$/);
+    expect(result.migratedBackup).not.toContain('fixture-secret');
+    const reread = await invoke('import-encrypted-vault', {
+      exportString: result.migratedBackup,
+      password,
+      fallbackSalt: null
+    });
+    expect(reread).toMatchObject({ ok: true, migrated: false, entries: result.entries });
+  }, 15000);
+
+  test('reports unsupported formats and corrupted JSON separately', async () => {
+    const unsupported = await invoke('import-encrypted-vault', {
+      exportString: JSON.stringify({ cipher: 'unknown', kdf: 'unknown' }),
+      password: 'any-password',
+      fallbackSalt: null
+    });
+    expect(unsupported.code).toBe('UNSUPPORTED_FORMAT');
+
+    const corrupted = await invoke('import-encrypted-vault', {
+      exportString: '{not json',
+      password: 'any-password',
+      fallbackSalt: null
+    });
+    expect(corrupted.code).toBe('CORRUPTED_FILE');
+    expect(corrupted.detail).toMatch(/JSON|position|property/i);
+  });
 });

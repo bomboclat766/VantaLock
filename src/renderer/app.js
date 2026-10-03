@@ -2705,22 +2705,48 @@ document.addEventListener('DOMContentLoaded', () => {
           const reader = new FileReader();
           reader.onload = async (e) => {
             try {
-              const password = window.prompt('Enter the password used to encrypt this backup.');
+              const password = window.prompt('Enter the backup password. For legacy backups, enter your current master password to protect the migrated copy.');
               if (!password) return;
-              const importedEntries = await window.electronAPI.importEncryptedVault({
+              const result = await window.electronAPI.importEncryptedVault({
                 exportString: e.target.result,
                 password,
                 fallbackSalt: localStorage.getItem('vantalock_vault_salt')
               });
+              if (!result.ok) {
+                console.error('[Vault Import] Failed:', result.code, result.detail);
+                importMsg.style.color = '#ef4444';
+                importMsg.textContent = result.message;
+                return;
+              }
+
+              const importedEntries = result.entries;
               vaultEntries = vaultEntries.concat(importedEntries);
               saveVaultEntriesToStorage();
               importMsg.style.color = '#10b981';
-              importMsg.textContent = `Successfully imported ${importedEntries.length} entries!`;
+              importMsg.textContent = result.migrated
+                ? `Imported ${importedEntries.length} entries. A re-encrypted, password-protected backup was downloaded.`
+                : `Successfully imported ${importedEntries.length} entries!`;
               logActivity(`IMPORT: Imported ${importedEntries.length} entries from ${file.name}.`);
+              if (result.migratedBackup) {
+                const blob = new Blob([result.migratedBackup], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${file.name.replace(/\.json$/i, '')}-migrated.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+              }
             } catch (err) {
+              console.error('[Vault Import] Unexpected import failure:', err);
               importMsg.style.color = '#ef4444';
-              importMsg.textContent = 'Import error: Invalid or corrupted backup file.';
+              importMsg.textContent = `Import failed: ${err.message || 'unexpected error'}`;
             }
+          };
+          reader.onerror = () => {
+            const readError = reader.error || new Error('Unknown file read error');
+            console.error('[Vault Import] File read failed:', readError);
+            importMsg.style.color = '#ef4444';
+            importMsg.textContent = `File read error: ${readError.message}`;
           };
           reader.readAsText(file);
         });

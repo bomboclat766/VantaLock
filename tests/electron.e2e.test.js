@@ -77,6 +77,48 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         const dashboard = document.getElementById('dashboard-view-container');
         return dashboard && !dashboard.classList.contains('hidden');
       });
+      const headerLayout = await page.evaluate(() => {
+        const right = document.querySelector('.titlebar-right');
+        const header = document.getElementById('titlebar-bar').getBoundingClientRect();
+        const items = Array.from(right.children).map(element => {
+          const rect = element.getBoundingClientRect();
+          return {
+            id: element.id || element.className,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+            visible: rect.width > 0 && rect.height > 0
+          };
+        });
+        const lock = document.getElementById('panic-lock-btn');
+        const lockRect = lock.getBoundingClientRect();
+        const lockText = lock.querySelector('span').getBoundingClientRect();
+        return {
+          items,
+          header: { left: header.left, right: header.right, top: header.top, bottom: header.bottom },
+          lockTextFits: lock.scrollWidth <= lock.clientWidth &&
+            lockText.left >= lockRect.left && lockText.right <= lockRect.right,
+          lockVerticallyCentered: Math.abs(
+            (lockRect.top + lockRect.bottom) / 2 - (header.top + header.bottom) / 2
+          ) <= 1
+        };
+      });
+      expect(headerLayout.items.map(item => item.id)).toEqual([
+        'theme-selector-wrap',
+        'entry-display-modes',
+        'global-search-open-btn',
+        'panic-lock-btn',
+        'status-indicator'
+      ]);
+      expect(headerLayout.items.every(item => item.visible)).toBe(true);
+      expect(headerLayout.items.map(item => item.left)).toEqual(
+        [...headerLayout.items.map(item => item.left)].sort((a, b) => a - b)
+      );
+      expect(headerLayout.items.at(-1).right).toBeLessThanOrEqual(headerLayout.header.right);
+      expect(headerLayout.lockTextFits).toBe(true);
+      expect(headerLayout.lockVerticallyCentered).toBe(true);
+
       await page.evaluate(() => {
         window.vaultEntries.push({
           id: 'e2e-search-card',

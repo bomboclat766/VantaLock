@@ -91,18 +91,45 @@ html, body {
 /* Titlebar */
 .titlebar {
   height: 42px;
-  width: 100vw;
+  width: 100%;
   background: var(--bg-primary);
   border-bottom: 1px solid var(--surface-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
   padding: 0 16px;
   -webkit-app-region: drag;
 }
 
-.titlebar-right, select, button {
+.titlebar-right,
+select,
+button {
   -webkit-app-region: no-drag;
+}
+
+.titlebar-right {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+  height: 100%;
+}
+
+.theme-selector-wrap {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-selector-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .brand-badge {
@@ -121,6 +148,7 @@ html, body {
 }
 
 .theme-select-dropdown {
+  max-width: 190px;
   background: var(--bg-secondary);
   color: var(--brass-accent);
   border: 1px solid var(--surface-border);
@@ -133,11 +161,13 @@ html, body {
 
 .status-indicator {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   font-size: 11px;
   color: var(--text-secondary);
   letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 .entry-display-modes {
@@ -1058,6 +1088,33 @@ html, body {
 .btn-danger:hover {
   background: var(--danger-red);
   color: #ffffff;
+}
+
+#panic-lock-btn {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 112px;
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#panic-lock-btn svg {
+  display: block;
+  flex: none;
+}
+
+#panic-lock-btn span {
+  display: block;
+  line-height: 1;
 }
 
 /* Field Container Boxes */

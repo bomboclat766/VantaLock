@@ -19,26 +19,15 @@
       </svg>
       <span>VANTALOCK</span>
     </div>
-    <div class="titlebar-right" style="display: flex; align-items: center; gap: 16px;">
-      <div class="theme-selector-wrap" style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Theme</span>
+    <div class="titlebar-right">
+      <div class="theme-selector-wrap">
+        <span class="theme-selector-label">Theme</span>
         <select id="theme-select" class="theme-select-dropdown">
           <option value="theme-default">Pure Black (Default)</option>
           <option value="theme-obsidian">Obsidian Gold</option>
           <option value="theme-emerald">Cyber Emerald</option>
           <option value="theme-midnight">Midnight Sapphire</option>
         </select>
-      </div>
-      <button id="panic-lock-btn" class="btn-danger" style="padding: 4px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
-        Lock Vault
-      </button>
-      <div class="status-indicator">
-        <span class="status-dot"></span>
-        <span id="lock-status-text">VAULT SECURED</span>
       </div>
       <div id="entry-display-modes" class="entry-display-modes" role="group" aria-label="Entry display mode">
         <button type="button" class="display-mode-btn" data-display-mode="card" aria-label="Card view" aria-pressed="true" title="Card view">
@@ -54,6 +43,17 @@
       <button id="global-search-open-btn" class="global-search-open-btn" type="button" aria-label="Search all vault entries" title="Search all entries (Ctrl+K / Cmd+K)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>
       </button>
+      <button id="panic-lock-btn" class="btn-danger">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span>Lock Vault</span>
+      </button>
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span id="lock-status-text">VAULT SECURED</span>
+      </div>
     </div>
   </div>
 

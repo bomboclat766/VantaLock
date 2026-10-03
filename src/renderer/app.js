@@ -721,7 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileModalTitle = document.getElementById('file-modal-title');
   const fileModalPreviewContainer = document.getElementById('file-modal-preview-container');
   const fileModalNotes = document.getElementById('file-modal-notes');
-  const fileModalDownloadLink = document.getElementById('file-modal-download-link');
   let activeFileViewerEntry = null;
   const closeViewFileModalBtn = document.getElementById('close-view-file-modal-btn');
 
@@ -3396,12 +3395,3 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('[Password Health Check] renderHealthCheckResults error:', e);
     }
   }
-    // Decoy Vault Sidebar Restrictions
-    const toolsSection = document.getElementById('sidebar-tools-section');
-    if (toolsSection) {
-      if (window.activeVaultType === 'decoy') {
-        toolsSection.style.display = 'none';
-      } else {
-        toolsSection.style.display = 'block';
-      }
-    }

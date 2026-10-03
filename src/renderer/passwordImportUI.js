@@ -18,7 +18,9 @@
     'bitwarden-json': 'Bitwarden (JSON)',
     'bitwarden-csv': 'Bitwarden (CSV)',
     'onepassword-1pux': '1Password (.1pux)',
-    'onepassword-csv': '1Password (CSV)'
+    'onepassword-csv': '1Password (CSV)',
+    'keepass-xml': 'KeePass (XML)',
+    'keepass-csv': 'KeePass (CSV)'
   };
 
   async function readFileBytes(file) {
@@ -167,6 +169,8 @@
               <option value="bitwarden-csv">Bitwarden (CSV)</option>
               <option value="onepassword-1pux">1Password (.1pux)</option>
               <option value="onepassword-csv">1Password (CSV)</option>
+              <option value="keepass-xml">KeePass (XML)</option>
+              <option value="keepass-csv">KeePass (CSV)</option>
             </select>
           </p>
           <div class="import-mapping-headings"><span>CSV column</span><span></span><span>Saved as</span></div>

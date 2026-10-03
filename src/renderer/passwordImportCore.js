@@ -12,11 +12,11 @@
 
   function guessTarget(header) {
     const normalized = normalizeHeader(header);
-    if (['name', 'title', 'sitename', 'accountname'].includes(normalized)) return 'title';
-    if (['url', 'website', 'loginuri', 'loginurl', 'uri'].includes(normalized)) return 'website';
-    if (['username', 'login', 'email', 'loginemail', 'loginusername'].includes(normalized)) return 'username';
+    if (['name', 'title', 'sitename', 'accountname', 'account'].includes(normalized)) return 'title';
+    if (['url', 'website', 'loginuri', 'loginurl', 'uri', 'web'].includes(normalized)) return 'website';
+    if (['username', 'login', 'email', 'loginemail', 'loginusername', 'loginname'].includes(normalized)) return 'username';
     if (['password', 'pass', 'loginpassword'].includes(normalized)) return 'password';
-    if (['notes', 'note', 'extra', 'comments'].includes(normalized)) return 'notes';
+    if (['notes', 'note', 'extra', 'comments', 'comment'].includes(normalized)) return 'notes';
     return 'ignore';
   }
 

@@ -1,4 +1,5 @@
 // Password-manager imports are parsed entirely on this device; this module makes no network calls.
+const { DOMParser } = require('@xmldom/xmldom');
 const yauzl = require('yauzl');
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
@@ -34,7 +35,7 @@ function validateImportRequest(request) {
   if (request.formatOverride !== undefined &&
       ![
         'generic-csv', 'chrome-csv', 'bitwarden-json', 'bitwarden-csv',
-        'onepassword-1pux', 'onepassword-csv'
+        'onepassword-1pux', 'onepassword-csv', 'keepass-xml', 'keepass-csv'
       ].includes(request.formatOverride)) {
     throw importError('The selected import format is invalid.');
   }
@@ -192,8 +193,21 @@ function detectCsvFormat(headers) {
   if (bitwardenHeaders.every(header => normalized.has(header))) return 'bitwarden-csv';
   const chromeHeaders = ['name', 'url', 'username', 'password', 'note'];
   if (chromeHeaders.every(header => normalized.has(header))) return 'chrome-csv';
+  const hasTitle = normalized.has('title') || normalized.has('account');
+  const hasLoginFields = (normalized.has('username') || normalized.has('loginname')) &&
+    normalized.has('password');
+  const hasWebsite = normalized.has('url') || normalized.has('website');
   if (normalized.has('title') && normalized.has('username') && normalized.has('password') &&
-      (normalized.has('url') || normalized.has('website'))) return 'onepassword-csv';
+      hasWebsite && (normalized.has('otpauth') || normalized.has('type'))) return 'onepassword-csv';
+  if (hasTitle &&
+      (normalized.has('username') || normalized.has('loginname')) &&
+      normalized.has('password') &&
+      (normalized.has('group') || normalized.has('account') || normalized.has('loginname') ||
+        normalized.has('comments') || normalized.has('website'))) return 'keepass-csv';
+  if (normalized.has('title') && normalized.has('username') && normalized.has('password') && hasWebsite) {
+    return 'onepassword-csv';
+  }
+  if (hasTitle && hasLoginFields) return 'keepass-csv';
   return 'generic-csv';
 }
 
@@ -556,6 +570,110 @@ function parseOnePasswordArchive(buffer) {
   });
 }
 
+function isKdbxContent(buffer) {
+  return buffer.length >= 8 &&
+    buffer[0] === 0x03 && buffer[1] === 0xd9 && buffer[2] === 0xa2 && buffer[3] === 0x9a &&
+    buffer[4] === 0x67 && buffer[5] === 0xfb && buffer[6] === 0x4b && buffer[7] === 0xb5;
+}
+
+function parseKeePassCsv(parsedCsv) {
+  return {
+    format: 'keepass-csv',
+    headers: parsedCsv.headers,
+    rows: parsedCsv.rows,
+    skippedItems: parsedCsv.skippedItems
+  };
+}
+
+function parseKeePassXml(content) {
+  if (/<!\s*(DOCTYPE|ENTITY)\b/i.test(content)) {
+    throw importError('KeePass XML files containing DOCTYPE or entity declarations are not allowed.');
+  }
+  let document;
+  let parseError = '';
+  try {
+    document = new DOMParser({
+      onError(_level, message) {
+        parseError = message;
+      }
+    }).parseFromString(content, 'application/xml');
+  } catch (_error) {
+    if (parseError) throw importError(`The KeePass XML file is malformed: ${parseError}`);
+    throw importError('The KeePass XML file is malformed.');
+  }
+  if (parseError) throw importError(`The KeePass XML file is malformed: ${parseError}`);
+  const root = document && document.documentElement;
+  if (!root || root.nodeName !== 'KeePassFile') {
+    throw importError('The XML file is not a KeePass 2.x export.');
+  }
+
+  const headers = ['title', 'url', 'username', 'password', 'notes'];
+  const rows = [];
+  const skippedItems = [];
+  let entryCount = 0;
+  const childrenNamed = (node, name) => Array.from(node.childNodes || [])
+    .filter(child => child.nodeType === 1 && child.nodeName === name);
+  const directChild = (node, name) => childrenNamed(node, name)[0] || null;
+  const getValue = (entry, targetKey) => {
+    for (const field of childrenNamed(entry, 'String')) {
+      const key = directChild(field, 'Key');
+      if (!key || key.textContent.trim().toLocaleLowerCase() !== targetKey.toLocaleLowerCase()) continue;
+      const value = directChild(field, 'Value');
+      return value ? value.textContent : '';
+    }
+    return '';
+  };
+  const isOtpKey = key => /(?:totp|otp|one[\s_-]*time[\s_-]*(?:code|password))/i.test(key);
+  const visitGroup = (group, inRecycleBin) => {
+    const name = directChild(group, 'Name');
+    const recycleBin = inRecycleBin || Boolean(
+      name && name.textContent.trim().toLocaleLowerCase() === 'recycle bin'
+    );
+    childrenNamed(group, 'Entry').forEach(entry => {
+      entryCount++;
+      if (entryCount > MAX_ROWS) throw importError('Files may contain no more than 50,000 rows.');
+      if (recycleBin) {
+        skippedItems.push({ reason: 'KeePass Recycle Bin entries were skipped.' });
+        return;
+      }
+      if (childrenNamed(entry, 'Binary').length || childrenNamed(entry, 'Attachment').length) {
+        skippedItems.push({ reason: 'Attachments are not supported yet.' });
+        return;
+      }
+      const fields = Object.create(null);
+      let hasTotp = false;
+      childrenNamed(entry, 'String').forEach(field => {
+        const keyNode = directChild(field, 'Key');
+        const valueNode = directChild(field, 'Value');
+        if (!keyNode || !valueNode) return;
+        const key = keyNode.textContent.trim();
+        const value = valueNode.textContent;
+        if (isOtpKey(key)) {
+          if (value) hasTotp = true;
+          return;
+        }
+        const normalized = key.toLocaleLowerCase();
+        if (['title', 'url', 'username', 'password', 'notes'].includes(normalized)) {
+          fields[normalized] = value;
+        }
+      });
+      if (hasTotp) skippedItems.push({ reason: 'One-time-code secret is not stored' });
+      rows.push({
+        title: fields.title || '',
+        url: fields.url || '',
+        username: fields.username || '',
+        password: fields.password || '',
+        notes: fields.notes || ''
+      });
+    });
+    childrenNamed(group, 'Group').forEach(child => visitGroup(child, recycleBin));
+  };
+  const rootContainer = directChild(root, 'Root');
+  if (!rootContainer) throw importError('The KeePass XML export is missing its Root element.');
+  childrenNamed(rootContainer, 'Group').forEach(group => visitGroup(group, false));
+  return { format: 'keepass-xml', headers, rows, skippedItems };
+}
+
 function parsePasswordImportFile(request) {
   validateImportRequest(request);
   const buffer = getImportBuffer(request.content);
@@ -563,6 +681,9 @@ function parsePasswordImportFile(request) {
   if (request.formatOverride === 'onepassword-1pux' || (!request.formatOverride && zipContent)) {
     if (!zipContent) throw importError('This is not a 1Password .1pux archive.');
     return parseOnePasswordArchive(buffer);
+  }
+  if (isKdbxContent(buffer)) {
+    throw importError('Export your KeePass database as XML or CSV first');
   }
   let content = typeof request.content === 'string' ? request.content : '';
   if (!content) {
@@ -579,6 +700,11 @@ function parsePasswordImportFile(request) {
     );
   }
   const formatOverride = request.formatOverride;
+  if (formatOverride === 'keepass-xml') return parseKeePassXml(content);
+  if (formatOverride === 'keepass-csv') return parseKeePassCsv(parseGenericCsv(content));
+  if (!formatOverride && content.replace(/^\uFEFF/, '').trimStart().startsWith('<')) {
+    return parseKeePassXml(content);
+  }
   if (formatOverride === 'onepassword-csv') {
     return parseOnePasswordCsv(parseGenericCsv(content));
   }
@@ -603,6 +729,9 @@ function parsePasswordImportFile(request) {
   if (detectedFormat === 'onepassword-csv' && !formatOverride) {
     return parseOnePasswordCsv(parsed);
   }
+  if (formatOverride === 'keepass-csv' || (!formatOverride && detectedFormat === 'keepass-csv')) {
+    return parseKeePassCsv(parsed);
+  }
   return {
     format: formatOverride || detectedFormat,
     ...parsed
@@ -615,6 +744,7 @@ module.exports = {
   MAX_ARCHIVE_UNCOMPRESSED_BYTES,
   MAX_COMPRESSION_RATIO,
   MAX_FILE_BYTES,
+  isKdbxContent,
   MAX_ROWS,
   detectDelimiter,
   detectCsvFormat,
@@ -624,6 +754,8 @@ module.exports = {
   parseOnePasswordArchive,
   parseOnePasswordCsv,
   parseOnePasswordJson,
+  parseKeePassCsv,
+  parseKeePassXml,
   parseGenericCsv,
   parsePasswordImportFile,
   validateImportRequest

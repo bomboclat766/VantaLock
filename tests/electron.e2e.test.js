@@ -780,6 +780,30 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       expect(await reopenedPage.evaluate(() => JSON.parse(
         localStorage.getItem('vantalock_entries_store') || '[]'
       ))).toHaveLength(entriesBeforeImport.length + 2);
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="external"]').click();
+      await reopenedPage.locator('#external-import-files').setInputFiles({
+        name: 'renamed.backup',
+        mimeType: 'application/xml',
+        buffer: Buffer.from(
+          '<KeePassFile><Root><Group><Name>Root</Name><Entry>' +
+          '<String><Key>Title</Key><Value>Synthetic KeePass</Value></String>' +
+          '<String><Key>UserName</Key><Value>keepass-user</Value></String>' +
+          '<String><Key>Password</Key><Value>keepass-secret</Value></String>' +
+          '</Entry></Group></Root></KeePassFile>'
+        )
+      });
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      expect(await reopenedPage.locator('.import-format-name').textContent()).toBe('KeePass (XML)');
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForSelector('.import-preview-list');
+      expect(await reopenedPage.locator('.import-preview-counts').textContent())
+        .toContain('1 logins, 0 secure notes ready');
+      await reopenedPage.locator('.import-cancel').click();
+      expect(await reopenedPage.evaluate(() => JSON.parse(
+        localStorage.getItem('vantalock_entries_store') || '[]'
+      ))).toHaveLength(entriesBeforeImport.length + 2);
       expect(pageErrors).toEqual([]);
     } finally {
       if (app) await app.close();

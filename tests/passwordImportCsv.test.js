@@ -248,6 +248,91 @@ describe('generic CSV password import parser', () => {
       .toThrow('1Password archives must be 50 MB or smaller.');
   });
 
+  test('detects KeePass CSV from tolerant account, login-name, and web-site headers', () => {
+    const parsed = parsePasswordImportFile({
+      fileName: 'renamed.txt',
+      content: 'Group,Account,Login Name,Password,Web Site,Comments\nWork,Mailbox,alice,secret,https://mail.test,memo'
+    });
+    expect(parsed.format).toBe('keepass-csv');
+    expect(parsed.rows[0]).toEqual({
+      Group: 'Work',
+      Account: 'Mailbox',
+      'Login Name': 'alice',
+      Password: 'secret',
+      'Web Site': 'https://mail.test',
+      Comments: 'memo'
+    });
+  });
+
+  test('parses KeePass XML nested groups, skips Recycle Bin and attachments, and omits OTP values', () => {
+    const xml = `<?xml version="1.0"?>
+      <KeePassFile><Root><Group><Name>Root group</Name>
+        <Entry>
+          <String><Key>Title</Key><Value>Mailbox</Value></String>
+          <String><Key>UserName</Key><Value>alice</Value></String>
+          <String><Key>Password</Key><Value>secret</Value></String>
+          <String><Key>URL</Key><Value>https://mail.test</Value></String>
+          <String><Key>Notes</Key><Value>memo</Value></String>
+          <String><Key>TOTP Seed</Key><Value>otp-secret</Value></String>
+        </Entry>
+        <Group><Name>Nested</Name>
+          <Entry><String><Key>Title</Key><Value>Nested note</Value></String>
+            <String><Key>Notes</Key><Value>note content</Value></String></Entry>
+        </Group>
+        <Group><Name>Recycle Bin</Name>
+          <Entry><String><Key>Title</Key><Value>Deleted</Value></String></Entry>
+        </Group>
+        <Entry><String><Key>Title</Key><Value>Attachment entry</Value></String>
+          <Binary><Key>file</Key><Value>blob</Value></Binary></Entry>
+      </Group></Root></KeePassFile>`;
+    const parsed = parsePasswordImportFile({ fileName: 'backup.data', content: xml });
+    expect(parsed.format).toBe('keepass-xml');
+    expect(parsed.rows).toEqual([
+      {
+        title: 'Mailbox',
+        url: 'https://mail.test',
+        username: 'alice',
+        password: 'secret',
+        notes: 'memo'
+      },
+      { title: 'Nested note', url: '', username: '', password: '', notes: 'note content' }
+    ]);
+    expect(parsed.skippedItems).toEqual([
+      { reason: 'One-time-code secret is not stored' },
+      { reason: 'Attachments are not supported yet.' },
+      { reason: 'KeePass Recycle Bin entries were skipped.' }
+    ]);
+    expect(JSON.stringify(parsed)).not.toContain('otp-secret');
+  });
+
+  test('rejects KeePass XML containing a DOCTYPE or entity declaration', () => {
+    const withDoctype = '<!DOCTYPE KeePassFile [<!ENTITY secret "value">]><KeePassFile/>';
+    const withEntity = '<!ENTITY secret "value"><KeePassFile/>';
+    expect(() => parsePasswordImportFile({
+      fileName: 'not-xml.xml',
+      content: withDoctype
+    })).toThrow('KeePass XML files containing DOCTYPE or entity declarations are not allowed.');
+    expect(() => parsePasswordImportFile({
+      fileName: 'not-xml.xml',
+      content: withEntity
+    })).toThrow('KeePass XML files containing DOCTYPE or entity declarations are not allowed.');
+  });
+
+  test('rejects malformed KeePass XML', () => {
+    expect(() => parsePasswordImportFile({
+      fileName: 'broken.xml',
+      content: '<KeePassFile><Root></KeePassFile>'
+    })).toThrow('The KeePass XML file is malformed:');
+  });
+
+  test('refuses KeePass KDBX by binary content, independent of filename', () => {
+    const kdbx = new Uint8Array([0x03, 0xd9, 0xa2, 0x9a, 0x67, 0xfb, 0x4b, 0xb5]);
+    expect(() => parsePasswordImportFile({
+      fileName: 'mystery.bin',
+      content: kdbx
+    })).toThrow('Export your KeePass database as XML or CSV first');
+  });
+
   test('creates deterministic names for blank and duplicate headers', () => {
     const parsed = parseGenericCsv('name,name,\nfirst,second,third');
     expect(parsed.headers).toEqual(['name', 'name (2)', 'Column 3']);

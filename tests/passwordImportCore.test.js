@@ -43,6 +43,18 @@ describe('password import mapping and preview', () => {
       });
   });
 
+  test('guesses KeePass CSV column aliases', () => {
+    expect(createHeaderMapping(['Group', 'Account', 'Login Name', 'Password', 'Web Site', 'Comments']))
+      .toEqual({
+        Group: 'ignore',
+        Account: 'title',
+        'Login Name': 'username',
+        Password: 'password',
+        'Web Site': 'website',
+        Comments: 'notes'
+      });
+  });
+
   test('creates logins with passwords, notes without passwords, and URL-host title fallback', () => {
     const parsed = {
       headers: ['title', 'url', 'username', 'password', 'notes'],

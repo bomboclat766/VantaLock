@@ -92,7 +92,7 @@ ipcMain.handle('prompt-biometrics', async (event, reason) => {
           return await winHello.authenticate(promptReason);
         }
       } catch (e) {
-        // Fallback or simulated prompt if win-hello module not available
+        // Fail closed when the native provider is unavailable.
       }
       return false;
     }

@@ -12,12 +12,17 @@
     notes: 'Notes',
     ignore: 'Ignore'
   };
+  const FORMAT_LABELS = {
+    'generic-csv': 'Generic CSV',
+    'chrome-csv': 'Chrome / Google Password Manager CSV'
+  };
 
   function mount(options) {
     const { container, core, parseFile, getEntries, persistEntries, initialCompartment, isDecoy } = options;
     let files = [];
     let parsedFiles = [];
     let mappings = [];
+    let formats = [];
     let previewEntries = [];
     let currentMappingIndex = 0;
     let compartment = initialCompartment === 'personal' ? initialCompartment : 'personal';
@@ -27,6 +32,7 @@
       files = [];
       parsedFiles = [];
       mappings = [];
+      formats = [];
       previewEntries = [];
       currentMappingIndex = 0;
       previewCounts = null;
@@ -122,7 +128,10 @@
           name: file.name,
           parsed: await parseFile({ fileName: file.name, content: await file.text() })
         })));
-        mappings = parsedFiles.map(file => core.createHeaderMapping(file.parsed.headers));
+        formats = parsedFiles.map(file => file.parsed.format);
+        mappings = parsedFiles.map((file, index) =>
+          core.createHeaderMapping(file.parsed.headers, formats[index])
+        );
         currentMappingIndex = 0;
         showMapping();
       } catch (failure) {
@@ -141,7 +150,13 @@
           <button type="button" class="import-back-link" data-action="back">Back</button>
           <h3 class="setup-title">Match columns to VantaLock fields</h3>
           <p class="setup-desc import-file-heading"></p>
-          <p class="import-detected-format">Detected: Generic CSV</p>
+          <p class="import-detected-format">Detected: <span class="import-format-name"></span>
+            <button type="button" class="import-format-change">Change</button>
+            <select class="import-format-override hidden" aria-label="Override detected format">
+              <option value="generic-csv">Generic CSV</option>
+              <option value="chrome-csv">Chrome / Google Password Manager CSV</option>
+            </select>
+          </p>
           <div class="import-mapping-headings"><span>CSV column</span><span></span><span>Saved as</span></div>
           <div class="import-mapping-grid"></div>
           <p class="import-warning" role="status"></p>
@@ -154,12 +169,29 @@
         </section>`;
       container.querySelector('.import-file-heading').textContent =
         `File ${currentMappingIndex + 1} of ${parsedFiles.length}: ${file.name}`;
+      container.querySelector('.import-format-name').textContent =
+        FORMAT_LABELS[formats[currentMappingIndex]] || FORMAT_LABELS['generic-csv'];
       container.querySelector('[data-action="back"]').addEventListener('click', () => {
         parsedFiles = [];
         mappings = [];
         showPicker();
       });
       const grid = container.querySelector('.import-mapping-grid');
+      const formatOverride = container.querySelector('.import-format-override');
+      container.querySelector('.import-format-change').addEventListener('click', () => {
+        formatOverride.classList.toggle('hidden');
+      });
+      formatOverride.value = formats[currentMappingIndex];
+      formatOverride.addEventListener('change', () => {
+        formats[currentMappingIndex] = formatOverride.value;
+        mappings[currentMappingIndex] = core.createHeaderMapping(
+          file.parsed.headers,
+          formatOverride.value
+        );
+        container.querySelector('.import-format-name').textContent =
+          FORMAT_LABELS[formatOverride.value];
+        showMapping();
+      });
       file.parsed.headers.forEach(header => {
         const source = document.createElement('span');
         source.className = 'import-source-field';

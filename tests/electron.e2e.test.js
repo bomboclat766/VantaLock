@@ -671,6 +671,28 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
           content: 'Username: bob\nWebsite: https://notes.example.test\nNotes: note text'
         }
       });
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="external"]').click();
+      await reopenedPage.locator('#external-import-files').setInputFiles({
+        name: 'chrome-export.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from('name,url,username,password,note\nChrome,https://chrome.test,alice,secret,memo')
+      });
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      expect(await reopenedPage.locator('.import-format-name').textContent())
+        .toBe('Chrome / Google Password Manager CSV');
+      expect(await reopenedPage.locator('.import-map-select').evaluateAll(
+        selects => selects.map(select => select.value)
+      )).toEqual(['title', 'website', 'username', 'password', 'notes']);
+      await reopenedPage.locator('.import-format-change').click();
+      await reopenedPage.locator('.import-format-override').selectOption('generic-csv');
+      expect(await reopenedPage.locator('.import-format-name').textContent()).toBe('Generic CSV');
+      await reopenedPage.locator('[data-action="back"]').click();
+      await reopenedPage.locator('[data-action="back"]').click();
+      expect(await reopenedPage.evaluate(() => JSON.parse(
+        localStorage.getItem('vantalock_entries_store') || '[]'
+      ))).toHaveLength(entriesBeforeImport.length + 2);
       expect(pageErrors).toEqual([]);
     } finally {
       if (app) await app.close();

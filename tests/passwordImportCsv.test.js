@@ -39,6 +39,22 @@ describe('generic CSV password import parser', () => {
     expect(parsed.rows[0].url).toBe(expectedUrl);
   });
 
+  test('detects Chrome CSV from case-insensitive content headers, not the filename', () => {
+    const parsed = parsePasswordImportFile({
+      fileName: 'manager-export.txt',
+      content: 'NAME,Url,Username,Password,Note\nExample,https://example.test,alice,secret,memo'
+    });
+    expect(parsed.format).toBe('chrome-csv');
+    expect(parsed.headers).toEqual(['NAME', 'Url', 'Username', 'Password', 'Note']);
+    expect(parsed.rows[0]).toEqual({
+      NAME: 'Example',
+      Url: 'https://example.test',
+      Username: 'alice',
+      Password: 'secret',
+      Note: 'memo'
+    });
+  });
+
   test('creates deterministic names for blank and duplicate headers', () => {
     const parsed = parseGenericCsv('name,name,\nfirst,second,third');
     expect(parsed.headers).toEqual(['name', 'name (2)', 'Column 3']);

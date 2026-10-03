@@ -19,6 +19,19 @@ describe('password import mapping and preview', () => {
     expect(mapping['Login Email']).toBe('ignore');
   });
 
+  test('pre-maps Chrome headers case-insensitively', () => {
+    expect(createHeaderMapping(
+      ['NAME', 'Url', 'Username', 'Password', 'Note'],
+      'chrome-csv'
+    )).toEqual({
+      NAME: 'title',
+      Url: 'website',
+      Username: 'username',
+      Password: 'password',
+      Note: 'notes'
+    });
+  });
+
   test('creates logins with passwords, notes without passwords, and URL-host title fallback', () => {
     const parsed = {
       headers: ['title', 'url', 'username', 'password', 'notes'],

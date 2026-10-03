@@ -156,6 +156,14 @@ function parseGenericCsv(content) {
   return { headers, rows, skippedItems };
 }
 
+function detectCsvFormat(headers) {
+  const normalized = new Set(headers.map(header =>
+    String(header).trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, '')
+  ));
+  const chromeHeaders = ['name', 'url', 'username', 'password', 'note'];
+  return chromeHeaders.every(header => normalized.has(header)) ? 'chrome-csv' : 'generic-csv';
+}
+
 function parsePasswordImportFile(request) {
   validateImportRequest(request);
   if (detectVantaLockBackup(request.content)) {
@@ -164,16 +172,15 @@ function parsePasswordImportFile(request) {
       'VANTALOCK_BACKUP'
     );
   }
-  return {
-    format: 'generic-csv',
-    ...parseGenericCsv(request.content)
-  };
+  const parsed = parseGenericCsv(request.content);
+  return { format: detectCsvFormat(parsed.headers), ...parsed };
 }
 
 module.exports = {
   MAX_FILE_BYTES,
   MAX_ROWS,
   detectDelimiter,
+  detectCsvFormat,
   detectVantaLockBackup,
   parseGenericCsv,
   parsePasswordImportFile,

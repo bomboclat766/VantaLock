@@ -20,9 +20,21 @@
     return 'ignore';
   }
 
-  function createHeaderMapping(headers) {
+  function createHeaderMapping(headers, format = 'generic-csv') {
     const mapping = Object.create(null);
-    headers.forEach(header => { mapping[header] = guessTarget(header); });
+    const chromePreset = {
+      name: 'title',
+      url: 'website',
+      username: 'username',
+      password: 'password',
+      note: 'notes'
+    };
+    headers.forEach(header => {
+      const normalized = normalizeHeader(header);
+      mapping[header] = format === 'chrome-csv' && chromePreset[normalized]
+        ? chromePreset[normalized]
+        : guessTarget(header);
+    });
     return mapping;
   }
 

@@ -992,6 +992,31 @@ button {
   line-height: 1.5;
 }
 
+.import-detected-format {
+  margin-top: 12px;
+  color: #8a8a85;
+  font-size: 12px;
+}
+
+.import-format-change {
+  margin-left: 6px;
+  border: 0;
+  background: transparent;
+  color: #c9a24a;
+  font: inherit;
+  cursor: pointer;
+}
+
+.import-format-override {
+  margin-left: 8px;
+  padding: 4px 8px;
+  border: 1px solid #3a3320;
+  border-radius: 5px;
+  background: #141414;
+  color: #c9a24a;
+  font: inherit;
+}
+
 .import-file-input {
   margin-top: 8px;
 }

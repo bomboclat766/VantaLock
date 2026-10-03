@@ -888,11 +888,16 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       await app.evaluate(({ dialog }, filePath) => {
         dialog.showSaveDialog = async () => ({ canceled: false, filePath });
       }, backupPath);
-      await reopenedPage.evaluate(password => {
-        window.prompt = () => password;
-      }, masterPassword);
       await reopenedPage.locator('[data-tool="export"]').click();
       await reopenedPage.locator('#export-json-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-input');
+      await reopenedPage.locator('#vault-password-dialog-cancel').click();
+      expect(await reopenedPage.locator('#vault-password-dialog-input').count()).toBe(0);
+
+      await reopenedPage.locator('#export-json-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-input');
+      await reopenedPage.locator('#vault-password-dialog-input').fill(masterPassword);
+      await reopenedPage.locator('#vault-password-dialog-submit').click();
       await reopenedPage.waitForFunction(() =>
         document.getElementById('export-status-msg')?.textContent.includes('exported successfully')
       );
@@ -908,10 +913,10 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       await reopenedPage.locator('[data-tool="import"]').click();
       await reopenedPage.locator('[data-import-choice="backup"]').click();
       await reopenedPage.locator('#import-file-input').setInputFiles(backupPath);
-      await reopenedPage.evaluate(() => {
-        window.prompt = () => 'E2EMasterPassword!2026';
-      });
       await reopenedPage.locator('#import-json-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-input');
+      await reopenedPage.locator('#vault-password-dialog-input').fill(masterPassword);
+      await reopenedPage.locator('#vault-password-dialog-submit').click();
       await reopenedPage.waitForFunction(expectedCount => {
         const message = document.getElementById('import-status-msg')?.textContent || '';
         const entries = JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]');

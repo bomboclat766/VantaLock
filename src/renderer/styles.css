@@ -813,6 +813,20 @@ button {
   padding: 20px;
 }
 
+.vault-password-dialog .setup-card {
+  width: 100%;
+}
+
+.vault-password-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.vault-password-dialog-actions .btn-primary {
+  width: auto;
+}
+
 .type-chips-grid {
   display: flex;
   gap: 8px;

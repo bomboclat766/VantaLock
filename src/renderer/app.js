@@ -2637,7 +2637,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const reader = new FileReader();
       reader.onload = async event => {
         try {
-          const password = window.prompt('Enter the backup password. For legacy backups, enter your current master password to protect the migrated copy.');
+          const password = await window.VantaLockPasswordDialog.requestPassword({
+            title: 'Import Encrypted Backup',
+            message: 'Enter the backup password. For legacy backups, enter your current master password to protect the migrated copy.',
+            submitLabel: 'Import Backup'
+          });
           if (!password) return;
           const result = await window.electronAPI.importEncryptedVault({
             exportString: event.target.result,
@@ -2935,7 +2939,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       async function enableBiometricsFromSecurityCenter() {
-        const password = window.prompt('Enter your current master password to enable Touch ID unlock.');
+        const password = await window.VantaLockPasswordDialog.requestPassword({
+          title: 'Enable Biometric Unlock',
+          message: 'Enter your current master password to enable Touch ID unlock.',
+          submitLabel: 'Continue'
+        });
         if (!password) return false;
 
         const salt = localStorage.getItem('vantalock_vault_salt');
@@ -3217,7 +3225,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (exportBtn) {
         exportBtn.addEventListener('click', async () => {
           try {
-            const password = window.prompt('Enter your master password to encrypt this backup.');
+            const password = await window.VantaLockPasswordDialog.requestPassword({
+              title: 'Export Encrypted Backup',
+              message: 'Enter your master password to encrypt this backup.',
+              submitLabel: 'Export Backup'
+            });
             if (!password) return;
             const salt = localStorage.getItem('vantalock_vault_salt');
             const verifier = localStorage.getItem('vantalock_vault_verifier');

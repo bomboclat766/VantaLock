@@ -110,7 +110,7 @@ function showScreen(screenName) {
 
   if (screenName === 'recovery-key-reveal') {
     if (typeof window.setupRecoveryKeyScreen === 'function') {
-      setupRecoveryKeyScreen();
+      window.setupRecoveryKeyScreen();
     }
   }
 }
@@ -619,35 +619,23 @@ function showScreen(screenName) {
     return generated;
   }
 
-let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
-let generateRecoveryKey, ClipboardManager, clipboardMgr, exportEncryptedVault, importEncryptedVault, LockManager;
+function calculatePasswordStrength(password) {
+  if (!password) return { score: 0, label: 'empty' };
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (password.length >= 14) score += 1;
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  score = Math.min(score, 4);
+  return { score, label: ['weak', 'weak', 'medium', 'strong', 'very strong'][score] };
+}
 
-try {
-  const cryptoVault = require('../crypto/vaultCrypto');
-  calculatePasswordStrength = cryptoVault.calculatePasswordStrength;
-  encryptData = cryptoVault.encryptData;
-  deriveKey = cryptoVault.deriveKey;
-  verifyKey = cryptoVault.verifyKey;
-  generateSalt = cryptoVault.generateSalt;
-  createVerifier = cryptoVault.createVerifier;
-
-  generateRecoveryKey = require('../crypto/recoveryKey').generateRecoveryKey;
-  ClipboardManager = require('../crypto/clipboardManager');
-  clipboardMgr = new ClipboardManager(30000);
-  const backup = require('../crypto/vaultBackup');
-  exportEncryptedVault = backup.exportEncryptedVault;
-  importEncryptedVault = backup.importEncryptedVault;
-  LockManager = require('../crypto/lockManager');
-} catch (e) {
-  // Web browser fallback implementations for testing / static view
-  calculatePasswordStrength = (pwd) => ({ score: pwd.length > 8 ? 3 : 1, label: pwd.length > 8 ? 'Strong' : 'Weak' });
-  deriveKey = async (pwd, salt) => typeof Buffer !== 'undefined' ? Buffer.from('mockderivedkey32byteslongkey12345') : 'mockderivedkey32byteslongkey12345';
-  verifyKey = () => true;
-  generateSalt = () => typeof Buffer !== 'undefined' ? Buffer.from('1234567890123456') : { toString: () => '1234567890123456' };
-  createVerifier = () => 'mockverifier';
-  generateRecoveryKey = () => ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo', 'lima', 'mike', 'november', 'oscar', 'papa', 'quebec', 'romeo', 'sierra', 'tango', 'uniform', 'victor', 'whiskey', 'xray'];
-  clipboardMgr = { copySensitiveText: () => {}, writeText: () => {} };
-  LockManager = class { constructor() {} resetInactivityTimer() {} recordSuccessfulUnlock() {} lock() {} };
+function copySensitiveText(text) {
+  if (!window.electronAPI || typeof window.electronAPI.copySensitiveText !== 'function') {
+    throw new Error('Secure clipboard service is unavailable');
+  }
+  return window.electronAPI.copySensitiveText(text);
 }
 
 
@@ -661,20 +649,18 @@ function logActivity(eventMessage) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Lock Manager Instance & User Inactivity Listeners
+  // Main-process lock manager and user inactivity listeners
   const savedAutoLockMin = parseInt(localStorage.getItem('vantalock_autolock') || '5', 10);
-  const lockMgr = new LockManager({
-    autoLockMinutes: savedAutoLockMin,
-    onLockCallback: (reason) => {
-      logActivity(`VAULT LOCKED: ${reason}`);
-      localStorage.removeItem('vantalock_unlocked_session');
-      showScreen('unlock-vault');
-    }
+  window.electronAPI.lockManagerSetTimeout(savedAutoLockMin);
+  window.electronAPI.onVaultLocked((reason) => {
+    logActivity(`VAULT LOCKED: ${reason}`);
+    localStorage.removeItem('vantalock_unlocked_session');
+    showScreen('unlock-vault');
   });
 
   ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
     document.addEventListener(evt, () => {
-      lockMgr.resetInactivityTimer();
+      window.electronAPI.lockManagerActivity();
     }, { passive: true });
   });
 
@@ -685,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function triggerPanicLock() {
     logActivity('USER ACTION: Panic lock triggered.');
     if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
-    lockMgr.lock('Manual panic lock triggered');
+    window.electronAPI.lockManagerLock('Manual panic lock triggered');
   }
 
   if (panicLockBtn) {
@@ -1086,7 +1072,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (targetView === 'dashboard') {
       if (dashboardViewContainer) dashboardViewContainer.classList.remove('hidden');
       if (lockStatusText) lockStatusText.textContent = 'VAULT UNLOCKED';
-      lockMgr.recordSuccessfulUnlock();
       localStorage.setItem('vantalock_unlocked_session', 'true');
       logActivity('NAVIGATION: Dashboard view displayed.');
 
@@ -1137,6 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let pendingMasterPassword = '';
+  let pendingBiometricsSupported = false;
 
   async function triggerAutoBiometricsUnlock() {
     const isEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
@@ -1151,9 +1137,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
             if (storedSaltHex && storedVerifier) {
               const salt = storedSaltHex;
-              const currDerivedKey = await deriveKey(pwd, salt);
-              if (verifyKey(currDerivedKey, storedVerifier)) {
+              if (await window.electronAPI.verifyMasterPassword({ password: pwd, salt, verifier: storedVerifier })) {
                 logActivity('SECURITY: Vault unlocked via Biometrics.');
+                await window.electronAPI.lockManagerSuccess();
                 showScreen('dashboard');
               }
             }
@@ -1313,26 +1299,27 @@ document.addEventListener('DOMContentLoaded', () => {
             generateDecoyContent();
           }
           resetFailedAttempts();
+          await window.electronAPI.lockManagerSuccess();
           if (unlockErrorText) unlockErrorText.style.display = 'none';
           unlockVaultForm.reset();
           playUnlockAnimation(() => { showScreen('dashboard'); });
           return;
         }
 
-        if (storedSaltHex && storedVerifier) {
-          const salt = storedSaltHex;
-          const currDerivedKey = await deriveKey(pwdVal, salt);
-
-          if (!verifyKey(currDerivedKey, storedVerifier)) {
-            recordFailedAttempt();
-            if (unlockErrorText) unlockErrorText.style.display = 'block';
-            logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
-            return;
-          }
+        if (!storedSaltHex || !storedVerifier || !await window.electronAPI.verifyMasterPassword({
+          password: pwdVal,
+          salt: storedSaltHex,
+          verifier: storedVerifier
+        })) {
+          recordFailedAttempt();
+          if (unlockErrorText) unlockErrorText.style.display = 'block';
+          logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
+          return;
         }
 
         window.activeVaultType = 'real';
         resetFailedAttempts();
+        await window.electronAPI.lockManagerSuccess();
         if (unlockErrorText) unlockErrorText.style.display = 'none';
         unlockVaultForm.reset();
         playUnlockAnimation(() => { showScreen('dashboard'); });
@@ -1388,30 +1375,42 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       mpErrorText.style.display = 'none';
 
-      const salt = generateSalt();
-      const derivedKey = await deriveKey(pwd, salt);
-      const verifier = createVerifier(derivedKey);
+      const credentials = await window.electronAPI.createVaultCredentials(pwd);
 
-      localStorage.setItem('vantalock_vault_salt', salt.toString('hex'));
-      localStorage.setItem('vantalock_vault_verifier', verifier);
+      localStorage.setItem('vantalock_vault_salt', credentials.salt);
+      localStorage.setItem('vantalock_vault_verifier', credentials.verifier);
 
       logActivity('SECURITY: Master password key derived and verifier stored.');
       pendingMasterPassword = pwd;
-      const bioAvailable = await checkBiometricsSupport();
-      if (bioAvailable) {
-        showScreen('biometric-optin');
-      } else {
-        setupRecoveryKeyScreen();
+      pendingBiometricsSupported = false;
+      if (enableBiometricsBtn) enableBiometricsBtn.disabled = true;
+      showScreen('biometric-optin');
+      try {
+        const supported = await checkBiometricsSupport();
+        if (biometricOptinModal && !biometricOptinModal.classList.contains('hidden')) {
+          pendingBiometricsSupported = supported;
+          if (supported) {
+            if (enableBiometricsBtn) enableBiometricsBtn.disabled = false;
+          } else {
+            pendingMasterPassword = '';
+            showScreen('recovery-key-reveal');
+          }
+        }
+      } catch (e) {
+        console.error('Biometric support check failed:', e);
+        if (biometricOptinModal && !biometricOptinModal.classList.contains('hidden')) {
+          pendingMasterPassword = '';
+          showScreen('recovery-key-reveal');
+        }
       }
     });
   }
 
-  window.setupRecoveryKeyScreen = function setupRecoveryKeyScreen() {
+  window.setupRecoveryKeyScreen = async function setupRecoveryKeyScreen() {
     const gridElem = document.getElementById('recovery-words-grid') || recoveryWordsGrid;
     let rawPhrase = localStorage.getItem('vantalock_seed_phrase');
     if (!rawPhrase) {
-      rawPhrase = generateRecoveryKey();
-      if (Array.isArray(rawPhrase)) rawPhrase = rawPhrase.join(' ');
+      rawPhrase = await window.electronAPI.generateRecoveryKey();
       localStorage.setItem('vantalock_seed_phrase', rawPhrase);
     }
     activeRecoveryKeyWords = typeof rawPhrase === 'string' ? rawPhrase.trim().split(/\s+/) : (Array.isArray(rawPhrase) ? rawPhrase : []);
@@ -1429,12 +1428,66 @@ document.addEventListener('DOMContentLoaded', () => {
     logActivity('SECURITY: 24-word recovery phrase generated.');
   }
 
+  const enableBiometricsBtn = document.getElementById('enable-biometrics-btn');
+  const skipBiometricsBtn = document.getElementById('skip-biometrics-btn');
+
+  if (enableBiometricsBtn) {
+    enableBiometricsBtn.addEventListener('click', async () => {
+      try {
+        if (
+          pendingBiometricsSupported &&
+          window.electronAPI &&
+          typeof window.electronAPI.promptBiometrics === 'function' &&
+          typeof window.electronAPI.storeSecureToken === 'function'
+        ) {
+          const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+          if (authenticated && pendingMasterPassword) {
+            const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
+            localStorage.setItem('vantalock_secure_token', token);
+            localStorage.setItem('vantalock_biometrics_enabled', 'true');
+            logActivity('SECURITY: Biometric unlock enabled during onboarding.');
+          } else {
+            localStorage.setItem('vantalock_biometrics_enabled', 'false');
+          }
+        } else {
+          localStorage.setItem('vantalock_biometrics_enabled', 'false');
+        }
+      } catch (e) {
+        console.error('Biometric enablement failed:', e);
+        try {
+          localStorage.setItem('vantalock_biometrics_enabled', 'false');
+        } catch (storageError) {
+          console.error('Could not save biometric preference:', storageError);
+        }
+      } finally {
+        pendingMasterPassword = '';
+        pendingBiometricsSupported = false;
+        showScreen('recovery-key-reveal');
+      }
+    });
+  }
+
+  if (skipBiometricsBtn) {
+    skipBiometricsBtn.addEventListener('click', () => {
+      try {
+        localStorage.setItem('vantalock_biometrics_enabled', 'false');
+        logActivity('SECURITY: Biometric unlock skipped during onboarding.');
+      } catch (e) {
+        console.error('Could not save biometric preference:', e);
+      } finally {
+        pendingMasterPassword = '';
+        pendingBiometricsSupported = false;
+        showScreen('recovery-key-reveal');
+      }
+    });
+  }
+
   if (copyRkBtn) {
     copyRkBtn.addEventListener('click', () => {
       let phrase = activeRecoveryKeyWords ? activeRecoveryKeyWords.join(' ') : '';
           if (!phrase) phrase = localStorage.getItem('vantalock_seed_phrase') || '';
           if (phrase) {
-        clipboardMgr.copySensitiveText(activeRecoveryKeyWords.join(' '));
+        copySensitiveText(activeRecoveryKeyWords.join(' '));
         copyRkBtn.textContent = 'Copied!';
         setTimeout(() => copyRkBtn.textContent = 'Copy', 2000);
       }
@@ -1983,7 +2036,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         const valToCopy = btn.getAttribute('data-copy');
         if (valToCopy) {
-          clipboardMgr.writeText(valToCopy);
+          copySensitiveText(valToCopy);
           logActivity('CLIPBOARD: Copied field data to clipboard.');
           const orig = btn.textContent;
           btn.textContent = 'Copied!';
@@ -2247,33 +2300,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-            if (storedSaltHex && storedVerifier) {
-              const salt = storedSaltHex;
-              const currDerivedKey = await deriveKey(currPwd, salt);
-
-              if (!verifyKey(currDerivedKey, storedVerifier)) {
-                msgDiv.style.color = '#ef4444';
-                msgDiv.textContent = 'Incorrect current master password.';
-                logActivity('SECURITY WARNING: Failed master password verification during password change.');
-                return;
-              }
-
-              const newSalt = generateSalt();
-              const newDerivedKey = await deriveKey(newPwd, newSalt);
-              const newVerifier = createVerifier(newDerivedKey);
-
-              localStorage.setItem('vantalock_vault_salt', newSalt.toString('hex'));
-              localStorage.setItem('vantalock_vault_verifier', newVerifier);
-
-              msgDiv.style.color = '#10b981';
-              msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
-              logActivity('SECURITY: Master password changed and key re-derived.');
-              changeForm.reset();
-            } else {
-              msgDiv.style.color = '#10b981';
-              msgDiv.textContent = 'Master password updated.';
-              changeForm.reset();
+            if (!storedSaltHex || !storedVerifier || !await window.electronAPI.verifyMasterPassword({
+              password: currPwd,
+              salt: storedSaltHex,
+              verifier: storedVerifier
+            })) {
+              msgDiv.style.color = '#ef4444';
+              msgDiv.textContent = 'Incorrect current master password.';
+              logActivity('SECURITY WARNING: Failed master password verification during password change.');
+              return;
             }
+
+            const credentials = await window.electronAPI.createVaultCredentials(newPwd);
+            localStorage.setItem('vantalock_vault_salt', credentials.salt);
+            localStorage.setItem('vantalock_vault_verifier', credentials.verifier);
+            if (localStorage.getItem('vantalock_biometrics_enabled') === 'true') {
+              const token = await window.electronAPI.storeSecureToken(newPwd);
+              localStorage.setItem('vantalock_secure_token', token);
+            }
+
+            msgDiv.style.color = '#10b981';
+            msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
+            logActivity('SECURITY: Master password changed and key re-derived.');
+            changeForm.reset();
           } finally {
             if (submitBtn) {
               submitBtn.disabled = false;
@@ -2301,7 +2350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         autoLockSelect.value = localStorage.getItem('vantalock_autolock') || '5';
         autoLockSelect.addEventListener('change', (e) => {
           localStorage.setItem('vantalock_autolock', e.target.value);
-          lockMgr.setAutoLockTimer(parseInt(e.target.value, 10));
+          window.electronAPI.lockManagerSetTimeout(parseInt(e.target.value, 10));
           logActivity(`SETTINGS: Auto-lock timeout set to ${e.target.value} minutes.`);
         });
       }
@@ -2451,16 +2500,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-            if (storedSaltHex && storedVerifier) {
-              const salt = storedSaltHex;
-              const currDerivedKey = await deriveKey(pwdVal, salt);
-
-              if (!verifyKey(currDerivedKey, storedVerifier)) {
-                const seedErr = document.getElementById('seed-error-msg');
-                if (seedErr) seedErr.style.display = 'block';
-                logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
-                return;
-              }
+            if (!storedSaltHex || !storedVerifier || !await window.electronAPI.verifyMasterPassword({
+              password: pwdVal,
+              salt: storedSaltHex,
+              verifier: storedVerifier
+            })) {
+              const seedErr = document.getElementById('seed-error-msg');
+              if (seedErr) seedErr.style.display = 'block';
+              logActivity('SECURITY WARNING: Incorrect password attempt to reveal recovery seed.');
+              return;
             }
 
             const seedErr = document.getElementById('seed-error-msg');
@@ -2476,7 +2524,7 @@ document.addEventListener('DOMContentLoaded', () => {
               wordsToRender = savedSeed.trim().split(/\s+/);
               activeRecoveryKeyWords = wordsToRender;
             } else {
-              const freshPhrase = generateRecoveryKey();
+              const freshPhrase = await window.electronAPI.generateRecoveryKey();
               wordsToRender = freshPhrase.trim().split(/\s+/);
               activeRecoveryKeyWords = wordsToRender;
               localStorage.setItem('vantalock_seed_phrase', freshPhrase);
@@ -2527,7 +2575,7 @@ document.addEventListener('DOMContentLoaded', () => {
         copyScrubBtn.addEventListener('click', () => {
           let phrase = activeRecoveryKeyWords && activeRecoveryKeyWords.length ? activeRecoveryKeyWords.join(' ') : (localStorage.getItem('vantalock_seed_phrase') || '');
           if (phrase) {
-            clipboardMgr.copySensitiveText(phrase);
+            copySensitiveText(phrase);
             copyMsg.style.color = '#10b981';
             copyMsg.textContent = 'Phrase copied to clipboard! Clipboard will auto-clear in 30 seconds.';
             logActivity('CLIPBOARD: Recovery seed copied (30s auto-clear active).');
@@ -2547,10 +2595,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const exportBtn = document.getElementById('export-json-btn');
       const exportMsg = document.getElementById('export-status-msg');
       if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
+        exportBtn.addEventListener('click', async () => {
           try {
-            const mockKey = new Uint8Array(32);
-            const exportedStr = exportEncryptedVault(vaultEntries, mockKey);
+            const password = window.prompt('Enter your master password to encrypt this backup.');
+            if (!password) return;
+            const salt = localStorage.getItem('vantalock_vault_salt');
+            const verifier = localStorage.getItem('vantalock_vault_verifier');
+            const exportedStr = await window.electronAPI.exportEncryptedVault({
+              entries: vaultEntries,
+              password,
+              salt,
+              verifier
+            });
             const blob = new Blob([exportedStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2598,10 +2654,15 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           const reader = new FileReader();
-          reader.onload = (e) => {
+          reader.onload = async (e) => {
             try {
-              const mockKey = new Uint8Array(32);
-              const importedEntries = importEncryptedVault(e.target.result, mockKey);
+              const password = window.prompt('Enter the password used to encrypt this backup.');
+              if (!password) return;
+              const importedEntries = await window.electronAPI.importEncryptedVault({
+                exportString: e.target.result,
+                password,
+                fallbackSalt: localStorage.getItem('vantalock_vault_salt')
+              });
               vaultEntries = vaultEntries.concat(importedEntries);
               saveVaultEntriesToStorage();
               importMsg.style.color = '#10b981';
@@ -2706,56 +2767,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateSidebarStats();
 });
-
-
-  const enableBiometricsBtn = document.getElementById('enable-biometrics-btn');
-  const skipBiometricsBtn = document.getElementById('skip-biometrics-btn');
-
-  if (enableBiometricsBtn) {
-    enableBiometricsBtn.addEventListener('click', async () => {
-      try {
-        const supported = await checkBiometricsSupport();
-        if (supported) {
-          if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
-            const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
-            if (authenticated && pendingMasterPassword) {
-              const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
-              localStorage.setItem('vantalock_secure_token', token);
-              localStorage.setItem('vantalock_biometrics_enabled', 'true');
-              logActivity('SECURITY: Biometric unlock enabled during onboarding.');
-            } else {
-              localStorage.setItem('vantalock_biometrics_enabled', 'false');
-            }
-          } else {
-            localStorage.setItem('vantalock_biometrics_enabled', 'true');
-          }
-          pendingMasterPassword = '';
-          setupRecoveryKeyScreen();
-        } else {
-          showBiometricAlertModal(
-            'Biometric Support Not Available',
-            "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows).",
-            () => { pendingMasterPassword = ''; setupRecoveryKeyScreen(); }
-          );
-          localStorage.setItem('vantalock_biometrics_enabled', 'false');
-        }
-      } catch (e) {
-        console.error('Biometric enablement failed:', e);
-        localStorage.setItem('vantalock_biometrics_enabled', 'false');
-        pendingMasterPassword = '';
-        setupRecoveryKeyScreen();
-      }
-    });
-  }
-
-  if (skipBiometricsBtn) {
-    skipBiometricsBtn.addEventListener('click', () => {
-      localStorage.setItem('vantalock_biometrics_enabled', 'false');
-      pendingMasterPassword = '';
-      logActivity('SECURITY: Biometric unlock skipped during onboarding.');
-      setupRecoveryKeyScreen();
-    });
-  }
 
 
   // Password Health Check Implementation
@@ -3276,7 +3287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (copyBtn) {
               copyBtn.onclick = () => {
-                if (clipboardMgr) clipboardMgr.writeText(newGeneratedPassword);
+                copySensitiveText(newGeneratedPassword);
                 copyBtn.textContent = 'Copied!';
                 setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
               };

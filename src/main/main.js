@@ -1,7 +1,19 @@
-const { app, BrowserWindow, shell, ipcMain, safeStorage, systemPreferences } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, safeStorage, systemPreferences, clipboard } = require('electron');
 const path = require('path');
+const LockManager = require('../crypto/lockManager');
+const { registerVaultIpc } = require('./vaultIpc');
 
 let mainWindow;
+const lockManager = new LockManager({
+  autoLockMinutes: 5,
+  onLockCallback: (reason) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('vault-locked', reason);
+    }
+  }
+});
+
+registerVaultIpc(ipcMain, { lockManager, clipboard });
 
 function createWindow() {
   const { Menu } = require('electron');
@@ -82,7 +94,7 @@ ipcMain.handle('prompt-biometrics', async (event, reason) => {
       } catch (e) {
         // Fallback or simulated prompt if win-hello module not available
       }
-      return true;
+      return false;
     }
     return false;
   } catch (err) {

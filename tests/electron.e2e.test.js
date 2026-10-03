@@ -260,6 +260,14 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
             typeName: 'Encrypted File',
             title: 'File Icon Entry',
             fields: { filename: 'scan.pdf', filetype: 'application/pdf' }
+          },
+          {
+            id: 'e2e-custom-icon',
+            vault: 'personal',
+            type: 'custom_imported_type',
+            typeName: 'Imported Custom Entry',
+            title: 'Custom Type Icon Entry',
+            fields: {}
           }
         );
         window.persistActiveVaultEntries();
@@ -287,7 +295,8 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         ['personal', 'e2e-note-icon'],
         ['personal', 'e2e-medical-icon'],
         ['personal', 'e2e-emergency-icon'],
-        ['personal', 'e2e-file-icon']
+        ['personal', 'e2e-file-icon'],
+        ['personal', 'e2e-custom-icon']
       ];
       const renderedIcons = [];
       let selectedCompartment = 'financial';
@@ -300,6 +309,68 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         expect(await icon.count()).toBe(1);
         const svg = await icon.evaluate(element => element.outerHTML);
         expect(svg).toContain('<svg');
+        const rendered = await icon.evaluate(element => {
+          const bounds = element.getBoundingClientRect();
+          const shapes = Array.from(
+            element.querySelectorAll('path, rect, circle, line, polyline, polygon, ellipse')
+          );
+          const hasPaintedShape = shapes.some(shape => {
+            const style = getComputedStyle(shape);
+            return (style.stroke !== 'none' && Number.parseFloat(style.strokeWidth) > 0) ||
+              style.fill !== 'none';
+          });
+          const clone = element.cloneNode(true);
+          clone.setAttribute('width', '48');
+          clone.setAttribute('height', '48');
+          clone.style.color = getComputedStyle(element).color;
+          clone.style.stroke = getComputedStyle(element).stroke;
+          clone.style.strokeWidth = getComputedStyle(element).strokeWidth;
+          clone.style.fill = getComputedStyle(element).fill;
+          const cloneShapes = Array.from(
+            clone.querySelectorAll('path, rect, circle, line, polyline, polygon, ellipse')
+          );
+          cloneShapes.forEach((shape, index) => {
+            const style = getComputedStyle(shapes[index]);
+            shape.style.stroke = style.stroke;
+            shape.style.strokeWidth = style.strokeWidth;
+            shape.style.fill = style.fill;
+          });
+          const svgUrl = URL.createObjectURL(new Blob(
+            [new XMLSerializer().serializeToString(clone)],
+            { type: 'image/svg+xml' }
+          ));
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 48;
+              canvas.height = 48;
+              const context = canvas.getContext('2d');
+              context.drawImage(image, 0, 0);
+              const pixels = context.getImageData(0, 0, 48, 48).data;
+              let paintedPixelCount = 0;
+              for (let index = 3; index < pixels.length; index += 4) {
+                if (pixels[index] > 0) paintedPixelCount++;
+              }
+              URL.revokeObjectURL(svgUrl);
+              resolve({
+                width: bounds.width,
+                height: bounds.height,
+                hasPaintedShape,
+                paintedPixelCount
+              });
+            };
+            image.onerror = () => {
+              URL.revokeObjectURL(svgUrl);
+              reject(new Error('Entry SVG could not be rasterized'));
+            };
+            image.src = svgUrl;
+          });
+        });
+        expect(rendered.width).toBeGreaterThan(0);
+        expect(rendered.height).toBeGreaterThan(0);
+        expect(rendered.hasPaintedShape).toBe(true);
+        expect(rendered.paintedPixelCount).toBeGreaterThan(0);
         renderedIcons.push({ entryId, svg });
       }
       const duplicateIcons = renderedIcons.flatMap((icon, index) => {
@@ -323,6 +394,68 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         if (iconCount !== 1) throw new Error(`Expected one Card view SVG for ${entryId}, found ${iconCount}`);
         const svg = await icon.evaluate(element => element.outerHTML);
         expect(svg).toContain('<svg');
+        const rendered = await icon.evaluate(element => {
+          const bounds = element.getBoundingClientRect();
+          const shapes = Array.from(
+            element.querySelectorAll('path, rect, circle, line, polyline, polygon, ellipse')
+          );
+          const hasPaintedShape = shapes.some(shape => {
+            const style = getComputedStyle(shape);
+            return (style.stroke !== 'none' && Number.parseFloat(style.strokeWidth) > 0) ||
+              style.fill !== 'none';
+          });
+          const clone = element.cloneNode(true);
+          clone.setAttribute('width', '48');
+          clone.setAttribute('height', '48');
+          clone.style.color = getComputedStyle(element).color;
+          clone.style.stroke = getComputedStyle(element).stroke;
+          clone.style.strokeWidth = getComputedStyle(element).strokeWidth;
+          clone.style.fill = getComputedStyle(element).fill;
+          const cloneShapes = Array.from(
+            clone.querySelectorAll('path, rect, circle, line, polyline, polygon, ellipse')
+          );
+          cloneShapes.forEach((shape, index) => {
+            const style = getComputedStyle(shapes[index]);
+            shape.style.stroke = style.stroke;
+            shape.style.strokeWidth = style.strokeWidth;
+            shape.style.fill = style.fill;
+          });
+          const svgUrl = URL.createObjectURL(new Blob(
+            [new XMLSerializer().serializeToString(clone)],
+            { type: 'image/svg+xml' }
+          ));
+          return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 48;
+              canvas.height = 48;
+              const context = canvas.getContext('2d');
+              context.drawImage(image, 0, 0);
+              const pixels = context.getImageData(0, 0, 48, 48).data;
+              let paintedPixelCount = 0;
+              for (let index = 3; index < pixels.length; index += 4) {
+                if (pixels[index] > 0) paintedPixelCount++;
+              }
+              URL.revokeObjectURL(svgUrl);
+              resolve({
+                width: bounds.width,
+                height: bounds.height,
+                hasPaintedShape,
+                paintedPixelCount
+              });
+            };
+            image.onerror = () => {
+              URL.revokeObjectURL(svgUrl);
+              reject(new Error('Entry SVG could not be rasterized'));
+            };
+            image.src = svgUrl;
+          });
+        });
+        expect(rendered.width).toBeGreaterThan(0);
+        expect(rendered.height).toBeGreaterThan(0);
+        expect(rendered.hasPaintedShape).toBe(true);
+        expect(rendered.paintedPixelCount).toBeGreaterThan(0);
         cardRenderedIcons.push({ entryId, svg });
       }
       const duplicateCardIcons = cardRenderedIcons.flatMap((icon, index) => {

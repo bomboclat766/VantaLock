@@ -28,19 +28,13 @@
     const lockGroup = animOverlay.querySelector('#lock-group');
     const shackle = animOverlay.querySelector('#shackle');
 
-    if (lockGroup) {
-      lockGroup.style.transition = 'transform 0.7s cubic-bezier(.45,0,.55,1)';
-      lockGroup.style.transform = 'rotate(360deg)';
-    }
-
-    setTimeout(() => {
-      if (shackle) {
-        shackle.style.transform = 'rotate(-55deg)';
-      }
-    }, 650);
-
-    setTimeout(() => {
-      if (animOverlay) animOverlay.style.display = 'none';
+    let finished = false;
+    let fallbackTimer;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      animOverlay.style.display = 'none';
       if (typeof onComplete === 'function') {
         try {
           onComplete();
@@ -48,7 +42,41 @@
           console.error('Unlock navigation transition error:', err);
         }
       }
-    }, 1300);
+    };
+
+    fallbackTimer = setTimeout(finish, 1500);
+    try {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        finish();
+        return;
+      }
+
+      if (lockGroup) {
+        lockGroup.style.transition = 'none';
+        lockGroup.style.transform = 'rotate(0deg)';
+      }
+      if (shackle) {
+        shackle.style.transition = 'none';
+        shackle.style.transform = 'rotate(0deg)';
+      }
+      if (lockGroup) void lockGroup.getBoundingClientRect();
+    if (lockGroup) {
+      lockGroup.style.transition = 'transform 0.7s cubic-bezier(.45,0,.55,1)';
+      lockGroup.style.transform = 'rotate(360deg)';
+    }
+
+    setTimeout(() => {
+      if (shackle) {
+        shackle.style.transition = 'transform 0.45s cubic-bezier(.34,1.56,.64,1)';
+        shackle.style.transform = 'rotate(-55deg)';
+      }
+    }, 720);
+
+      setTimeout(finish, 1250);
+    } catch (err) {
+      console.error('Unlock animation failed:', err);
+      finish();
+    }
   }
 
 

@@ -934,6 +934,11 @@ button {
   color: #e8e6e0;
 }
 
+.external-import-card:has(.import-choice-grid) {
+  max-width: 1000px;
+  padding: 32px;
+}
+
 .external-import-card .setup-title {
   font-family: var(--font-heading);
 }
@@ -948,9 +953,10 @@ button {
 .import-choice-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
-  padding: 12px 14px;
+  min-height: 144px;
+  padding: 22px 24px;
   border: 1px solid #2a2a2a;
   border-radius: 8px;
   background: #141414;
@@ -963,8 +969,8 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e8e6e0;
-  font-size: 14px;
+  color: #C9A24A;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -975,7 +981,7 @@ button {
 
 .import-choice-card:hover .import-choice-title,
 .import-choice-card:focus-visible .import-choice-title {
-  color: #c9a24a;
+  color: #C9A24A;
 }
 
 .import-choice-title svg {
@@ -996,6 +1002,10 @@ button {
   color: #8a8a85;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.import-choice-subtitle {
+  font-size: 14px;
 }
 
 .import-detected-format {
@@ -1302,6 +1312,10 @@ button {
 @media (max-width: 680px) {
   .external-import-card {
     padding: 16px;
+  }
+
+  .external-import-card:has(.import-choice-grid) {
+    padding: 20px;
   }
 
   .import-choice-grid {

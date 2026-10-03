@@ -104,6 +104,7 @@
           </div>
 
           <button type="submit" id="unlock-btn" class="btn-primary">Unlock Vault</button>
+          <button type="button" id="biometric-unlock-btn" class="btn-secondary hidden" style="margin-top: 10px;">Unlock with biometrics</button>
           <div style="text-align: center; margin-top: 14px;">
             <button type="button" id="forgot-pwd-btn" class="btn-secondary" style="border: none; background: none; color: var(--brass-accent); font-size: 12px; cursor: pointer; text-decoration: underline;">Forgot Master Password? Recover via Seed</button>
           </div>
@@ -148,7 +149,7 @@
     <div id="biometric-optin-modal" class="setup-card-wrap hidden">
       <div class="setup-card">
         <h2 class="setup-title">Enable Biometric Unlock</h2>
-        <p class="setup-desc">Use Touch ID / Windows Hello to unlock VantaLock instead of typing your master password each time. Your master password is still required as a fallback and for sensitive actions.</p>
+        <p class="setup-desc">Use Touch ID to unlock VantaLock instead of typing your master password each time. Your master password is still required as a fallback and for sensitive actions.</p>
         <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
           <button id="enable-biometrics-btn" class="btn-primary">Enable Biometric Unlock</button>
           <button id="skip-biometrics-btn" class="btn-secondary">Skip for Now</button>
@@ -482,6 +483,7 @@
 
   <script src="lockoutState.js"></script>
   <script src="authFlow.js"></script>
+  <script src="biometricFlow.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

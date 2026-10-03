@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isBiometricsAvailable: () => ipcRenderer.invoke('is-biometrics-available'),
   promptBiometrics: (reason) => ipcRenderer.invoke('prompt-biometrics', reason),
   storeSecureToken: (token) => ipcRenderer.invoke('store-secure-token', token),
-  retrieveSecureToken: (encToken) => ipcRenderer.invoke('retrieve-secure-token', encToken),
+  unlockWithBiometrics: (encToken) => ipcRenderer.invoke('unlock-with-biometrics', encToken),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   openFileNative: (filePayload) => ipcRenderer.invoke('open-file-native', filePayload)
 });

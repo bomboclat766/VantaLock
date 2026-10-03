@@ -149,6 +149,15 @@ function showScreen(screenName) {
       window.setupRecoveryKeyScreen();
     }
   }
+  if (screenName === 'unlock-vault') {
+    updateBiometricUnlockButton()
+      .then(visible => {
+        if (visible) triggerAutoBiometricsUnlock();
+      })
+      .catch(error => {
+        console.error('Could not check biometric unlock availability:', error);
+      });
+  }
 }
 
   // Top-Level Un-Nested Decoy Vault Onboarding Modal Handler
@@ -750,6 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const unlockVaultForm = document.getElementById('unlock-vault-form');
   const unlockMpInput = document.getElementById('unlock-mp-input');
   const unlockErrorText = document.getElementById('unlock-error-text');
+  const biometricUnlockBtn = document.getElementById('biometric-unlock-btn');
 
   const recoveryKeyRevealStep = document.getElementById('recovery-key-reveal-step');
   const recoveryKeyVerifyStep = document.getElementById('recovery-key-verify-step');
@@ -1152,7 +1162,13 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (targetView === 'unlock-vault') {
         const uvElemClear = document.getElementById('unlock-vault-view'); if (uvElemClear) uvElemClear.classList.remove('hidden');
         if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
-        triggerAutoBiometricsUnlock();
+        updateBiometricUnlockButton()
+          .then(visible => {
+            if (visible) triggerAutoBiometricsUnlock();
+          })
+          .catch(error => {
+            console.error('Could not check biometric unlock availability:', error);
+          });
       } else if (targetView === 'recovery-key-reveal') {
         if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.remove('hidden');
       } else if (targetView === 'recovery-key-verify') {
@@ -1169,39 +1185,52 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         return await window.electronAPI.isBiometricsAvailable();
       } catch (e) {
+        console.error('Biometric availability check failed:', e);
         return false;
       }
     }
     return false;
   }
 
+  async function updateBiometricUnlockButton() {
+    if (!biometricUnlockBtn) return false;
+    biometricUnlockBtn.classList.add('hidden');
+    const supported = await checkBiometricsSupport();
+    const isEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
+    const hasToken = Boolean(localStorage.getItem('vantalock_secure_token'));
+    if (supported && isEnabled && hasToken) {
+      biometricUnlockBtn.classList.remove('hidden');
+      return true;
+    }
+    return false;
+  }
+
   let pendingMasterPassword = '';
   let pendingBiometricsSupported = false;
+  let biometricUnlockInProgress = false;
 
   async function triggerAutoBiometricsUnlock() {
-    const isEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
-    const encToken = localStorage.getItem('vantalock_secure_token');
-    if (isEnabled && encToken && window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
-      setTimeout(async () => {
-        try {
-          const authenticated = await window.electronAPI.promptBiometrics('Authenticate to unlock VantaLock Vault');
-          if (authenticated) {
-            const pwd = await window.electronAPI.retrieveSecureToken(encToken);
-            const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
-            const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
-            if (storedSaltHex && storedVerifier) {
-              const salt = storedSaltHex;
-              if (await window.electronAPI.verifyMasterPassword({ password: pwd, salt, verifier: storedVerifier })) {
-                logActivity('SECURITY: Vault unlocked via Biometrics.');
-                await window.electronAPI.lockManagerSuccess();
-                showScreen('dashboard');
-              }
-            }
-          }
-        } catch (err) {
-          console.error('Biometric auto-unlock error:', err);
-        }
-      }, 150);
+    if (biometricUnlockInProgress) return;
+    biometricUnlockInProgress = true;
+    try {
+      const unlocked = await window.VantaLockBiometricFlow.unlockWithBiometrics({
+        api: window.electronAPI,
+        storage: localStorage,
+        resetFailedAttempts
+      });
+      if (unlocked) {
+        window.activeVaultType = 'real';
+        logActivity('SECURITY: Vault unlocked via Touch ID.');
+        showScreen('dashboard');
+      }
+    } catch (err) {
+      console.error('Biometric unlock failed:', err);
+      showBiometricAlertModal(
+        'Biometric Unlock Failed',
+        'Touch ID could not unlock the vault. Use your master password or try biometrics again.'
+      );
+    } finally {
+      biometricUnlockInProgress = false;
     }
   }
 
@@ -1391,6 +1420,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (biometricUnlockBtn) {
+    biometricUnlockBtn.addEventListener('click', () => {
+      triggerAutoBiometricsUnlock();
+    });
+  }
+
   if (getStartedBtn) {
     getStartedBtn.addEventListener('click', () => {
       localStorage.setItem('vantalock_onboarded', 'true');
@@ -1485,25 +1520,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (
           pendingBiometricsSupported &&
           window.electronAPI &&
-          typeof window.electronAPI.promptBiometrics === 'function' &&
-          typeof window.electronAPI.storeSecureToken === 'function'
+          window.VantaLockBiometricFlow
         ) {
-          const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
-          if (authenticated && pendingMasterPassword) {
-            const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
-            localStorage.setItem('vantalock_secure_token', token);
-            localStorage.setItem('vantalock_biometrics_enabled', 'true');
+          const enabled = await window.VantaLockBiometricFlow.enableBiometricUnlock({
+            api: window.electronAPI,
+            storage: localStorage,
+            password: pendingMasterPassword,
+            salt: localStorage.getItem('vantalock_vault_salt'),
+            verifier: localStorage.getItem('vantalock_vault_verifier')
+          });
+          if (enabled) {
             logActivity('SECURITY: Biometric unlock enabled during onboarding.');
           } else {
-            localStorage.setItem('vantalock_biometrics_enabled', 'false');
+            window.VantaLockBiometricFlow.disableBiometricUnlock(localStorage);
           }
         } else {
-          localStorage.setItem('vantalock_biometrics_enabled', 'false');
+          window.VantaLockBiometricFlow.disableBiometricUnlock(localStorage);
         }
       } catch (e) {
         console.error('Biometric enablement failed:', e);
         try {
-          localStorage.setItem('vantalock_biometrics_enabled', 'false');
+          window.VantaLockBiometricFlow.disableBiometricUnlock(localStorage);
         } catch (storageError) {
           console.error('Could not save biometric preference:', storageError);
         }
@@ -2307,7 +2344,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04c.054-.195.112-.39.174-.583a12.008 12.008 0 0 1 12.387-8.125m-2.12 11.238c.642-1.782.99-3.712.99-5.72A12.022 12.022 0 0 0 12 1.5C6.012 1.5 1.5 6.012 1.5 12c0 1.341.22 2.63.626 3.834m3.04-10.428A8.966 8.966 0 0 1 12 4.5c3.55 0 6.602 2.062 8.01 5.04"/></svg>
               <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700; color: var(--brass-accent); margin: 0; text-transform: uppercase; letter-spacing: 1px;">OS Biometrics Configuration</h3>
             </div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Configure Touch ID or Windows Hello native biometric hardware unlock for VantaLock.</p>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">Configure native Touch ID unlock for VantaLock.</p>
             <button type="button" id="configure-biometrics-btn" class="btn-primary" style="width: 100%;">Configure OS Biometrics</button>
           </div>
         </div>
@@ -2374,17 +2411,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const credentials = await window.electronAPI.createVaultCredentials(newPwd);
-            localStorage.setItem('vantalock_vault_salt', credentials.salt);
-            localStorage.setItem('vantalock_vault_verifier', credentials.verifier);
             if (localStorage.getItem('vantalock_biometrics_enabled') === 'true') {
-              const token = await window.electronAPI.storeSecureToken(newPwd);
-              localStorage.setItem('vantalock_secure_token', token);
+              const rotated = await window.VantaLockBiometricFlow.rotateBiometricSecret({
+                api: window.electronAPI,
+                storage: localStorage,
+                password: newPwd
+              });
+              if (!rotated) throw new Error('The biometric secret could not be updated.');
             }
 
+            localStorage.setItem('vantalock_vault_salt', credentials.salt);
+            localStorage.setItem('vantalock_vault_verifier', credentials.verifier);
             msgDiv.style.color = '#10b981';
             msgDiv.textContent = 'Master password updated and vault key re-derived successfully.';
             logActivity('SECURITY: Master password changed and key re-derived.');
             changeForm.reset();
+          } catch (error) {
+            console.error('Master password change failed:', error);
+            msgDiv.style.color = '#ef4444';
+            msgDiv.textContent = `Master password update failed: ${error.message}`;
           } finally {
             if (submitBtn) {
               submitBtn.disabled = false;
@@ -2417,15 +2462,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
+      async function enableBiometricsFromSecurityCenter() {
+        const password = window.prompt('Enter your current master password to enable Touch ID unlock.');
+        if (!password) return false;
+
+        const salt = localStorage.getItem('vantalock_vault_salt');
+        const verifier = localStorage.getItem('vantalock_vault_verifier');
+        if (!salt || !verifier) {
+          throw new Error('Vault credentials are unavailable.');
+        }
+        return window.VantaLockBiometricFlow.enableBiometricUnlock({
+          api: window.electronAPI,
+          storage: localStorage,
+          password,
+          salt,
+          verifier
+        });
+      }
+
       checkBiometricsSupport().then(supported => {
         const bioContainer = document.getElementById('biometrics-setting-container');
         if (bioContainer) {
           if (supported) {
-            const isBioEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true';
+            const isBioEnabled = localStorage.getItem('vantalock_biometrics_enabled') === 'true' &&
+              Boolean(localStorage.getItem('vantalock_secure_token'));
             bioContainer.innerHTML = `
               <div class="form-group" style="display: flex; align-items: center; justify-content: space-between;">
                 <div>
-                  <label class="form-label" style="margin-bottom: 2px;">Biometric Unlock (Touch ID / Windows Hello)</label>
+                  <label class="form-label" style="margin-bottom: 2px;">Biometric Unlock (Touch ID)</label>
                   <div style="font-size: 12px; color: var(--text-secondary);">Use native biometrics for fast unlock.</div>
                 </div>
                 <input type="checkbox" id="sec-biometric-toggle" ${isBioEnabled ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--brass-accent);" />
@@ -2436,22 +2500,35 @@ document.addEventListener('DOMContentLoaded', () => {
               bioToggle.addEventListener('change', async (e) => {
                 const checked = e.target.checked;
                 if (checked) {
-                  if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
-                    const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
-                    if (authenticated) {
-                      localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                  try {
+                    const enabled = await enableBiometricsFromSecurityCenter();
+                    if (enabled) {
                       logActivity('SECURITY: Biometric unlock enabled in Security Settings.');
                     } else {
                       e.target.checked = false;
-                      localStorage.setItem('vantalock_biometrics_enabled', 'false');
+                      showBiometricAlertModal(
+                        'Touch ID Not Enabled',
+                        'The master password was incorrect or Touch ID authentication was cancelled. No unlock attempts were counted.'
+                      );
                     }
-                  } else {
-                    localStorage.setItem('vantalock_biometrics_enabled', 'true');
+                  } catch (error) {
+                    e.target.checked = false;
+                    console.error('Could not enable Touch ID unlock:', error);
+                    showBiometricAlertModal('Touch ID Setup Failed', error.message);
                   }
                 } else {
-                  localStorage.setItem('vantalock_biometrics_enabled', 'false');
-                  logActivity('SECURITY: Biometric unlock disabled in Security Settings.');
+                  try {
+                    window.VantaLockBiometricFlow.disableBiometricUnlock(localStorage);
+                    logActivity('SECURITY: Biometric unlock disabled in Security Settings.');
+                  } catch (error) {
+                    e.target.checked = true;
+                    console.error('Could not disable Touch ID unlock:', error);
+                    showBiometricAlertModal('Touch ID Disable Failed', error.message);
+                  }
                 }
+                updateBiometricUnlockButton().catch(error => {
+                  console.error('Could not update biometric unlock visibility:', error);
+                });
               });
             }
           } else {
@@ -2474,22 +2551,30 @@ document.addEventListener('DOMContentLoaded', () => {
         configBioBtn.addEventListener('click', async () => {
           const supported = await checkBiometricsSupport();
           if (supported) {
-            if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
-              const authenticated = await window.electronAPI.promptBiometrics('Configure OS Biometric Authentication');
-              if (authenticated) {
-                localStorage.setItem('vantalock_biometrics_enabled', 'true');
+            try {
+              const enabled = await enableBiometricsFromSecurityCenter();
+              if (enabled) {
+                const toggle = document.getElementById('sec-biometric-toggle');
+                if (toggle) toggle.checked = true;
                 logActivity('SECURITY: Biometric unlock enabled via Security Settings.');
-                showBiometricAlertModal('Biometric Unlock Enabled', 'OS Biometric authentication has been successfully configured and enabled for VantaLock.');
+                showBiometricAlertModal('Biometric Unlock Enabled', 'Touch ID unlock has been enabled for VantaLock.');
+              } else {
+                showBiometricAlertModal(
+                  'Touch ID Not Enabled',
+                  'The master password was incorrect or Touch ID authentication was cancelled. No unlock attempts were counted.'
+                );
               }
-            } else {
-              localStorage.setItem('vantalock_biometrics_enabled', 'true');
-              logActivity('SECURITY: Biometric unlock enabled via Security Settings.');
-              showBiometricAlertModal('Biometric Unlock Enabled', 'OS Biometric authentication has been successfully configured and enabled.');
+            } catch (error) {
+              console.error('Could not configure Touch ID unlock:', error);
+              showBiometricAlertModal('Touch ID Setup Failed', error.message);
             }
+            updateBiometricUnlockButton().catch(error => {
+              console.error('Could not update biometric unlock visibility:', error);
+            });
           } else {
             showBiometricAlertModal(
-              'Biometric Support Not Available',
-              "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows)."
+              'Unsupported',
+              'Biometric unlock is supported only on macOS devices with Touch ID available. Windows Hello is not supported in this build.'
             );
           }
         });

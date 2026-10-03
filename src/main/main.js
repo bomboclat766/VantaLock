@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, ipcMain, safeStorage, systemPreferences, clip
 const path = require('path');
 const LockManager = require('../crypto/lockManager');
 const { registerVaultIpc } = require('./vaultIpc');
+const { registerBiometricsIpc } = require('./biometricsIpc');
 
 let mainWindow;
 const lockManager = new LockManager({
@@ -14,6 +15,11 @@ const lockManager = new LockManager({
 });
 
 registerVaultIpc(ipcMain, { lockManager, clipboard });
+registerBiometricsIpc(ipcMain, {
+  platform: process.platform,
+  systemPreferences,
+  safeStorage
+});
 
 function createWindow() {
   const { Menu } = require('electron');
@@ -48,82 +54,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});
-
-// Helper for Windows Hello check
-async function checkWindowsHelloAvailable() {
-  if (process.platform !== 'win32') return false;
-  try {
-    const winHello = require('win-hello');
-    if (winHello && typeof winHello.isAvailable === 'function') {
-      return await winHello.isAvailable();
-    }
-  } catch (e) {
-    // If native module fails or unavailable, fall back to safeStorage encryption check
-  }
-  return safeStorage.isEncryptionAvailable();
-}
-
-// IPC Handlers for Biometrics / SafeStorage
-ipcMain.handle('is-biometrics-available', async () => {
-  try {
-    if (process.platform === 'darwin') {
-      return systemPreferences.canPromptTouchID();
-    } else if (process.platform === 'win32') {
-      return await checkWindowsHelloAvailable();
-    }
-    return false; // Linux / unsupported
-  } catch (err) {
-    return false;
-  }
-});
-
-ipcMain.handle('prompt-biometrics', async (event, reason) => {
-  try {
-    const promptReason = reason || 'Authenticate to unlock VantaLock Vault';
-    if (process.platform === 'darwin') {
-      if (!systemPreferences.canPromptTouchID()) return false;
-      await systemPreferences.promptTouchID(promptReason);
-      return true;
-    } else if (process.platform === 'win32') {
-      try {
-        const winHello = require('win-hello');
-        if (winHello && typeof winHello.authenticate === 'function') {
-          return await winHello.authenticate(promptReason);
-        }
-      } catch (e) {
-        // Fail closed when the native provider is unavailable.
-      }
-      return false;
-    }
-    return false;
-  } catch (err) {
-    return false;
-  }
-});
-
-ipcMain.handle('store-secure-token', async (event, tokenString) => {
-  try {
-    if (!safeStorage.isEncryptionAvailable()) {
-      throw new Error('SafeStorage unavailable');
-    }
-    const encrypted = safeStorage.encryptString(tokenString);
-    return encrypted.toString('base64');
-  } catch (err) {
-    throw err;
-  }
-});
-
-ipcMain.handle('retrieve-secure-token', async (event, encryptedBase64) => {
-  try {
-    if (!safeStorage.isEncryptionAvailable()) {
-      throw new Error('SafeStorage unavailable');
-    }
-    const buffer = Buffer.from(encryptedBase64, 'base64');
-    return safeStorage.decryptString(buffer);
-  } catch (err) {
-    throw err;
-  }
 });
 
 ipcMain.handle("get-app-version", () => {

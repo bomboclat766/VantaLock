@@ -778,6 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveVaultEntriesToStorage() {
     try {
       localStorage.setItem('vantalock_entries_store', JSON.stringify(vaultEntries));
+      window.vaultEntries = vaultEntries;
       updateSidebarStats();
     } catch (err) {
       console.error('Storage error:', err);
@@ -786,6 +787,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let vaultEntries = loadSavedVaultEntries();
   window.vaultEntries = vaultEntries;
+  window.getActiveVaultEntries = () => {
+    if (window.activeVaultType === 'decoy') {
+      const decoyEntries = getDecoyVaultData();
+      return decoyEntries.length > 0 ? decoyEntries : generateDecoyContent();
+    }
+    return vaultEntries;
+  };
+  window.persistActiveVaultEntries = () => {
+    if (window.activeVaultType === 'decoy') {
+      saveDecoyVaultData(window.getActiveVaultEntries());
+      return;
+    }
+    saveVaultEntriesToStorage();
+  };
 
     const vaultMetadata = {
     financial: {
@@ -3057,29 +3072,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getActiveVaultEntries() {
-    if (window.activeVaultType === 'decoy') {
-      let decoyData = getDecoyVaultData();
-      if (!decoyData || decoyData.length === 0) {
-        decoyData = generateDecoyContent();
-      }
-      return decoyData;
+    if (typeof window.getActiveVaultEntries !== 'function') {
+      throw new Error('Vault storage is unavailable');
     }
-    if (typeof window !== 'undefined' && window.vaultEntries && Array.isArray(window.vaultEntries)) return window.vaultEntries;
-    if (typeof vaultEntries !== 'undefined' && Array.isArray(vaultEntries)) return vaultEntries;
-    return typeof loadSavedVaultEntries === 'function' ? (loadSavedVaultEntries() || []) : [];
+    return window.getActiveVaultEntries();
   }
 
   function persistVaultEntriesToStorage() {
-    const entries = getActiveVaultEntries();
-    try {
-      if (typeof saveVaultEntriesToStorage === 'function') {
-        saveVaultEntriesToStorage();
-      } else {
-        localStorage.setItem('vantalock_entries_store', JSON.stringify(entries));
-      }
-    } catch (e) {
-      localStorage.setItem('vantalock_entries_store', JSON.stringify(entries));
+    if (typeof window.persistActiveVaultEntries !== 'function') {
+      throw new Error('Vault storage is unavailable');
     }
+    window.persistActiveVaultEntries();
   }
 
   function openPasswordHealthModal() {

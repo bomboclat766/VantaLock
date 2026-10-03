@@ -150,5 +150,8 @@ describe('password import mapping and preview', () => {
     expect(existing).toEqual([{ id: 'existing' }]);
     expect(() => persistImport(existing, Array.from({ length: 5001 }, () => ({})), persist))
       .toThrow('This import would exceed the 5,000-entry limit.');
+    expect(() => persistImport(Array.from({ length: 5000 }, () => ({})), [{}], persist))
+      .toThrow('This import would exceed the 5,000-entry limit.');
+    expect(persist).toHaveBeenCalledTimes(1);
   });
 });

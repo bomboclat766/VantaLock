@@ -21,6 +21,9 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       const page = await app.firstWindow();
       const pageErrors = [];
       page.on('pageerror', error => pageErrors.push(error.message));
+      page.on('console', message => {
+        if (message.type() === 'error') pageErrors.push(message.text());
+      });
       await page.waitForSelector('#get-started-btn');
       await page.evaluate(() => {
         localStorage.clear();
@@ -39,6 +42,12 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       });
 
       const masterPassword = 'E2EMasterPassword!2026';
+      await page.locator('#create-mp-btn').click();
+      await page.waitForFunction(() =>
+        document.getElementById('mp-error-text')?.style.display === 'block'
+      );
+      expect(await page.locator('#mp-error-text').textContent())
+        .toBe('Please enter a master password.');
       await page.locator('#mp-input').fill(masterPassword);
       await page.locator('#mp-confirm-input').fill(masterPassword);
       await page.locator('#create-mp-btn').click();
@@ -595,6 +604,9 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       });
       const reopenedPage = await app.firstWindow();
       reopenedPage.on('pageerror', error => pageErrors.push(error.message));
+      reopenedPage.on('console', message => {
+        if (message.type() === 'error') pageErrors.push(message.text());
+      });
       await reopenedPage.waitForFunction(() => {
         const splash = document.getElementById('splash-overlay');
         const unlock = document.getElementById('unlock-vault-view');
@@ -608,6 +620,14 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         const dashboard = document.getElementById('dashboard-view-container');
         return dashboard && !dashboard.classList.contains('hidden');
       });
+      const unlockAnimationSize = await reopenedPage.evaluate(() => {
+        const container = document.getElementById('padlock-anim-container');
+        return {
+          width: container ? container.style.width : '',
+          overlayPresent: Boolean(document.getElementById('unlock-padlock-anim-overlay'))
+        };
+      });
+      expect(unlockAnimationSize).toMatchObject({ width: '160px', overlayPresent: true });
       await reopenedPage.locator('[data-vault="personal"]').click();
       await reopenedPage.evaluate(() => { window.activeVaultType = 'decoy'; });
       await reopenedPage.locator('[data-tool="import"]').evaluate(button => button.click());
@@ -616,7 +636,13 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       await reopenedPage.evaluate(() => { window.activeVaultType = 'real'; });
       await reopenedPage.locator('[data-vault="personal"]').click();
       await reopenedPage.locator('[data-tool="import"]').click();
+      expect(await reopenedPage.locator('.external-import-card .setup-title').textContent())
+        .toBe('Import Vault');
+      expect(await reopenedPage.locator('.external-import-card .setup-title')
+        .evaluate(element => getComputedStyle(element).fontSize)).toBe('18px');
       expect(await reopenedPage.locator('.import-choice-card').count()).toBe(2);
+      await reopenedPage.locator('.external-import-card')
+        .screenshot({ path: path.join(workspaceRoot, 'proof_assets/screenshot_import_landing_cards.png') });
       await reopenedPage.locator('[data-import-choice="external"]').click();
       const csvFile = {
         name: 'synthetic-passwords.csv',
@@ -858,6 +884,46 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       expect(await reopenedPage.evaluate(() => JSON.parse(
         localStorage.getItem('vantalock_entries_store') || '[]'
       ))).toHaveLength(entriesBeforeImport.length + 2);
+      const backupPath = path.join(profileDirectory, 'roundtrip-backup.json');
+      await app.evaluate(({ dialog }, filePath) => {
+        dialog.showSaveDialog = async () => ({ canceled: false, filePath });
+      }, backupPath);
+      await reopenedPage.evaluate(password => {
+        window.prompt = () => password;
+      }, masterPassword);
+      await reopenedPage.locator('[data-tool="export"]').click();
+      await reopenedPage.locator('#export-json-btn').click();
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('export-status-msg')?.textContent.includes('exported successfully')
+      );
+      const backupText = fs.readFileSync(backupPath, 'utf8');
+      expect(backupText).not.toContain('synthetic-secret');
+      expect(JSON.parse(backupText)).toMatchObject({
+        cipher: 'AES-256-GCM',
+        kdf: 'Argon2id'
+      });
+      const entriesBeforeBackupImport = await reopenedPage.evaluate(() => JSON.parse(
+        localStorage.getItem('vantalock_entries_store') || '[]'
+      ));
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="backup"]').click();
+      await reopenedPage.locator('#import-file-input').setInputFiles(backupPath);
+      await reopenedPage.evaluate(() => {
+        window.prompt = () => 'E2EMasterPassword!2026';
+      });
+      await reopenedPage.locator('#import-json-btn').click();
+      await reopenedPage.waitForFunction(expectedCount => {
+        const message = document.getElementById('import-status-msg')?.textContent || '';
+        const entries = JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]');
+        return message.includes(`Successfully imported ${expectedCount} entries`) &&
+          entries.length === expectedCount * 2;
+      }, entriesBeforeBackupImport.length, { timeout: 15000 });
+      const roundTripEntries = await reopenedPage.evaluate(() => JSON.parse(
+        localStorage.getItem('vantalock_entries_store') || '[]'
+      ));
+      expect(roundTripEntries).toHaveLength(entriesBeforeBackupImport.length * 2);
+      expect(roundTripEntries.filter(entry => entry.title === 'Synthetic Login')).toHaveLength(2);
+      expect(roundTripEntries.filter(entry => entry.title === 'Synthetic Note')).toHaveLength(2);
       expect(pageErrors).toEqual([]);
     } finally {
       if (app) await app.close();

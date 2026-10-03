@@ -1,8 +1,9 @@
-const { app, BrowserWindow, shell, ipcMain, safeStorage, systemPreferences, clipboard } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, safeStorage, systemPreferences, clipboard, dialog } = require('electron');
 const path = require('path');
 const LockManager = require('../crypto/lockManager');
 const { registerVaultIpc } = require('./vaultIpc');
 const { registerBiometricsIpc } = require('./biometricsIpc');
+const { registerBackupFileIpc } = require('./backupFileIpc');
 
 let mainWindow;
 const lockManager = new LockManager({
@@ -19,6 +20,11 @@ registerBiometricsIpc(ipcMain, {
   platform: process.platform,
   systemPreferences,
   safeStorage
+});
+registerBackupFileIpc(ipcMain, {
+  dialog,
+  getMainWindow: () => mainWindow,
+  writeFile: (...args) => require('fs').promises.writeFile(...args)
 });
 
 function createWindow() {

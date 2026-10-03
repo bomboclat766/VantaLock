@@ -7,8 +7,8 @@
       animOverlay.id = 'unlock-padlock-anim-overlay';
       animOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0a0a0a; z-index: 999999; display: flex; align-items: center; justify-content: center;';
       animOverlay.innerHTML = `
-        <div id="padlock-anim-container" style="position: relative; width: 120px; height: 120px;">
-          <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+        <div id="padlock-anim-container" style="position: relative; width: 160px; height: 160px;">
+          <svg width="160" height="160" viewBox="0 0 120 120" fill="none">
             <g id="lock-group" style="transform-origin: 60px 68px;">
               <!-- Shackle -->
               <path id="shackle" d="M 44 58 V 38 C 44 26, 76 26, 76 38 V 50" stroke="#d4a638" stroke-width="8" stroke-linecap="round" fill="none" style="transform-origin: 44px 58px; transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);" />
@@ -1500,16 +1500,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const pwd = mpInput.value;
       const confirmPwd = mpConfirmInput.value;
 
+      if (!pwd) {
+        mpErrorText.textContent = 'Please enter a master password.';
+        mpErrorText.style.display = 'block';
+        return;
+      }
+
       if (pwd !== confirmPwd) {
+        mpErrorText.textContent = 'Passwords do not match.';
         mpErrorText.style.display = 'block';
         return;
       }
       mpErrorText.style.display = 'none';
 
-      const credentials = await window.electronAPI.createVaultCredentials(pwd);
-
-      localStorage.setItem('vantalock_vault_salt', credentials.salt);
-      localStorage.setItem('vantalock_vault_verifier', credentials.verifier);
+      try {
+        const credentials = await window.electronAPI.createVaultCredentials(pwd);
+        localStorage.setItem('vantalock_vault_salt', credentials.salt);
+        localStorage.setItem('vantalock_vault_verifier', credentials.verifier);
+      } catch (error) {
+        console.error('Vault setup could not create master-password credentials:', error);
+        mpErrorText.textContent = 'Vault setup could not be completed. Please try again.';
+        mpErrorText.style.display = 'block';
+        return;
+      }
 
       logActivity('SECURITY: Master password key derived and verifier stored.');
       pendingMasterPassword = pwd;
@@ -2645,17 +2658,26 @@ document.addEventListener('DOMContentLoaded', () => {
           );
           importMsg.style.color = '#10b981';
           importMsg.textContent = result.migrated
-            ? `Imported ${importedEntries.length} entries. A re-encrypted, password-protected backup was downloaded.`
+            ? `Imported ${importedEntries.length} entries. Save the re-encrypted backup when prompted.`
             : `Successfully imported ${importedEntries.length} entries!`;
           logActivity(`IMPORT: Imported ${importedEntries.length} entries.`);
           if (result.migratedBackup) {
-            const blob = new Blob([result.migratedBackup], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${file.name.replace(/\.json$/i, '')}-migrated.json`;
-            link.click();
-            URL.revokeObjectURL(url);
+            const migratedFilename = `vantalock-migrated-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            try {
+              const saved = await window.electronAPI.saveEncryptedBackup({
+                contents: result.migratedBackup,
+                filename: migratedFilename
+              });
+              if (!saved.saved && !saved.canceled) {
+                throw new Error('The migrated backup could not be saved.');
+              }
+              if (saved.canceled) {
+                importMsg.textContent = `Imported ${importedEntries.length} entries. Saving the migrated backup was canceled.`;
+              }
+            } catch (saveError) {
+              importMsg.style.color = '#ef4444';
+              importMsg.textContent = `Imported ${importedEntries.length} entries, but the migrated backup could not be saved: ${saveError.message}`;
+            }
           }
         } catch (err) {
           console.error('[Vault Import] Unexpected import failure:', err);
@@ -3205,13 +3227,15 @@ document.addEventListener('DOMContentLoaded', () => {
               salt,
               verifier
             });
-            const blob = new Blob([exportedStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `vantalock-backup-${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+            const saved = await window.electronAPI.saveEncryptedBackup({
+              contents: exportedStr,
+              filename: `vantalock-backup-${new Date().toISOString().slice(0, 10)}.json`
+            });
+            if (saved.canceled) {
+              exportMsg.textContent = 'Backup export canceled.';
+              return;
+            }
+            if (!saved.saved) throw new Error('The encrypted backup could not be saved.');
 
             exportMsg.style.color = '#10b981';
             exportMsg.textContent = 'Vault backup exported successfully!';

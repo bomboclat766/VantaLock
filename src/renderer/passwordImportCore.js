@@ -136,7 +136,7 @@
     if (!Array.isArray(existingEntries) || !Array.isArray(importedEntries)) {
       throw new TypeError('Vault entries must be arrays');
     }
-    if (importedEntries.length > maxEntries) {
+    if (existingEntries.length + importedEntries.length > maxEntries) {
       throw new Error('This import would exceed the 5,000-entry limit.');
     }
     if (typeof persistEntries !== 'function') throw new TypeError('A persistence function is required');

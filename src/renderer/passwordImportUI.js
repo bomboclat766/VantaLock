@@ -51,6 +51,7 @@
     function showLanding() {
       container.innerHTML = `
         <section class="external-import-card">
+          <h3 class="setup-title" style="font-size: 18px;">Import Vault</h3>
           <div class="import-choice-grid">
             <button type="button" class="import-choice-card" data-import-choice="backup">
               <span class="import-choice-title">

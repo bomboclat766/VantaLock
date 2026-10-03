@@ -32,6 +32,17 @@ describe('password import mapping and preview', () => {
     });
   });
 
+  test('pre-maps normalized Bitwarden parser fields', () => {
+    expect(createHeaderMapping(['name', 'url', 'username', 'password', 'notes'], 'bitwarden-json'))
+      .toEqual({
+        name: 'title',
+        url: 'website',
+        username: 'username',
+        password: 'password',
+        notes: 'notes'
+      });
+  });
+
   test('creates logins with passwords, notes without passwords, and URL-host title fallback', () => {
     const parsed = {
       headers: ['title', 'url', 'username', 'password', 'notes'],

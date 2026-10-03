@@ -14,7 +14,9 @@
   };
   const FORMAT_LABELS = {
     'generic-csv': 'Generic CSV',
-    'chrome-csv': 'Chrome / Google Password Manager CSV'
+    'chrome-csv': 'Chrome / Google Password Manager CSV',
+    'bitwarden-json': 'Bitwarden (JSON)',
+    'bitwarden-csv': 'Bitwarden (CSV)'
   };
 
   function mount(options) {
@@ -155,6 +157,8 @@
             <select class="import-format-override hidden" aria-label="Override detected format">
               <option value="generic-csv">Generic CSV</option>
               <option value="chrome-csv">Chrome / Google Password Manager CSV</option>
+              <option value="bitwarden-json">Bitwarden (JSON)</option>
+              <option value="bitwarden-csv">Bitwarden (CSV)</option>
             </select>
           </p>
           <div class="import-mapping-headings"><span>CSV column</span><span></span><span>Saved as</span></div>
@@ -182,15 +186,28 @@
         formatOverride.classList.toggle('hidden');
       });
       formatOverride.value = formats[currentMappingIndex];
-      formatOverride.addEventListener('change', () => {
-        formats[currentMappingIndex] = formatOverride.value;
-        mappings[currentMappingIndex] = core.createHeaderMapping(
-          file.parsed.headers,
-          formatOverride.value
-        );
-        container.querySelector('.import-format-name').textContent =
-          FORMAT_LABELS[formatOverride.value];
-        showMapping();
+      formatOverride.addEventListener('change', async () => {
+        const requestedFormat = formatOverride.value;
+        formatOverride.disabled = true;
+        try {
+          file.parsed = await parseFile({
+            fileName: files[currentMappingIndex].name,
+            content: await files[currentMappingIndex].text(),
+            formatOverride: requestedFormat
+          });
+          formats[currentMappingIndex] = file.parsed.format;
+          mappings[currentMappingIndex] = core.createHeaderMapping(
+            file.parsed.headers,
+            file.parsed.format
+          );
+          showMapping();
+        } catch (failure) {
+          container.querySelector('.import-error').textContent = failure && failure.message
+            ? failure.message
+            : 'The selected format could not parse this file.';
+          formatOverride.disabled = false;
+          formatOverride.value = formats[currentMappingIndex];
+        }
       });
       file.parsed.headers.forEach(header => {
         const source = document.createElement('span');
@@ -247,15 +264,16 @@
     function buildMergedPreview() {
       const allEntries = [];
       let emptyRowsSkipped = 0;
-      let otherSkipped = 0;
+      const skippedItems = [];
       parsedFiles.forEach((file, index) => {
         const preview = core.buildPreview(file.parsed, mappings[index]);
         allEntries.push(...preview.entries);
         emptyRowsSkipped += preview.emptyRowsSkipped;
-        otherSkipped += preview.skippedItems.length;
+        skippedItems.push(...preview.skippedItems);
+        skippedItems.push(...file.parsed.skippedItems.filter(item => item.reason !== 'Empty row'));
       });
       previewEntries = allEntries;
-      previewCounts = { emptyRowsSkipped, otherSkipped };
+      previewCounts = { emptyRowsSkipped, skippedItems };
       compartment = 'personal';
       showPreview();
     }
@@ -293,9 +311,22 @@
       });
       container.querySelector('.import-preview-counts').textContent =
         `${loginCount} logins, ${noteCount} secure notes ready, ${previewCounts.emptyRowsSkipped} empty rows skipped. Nothing is saved until you import.`;
-      const skipSummary = previewCounts.otherSkipped
-        ? `${previewCounts.otherSkipped} rows skipped because they had no usable title.`
-        : '';
+      const otpCount = previewCounts.skippedItems.filter(item =>
+        item.reason === 'One-time-code secret is not stored'
+      ).length;
+      const reasons = new Map();
+      previewCounts.skippedItems.forEach(item => {
+        if (item.reason === 'One-time-code secret is not stored') return;
+        reasons.set(item.reason, (reasons.get(item.reason) || 0) + 1);
+      });
+      const skipLines = [];
+      if (otpCount) {
+        skipLines.push(`${otpCount} entries had one-time-code secrets that VantaLock doesn't store yet.`);
+      }
+      if (reasons.size) {
+        skipLines.push(Array.from(reasons, ([reason, count]) => `${count} ${reason}`).join(' '));
+      }
+      const skipSummary = skipLines.join(' ');
       container.querySelector('.import-preview-skips').textContent = skipSummary;
       container.querySelector('.import-error').textContent = errorMessage;
       container.querySelector('[data-action="back"]').addEventListener('click', () => {

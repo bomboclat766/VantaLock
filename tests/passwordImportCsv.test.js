@@ -55,6 +55,81 @@ describe('generic CSV password import parser', () => {
     });
   });
 
+  test('detects Bitwarden JSON and extracts only login and secure note values', () => {
+    const parsed = parsePasswordImportFile({
+      fileName: 'not-json.csv',
+      content: JSON.stringify({
+        folders: [{ id: 'folder-a', name: 'Ignored folder' }],
+        items: [
+          {
+            type: 1,
+            name: 'Login',
+            notes: 'safe note',
+            login: {
+              username: 'alice',
+              password: 'secret',
+              totp: 'otpauth://secret',
+              uris: [{ uri: 'https://login.example.test' }]
+            }
+          },
+          { type: 2, name: 'Secure memo', notes: 'note content' },
+          { type: 3, name: 'Card', card: { number: 'never returned' } },
+          { type: 4, name: 'Identity', identity: { ssn: 'never returned' } },
+          { type: 1, name: 'Attachment login', attachments: [{ id: 'file-1' }] }
+        ]
+      })
+    });
+    expect(parsed.format).toBe('bitwarden-json');
+    expect(parsed.headers).toEqual(['name', 'url', 'username', 'password', 'notes']);
+    expect(parsed.rows).toEqual([
+      {
+        name: 'Login',
+        url: 'https://login.example.test',
+        username: 'alice',
+        password: 'secret',
+        notes: 'safe note'
+      },
+      { name: 'Secure memo', url: '', username: '', password: '', notes: 'note content' }
+    ]);
+    expect(parsed.skippedItems).toEqual([
+      { reason: 'One-time-code secret is not stored' },
+      { reason: 'Payment cards are not supported yet.' },
+      { reason: 'Identities are not supported yet.' },
+      { reason: 'Attachments are not supported yet.' }
+    ]);
+    expect(JSON.stringify(parsed)).not.toContain('otpauth://');
+    expect(JSON.stringify(parsed)).not.toContain('never returned');
+  });
+
+  test('refuses encrypted Bitwarden JSON with the recovery instruction', () => {
+    expect(() => parsePasswordImportFile({
+      fileName: 'export.json',
+      content: JSON.stringify({ encrypted: true, items: [] })
+    })).toThrow('Export an unencrypted JSON from Bitwarden and try again');
+  });
+
+  test('detects and parses Bitwarden CSV by its header content', () => {
+    const parsed = parsePasswordImportFile({
+      fileName: 'anything.data',
+      content: [
+        'folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp',
+        'Work,false,login,Work login,remark,,0,https://work.test,alice,secret,otp-secret',
+        'Personal,false,note,Memo,note body,,0,,,,',
+        'Personal,false,card,Card,,,0,,,,'
+      ].join('\n')
+    });
+    expect(parsed.format).toBe('bitwarden-csv');
+    expect(parsed.rows).toEqual([
+      { name: 'Work login', url: 'https://work.test', username: 'alice', password: 'secret', notes: 'remark' },
+      { name: 'Memo', url: '', username: '', password: '', notes: 'note body' }
+    ]);
+    expect(parsed.skippedItems).toEqual([
+      { reason: 'One-time-code secret is not stored' },
+      { reason: 'Payment cards are not supported yet.' }
+    ]);
+    expect(JSON.stringify(parsed)).not.toContain('otp-secret');
+  });
+
   test('creates deterministic names for blank and duplicate headers', () => {
     const parsed = parseGenericCsv('name,name,\nfirst,second,third');
     expect(parsed.headers).toEqual(['name', 'name (2)', 'Column 3']);

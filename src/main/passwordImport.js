@@ -21,6 +21,10 @@ function validateImportRequest(request) {
   if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES) {
     throw importError('Files must be 10 MB or smaller.');
   }
+  if (request.formatOverride !== undefined &&
+      !['generic-csv', 'chrome-csv', 'bitwarden-json', 'bitwarden-csv'].includes(request.formatOverride)) {
+    throw importError('The selected import format is invalid.');
+  }
 }
 
 function detectVantaLockBackup(content) {
@@ -160,8 +164,130 @@ function detectCsvFormat(headers) {
   const normalized = new Set(headers.map(header =>
     String(header).trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, '')
   ));
+  const bitwardenHeaders = ['type', 'name', 'loginuri', 'loginusername', 'loginpassword'];
+  if (bitwardenHeaders.every(header => normalized.has(header))) return 'bitwarden-csv';
   const chromeHeaders = ['name', 'url', 'username', 'password', 'note'];
   return chromeHeaders.every(header => normalized.has(header)) ? 'chrome-csv' : 'generic-csv';
+}
+
+function stringValue(value) {
+  return typeof value === 'string' ? value : '';
+}
+
+function normalizeBitwardenRows(records, getItem) {
+  const headers = ['name', 'url', 'username', 'password', 'notes'];
+  const rows = [];
+  const skippedItems = [];
+  records.forEach(record => {
+    const item = getItem(record);
+    if (item.skipReason) {
+      skippedItems.push({ reason: item.skipReason });
+      if (item.hasTotp) skippedItems.push({ reason: 'One-time-code secret is not stored' });
+      return;
+    }
+    if (item.hasTotp) skippedItems.push({ reason: 'One-time-code secret is not stored' });
+    rows.push({
+      name: item.name,
+      url: item.url,
+      username: item.username,
+      password: item.password,
+      notes: item.notes
+    });
+  });
+  return { headers, rows, skippedItems };
+}
+
+function parseBitwardenJson(content) {
+  let data;
+  try {
+    data = JSON.parse(content);
+  } catch (_error) {
+    throw importError('The Bitwarden JSON file is invalid.');
+  }
+  if (data && typeof data === 'object' && !Array.isArray(data) && data.encrypted === true) {
+    throw importError('Export an unencrypted JSON from Bitwarden and try again');
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.items)) {
+    throw importError('This is not a supported Bitwarden JSON export.');
+  }
+  if (data.items.length > MAX_ROWS) {
+    throw importError('Files may contain no more than 50,000 rows.');
+  }
+  return {
+    format: 'bitwarden-json',
+    ...normalizeBitwardenRows(data.items, item => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        return { skipReason: 'Malformed Bitwarden item is not supported yet.' };
+      }
+      const type = item.type;
+      const login = item.login && typeof item.login === 'object' && !Array.isArray(item.login)
+        ? item.login
+        : {};
+      const firstUri = Array.isArray(login.uris) && login.uris[0] &&
+        typeof login.uris[0] === 'object' && !Array.isArray(login.uris[0])
+        ? login.uris[0].uri
+        : '';
+      const hasTotp = Boolean(stringValue(login.totp));
+      if (type === 3) {
+        return { skipReason: 'Payment cards are not supported yet.', hasTotp };
+      }
+      if (type === 4) {
+        return { skipReason: 'Identities are not supported yet.', hasTotp };
+      }
+      if (type !== 1 && type !== 2) {
+        return { skipReason: 'This Bitwarden item type is not supported yet.', hasTotp };
+      }
+      if (Array.isArray(item.attachments) && item.attachments.length > 0) {
+        return { skipReason: 'Attachments are not supported yet.', hasTotp };
+      }
+      return {
+        name: stringValue(item.name),
+        url: stringValue(firstUri),
+        username: type === 1 ? stringValue(login.username) : '',
+        password: type === 1 ? stringValue(login.password) : '',
+        notes: stringValue(item.notes),
+        hasTotp
+      };
+    })
+  };
+}
+
+function parseBitwardenCsv(parsedCsv) {
+  const findHeader = wanted => parsedCsv.headers.find(header =>
+    String(header).trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, '') === wanted
+  );
+  const header = {
+    type: findHeader('type'),
+    name: findHeader('name'),
+    url: findHeader('loginuri'),
+    username: findHeader('loginusername'),
+    password: findHeader('loginpassword'),
+    notes: findHeader('notes'),
+    totp: findHeader('logintotp')
+  };
+  if (!header.type || !header.name || !header.url || !header.username || !header.password) {
+    throw importError('The Bitwarden CSV is missing required login columns.');
+  }
+  return {
+    format: 'bitwarden-csv',
+    ...normalizeBitwardenRows(parsedCsv.rows, row => {
+      const type = stringValue(row[header.type]).toLocaleLowerCase();
+      const hasTotp = Boolean(header.totp && stringValue(row[header.totp]));
+      if (type === 'card') return { skipReason: 'Payment cards are not supported yet.', hasTotp };
+      if (type === 'identity') return { skipReason: 'Identities are not supported yet.', hasTotp };
+      if (type !== 'login' && type !== 'note') {
+        return { skipReason: 'This Bitwarden item type is not supported yet.', hasTotp };
+      }
+      return {
+        name: stringValue(row[header.name]),
+        url: stringValue(row[header.url]),
+        username: type === 'login' ? stringValue(row[header.username]) : '',
+        password: type === 'login' ? stringValue(row[header.password]) : '',
+        notes: stringValue(row[header.notes]),
+        hasTotp
+      };
+    })
+  };
 }
 
 function parsePasswordImportFile(request) {
@@ -172,8 +298,29 @@ function parsePasswordImportFile(request) {
       'VANTALOCK_BACKUP'
     );
   }
+  const formatOverride = request.formatOverride;
+  if (formatOverride === 'bitwarden-json') return parseBitwardenJson(request.content);
+  if (!formatOverride && request.content.trimStart().startsWith('{')) {
+    let data;
+    try {
+      data = JSON.parse(request.content);
+    } catch (_error) {
+      // Non-JSON content is parsed as CSV below.
+    }
+    if (data && typeof data === 'object' && !Array.isArray(data) &&
+        (Array.isArray(data.items) || data.encrypted === true)) {
+      return parseBitwardenJson(request.content);
+    }
+  }
   const parsed = parseGenericCsv(request.content);
-  return { format: detectCsvFormat(parsed.headers), ...parsed };
+  const detectedFormat = detectCsvFormat(parsed.headers);
+  if (formatOverride === 'bitwarden-csv' || (!formatOverride && detectedFormat === 'bitwarden-csv')) {
+    return parseBitwardenCsv(parsed);
+  }
+  return {
+    format: formatOverride || detectedFormat,
+    ...parsed
+  };
 }
 
 module.exports = {
@@ -182,6 +329,8 @@ module.exports = {
   detectDelimiter,
   detectCsvFormat,
   detectVantaLockBackup,
+  parseBitwardenCsv,
+  parseBitwardenJson,
   parseGenericCsv,
   parsePasswordImportFile,
   validateImportRequest

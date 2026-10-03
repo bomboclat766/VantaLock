@@ -687,9 +687,51 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       )).toEqual(['title', 'website', 'username', 'password', 'notes']);
       await reopenedPage.locator('.import-format-change').click();
       await reopenedPage.locator('.import-format-override').selectOption('generic-csv');
+      await reopenedPage.waitForFunction(() =>
+        document.querySelector('.import-format-name')?.textContent === 'Generic CSV'
+      );
       expect(await reopenedPage.locator('.import-format-name').textContent()).toBe('Generic CSV');
       await reopenedPage.locator('[data-action="back"]').click();
       await reopenedPage.locator('[data-action="back"]').click();
+      expect(await reopenedPage.evaluate(() => JSON.parse(
+        localStorage.getItem('vantalock_entries_store') || '[]'
+      ))).toHaveLength(entriesBeforeImport.length + 2);
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="external"]').click();
+      await reopenedPage.locator('#external-import-files').setInputFiles({
+        name: 'bitwarden-export.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify({
+          items: [
+            {
+              type: 1,
+              name: 'Synthetic Bitwarden Login',
+              login: {
+                username: 'bitwarden-user',
+                password: 'bitwarden-secret',
+                totp: 'otpauth://synthetic',
+                uris: [{ uri: 'https://bitwarden.example.test' }]
+              }
+            },
+            { type: 2, name: 'Synthetic Bitwarden Note', notes: 'private note text' },
+            { type: 3, name: 'Synthetic Card' },
+            { type: 4, name: 'Synthetic Identity' }
+          ]
+        }))
+      });
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      expect(await reopenedPage.locator('.import-format-name').textContent()).toBe('Bitwarden (JSON)');
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForSelector('.import-preview-list');
+      expect(await reopenedPage.locator('.import-preview-counts').textContent())
+        .toContain('1 logins, 1 secure notes ready');
+      const bitwardenSkips = await reopenedPage.locator('.import-preview-skips').textContent();
+      expect(bitwardenSkips).toContain("1 entries had one-time-code secrets that VantaLock doesn't store yet.");
+      expect(bitwardenSkips).toContain('Payment cards are not supported yet.');
+      expect(bitwardenSkips).toContain('Identities are not supported yet.');
+      expect(bitwardenSkips).not.toContain('otpauth://synthetic');
+      await reopenedPage.locator('.import-cancel').click();
       expect(await reopenedPage.evaluate(() => JSON.parse(
         localStorage.getItem('vantalock_entries_store') || '[]'
       ))).toHaveLength(entriesBeforeImport.length + 2);

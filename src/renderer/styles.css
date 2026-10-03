@@ -723,23 +723,10 @@ button {
   color: var(--brass-accent);
 }
 
-.dial-container {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--brass-accent);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dial-notch {
-  width: 2px;
-  height: 6px;
-  background: var(--brass-accent);
-  position: absolute;
-  top: 2px;
+.vault-compartment-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
 }
 
 .tab-label {

@@ -40,6 +40,20 @@
         <span class="status-dot"></span>
         <span id="lock-status-text">VAULT SECURED</span>
       </div>
+      <div id="entry-display-modes" class="entry-display-modes" role="group" aria-label="Entry display mode">
+        <button type="button" class="display-mode-btn" data-display-mode="card" aria-label="Card view" aria-pressed="true" title="Card view">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        </button>
+        <button type="button" class="display-mode-btn" data-display-mode="list" aria-label="List view" aria-pressed="false" title="List view">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="3" rx="1"/><rect x="4" y="10.5" width="16" height="3" rx="1"/><rect x="4" y="16" width="16" height="3" rx="1"/></svg>
+        </button>
+        <button type="button" class="display-mode-btn" data-display-mode="table" aria-label="Table view" aria-pressed="false" title="Table view">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+        </button>
+      </div>
+      <button id="global-search-open-btn" class="global-search-open-btn" type="button" aria-label="Search all vault entries" title="Search all entries (Ctrl+K / Cmd+K)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>
+      </button>
     </div>
   </div>
 
@@ -248,10 +262,24 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>
           <h3 id="bio-notice-title" class="setup-title" style="margin: 0; font-size: 16px;">Biometric Status</h3>
         </div>
+
         <button id="close-bio-notice-btn" class="btn-secondary" style="width: auto; padding: 4px 12px;">✕</button>
       </div>
       <p id="bio-notice-message" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;"></p>
       <button type="button" id="bio-notice-ok-btn" class="btn-primary" style="width: 100%;">OK</button>
+    </div>
+  </div>
+
+  <div id="global-search-overlay" class="global-search-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
+    <div class="global-search-panel">
+      <div class="global-search-heading">
+        <h2 id="global-search-title">Search all vaults</h2>
+        <button id="global-search-close-btn" class="btn-secondary global-search-close-btn" type="button" aria-label="Close search">Esc</button>
+      </div>
+      <label class="visually-hidden" for="global-search-input">Search entry titles and field values</label>
+      <input id="global-search-input" type="search" autocomplete="off" class="global-search-input" placeholder="Search titles and field values..." />
+      <div id="global-search-results" class="global-search-results" role="listbox" aria-label="Search results"></div>
+      <div id="global-search-status" class="global-search-status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -485,6 +513,7 @@
   <script src="authFlow.js"></script>
   <script src="biometricFlow.js"></script>
   <script src="vaultImport.js"></script>
+  <script src="vaultDisplay.js"></script>
   <script src="startupFlow.js"></script>
   <script src="app.js"></script>
 </body>

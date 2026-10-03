@@ -693,6 +693,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.electronAPI.onVaultLocked((reason) => {
     logActivity(`VAULT LOCKED: ${reason}`);
     localStorage.removeItem('vantalock_unlocked_session');
+    closeGlobalSearch();
     showUnlockScreen();
   });
 
@@ -796,11 +797,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
   const entryDynamicForm = document.getElementById('entry-dynamic-form');
   const elContainer = document.getElementById('entry-list-container');
+  const displayModeButtons = Array.from(document.querySelectorAll('.display-mode-btn'));
+  const globalSearchOverlay = document.getElementById('global-search-overlay');
+  const globalSearchOpenButton = document.getElementById('global-search-open-btn');
+  const globalSearchCloseButton = document.getElementById('global-search-close-btn');
+  const globalSearchInput = document.getElementById('global-search-input');
+  const globalSearchResults = document.getElementById('global-search-results');
+  const globalSearchStatus = document.getElementById('global-search-status');
 
   let activeRecoveryKeyWords = [];
   let verificationIndices = [];
   let activeVault = 'financial';
   let activeEntryType = null;
+  let displayMode = window.VantaLockVaultDisplay.normalizeMode(
+    localStorage.getItem(window.VantaLockVaultDisplay.MODE_KEY)
+  );
+  let tableSortState = { key: 'title', direction: 'asc' };
+  let globalSearchMatches = [];
 
   // Persistent Vault Storage
   function loadSavedVaultEntries() {
@@ -827,12 +840,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let vaultEntries = loadSavedVaultEntries();
   window.vaultEntries = vaultEntries;
   window.getActiveVaultEntries = () => {
-    return window.VantaLockAuthFlow.getEntriesForVault(
-      window.activeVaultType,
-      vaultEntries,
-      getDecoyVaultData(),
-      generateDecoyContent
-    );
+    if (window.activeVaultType === 'decoy') {
+      const decoyEntries = getDecoyVaultData();
+      return decoyEntries.length > 0 ? decoyEntries : generateDecoyContent();
+    }
+    return vaultEntries;
   };
   window.persistActiveVaultEntries = () => {
     if (window.activeVaultType === 'decoy') {
@@ -2011,12 +2023,281 @@ document.addEventListener('DOMContentLoaded', () => {
     return '••••••••••••';
   }
 
+  function getEntryTypeConfig(entry) {
+    const compartmentTypes = (vaultMetadata[entry.vault] && vaultMetadata[entry.vault].types) || [];
+    return compartmentTypes.find(type => type.id === entry.type) || {
+      label: entry.typeName || 'Entry',
+      icon: '',
+      fields: []
+    };
+  }
+
+  function getEntryFieldDefinition(entry, key) {
+    const typeConfig = getEntryTypeConfig(entry);
+    return (typeConfig.fields || []).find(field => field.key === key) || {
+      name: key.replace(/_/g, ' ').toUpperCase(),
+      sensitive: false
+    };
+  }
+
+  function getTableFieldColumns(entries) {
+    const fields = new Map();
+    entries.forEach(entry => {
+      Object.keys(entry.fields || {}).forEach(key => {
+        if (key === 'notes' || key === 'branch_notes') return;
+        const definition = getEntryFieldDefinition(entry, key);
+        const existing = fields.get(key);
+        fields.set(key, {
+          key,
+          label: definition.name,
+          sensitive: Boolean(definition.sensitive || (existing && existing.sensitive))
+        });
+      });
+    });
+    return Array.from(fields.values());
+  }
+
+  function renderVaultTable(entries, container) {
+    const columns = [
+      { key: 'title', label: 'Title', fixed: true },
+      { key: 'typeName', label: 'Type', fixed: true },
+      { key: 'updatedAt', label: 'Last Modified', fixed: true },
+      ...getTableFieldColumns(entries)
+    ];
+    const sortedEntries = entries
+      .map((entry, index) => ({ entry, index }))
+      .sort((a, b) => {
+        const left = tableSortState.key === 'title'
+          ? a.entry.title
+          : tableSortState.key === 'typeName'
+            ? a.entry.typeName
+            : tableSortState.key === 'updatedAt'
+              ? a.entry.updatedAt || a.entry.createdAt || ''
+              : (a.entry.fields || {})[tableSortState.key];
+        const right = tableSortState.key === 'title'
+          ? b.entry.title
+          : tableSortState.key === 'typeName'
+            ? b.entry.typeName
+            : tableSortState.key === 'updatedAt'
+              ? b.entry.updatedAt || b.entry.createdAt || ''
+              : (b.entry.fields || {})[tableSortState.key];
+        const comparison = String(left || '').localeCompare(String(right || ''), undefined, {
+          numeric: true,
+          sensitivity: 'base'
+        });
+        return (comparison * (tableSortState.direction === 'asc' ? 1 : -1)) || a.index - b.index;
+      });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'entry-table-wrap';
+    const table = document.createElement('table');
+    table.className = 'entry-table';
+    const head = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    columns.forEach(column => {
+      const cell = document.createElement('th');
+      const sortButton = document.createElement('button');
+      sortButton.type = 'button';
+      sortButton.className = 'entry-table-sort';
+      sortButton.textContent = `${column.label}${tableSortState.key === column.key
+        ? (tableSortState.direction === 'asc' ? ' ▲' : ' ▼')
+        : ''}`;
+      sortButton.setAttribute('aria-label', `Sort by ${column.label}`);
+      sortButton.addEventListener('click', () => {
+        if (tableSortState.key === column.key) {
+          tableSortState.direction = tableSortState.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          tableSortState = { key: column.key, direction: 'asc' };
+        }
+        renderVaultEntries();
+      });
+      cell.appendChild(sortButton);
+      headerRow.appendChild(cell);
+    });
+    head.appendChild(headerRow);
+    table.appendChild(head);
+
+    const body = document.createElement('tbody');
+    sortedEntries.forEach(({ entry }) => {
+      const row = document.createElement('tr');
+      row.dataset.vaultEntryId = String(entry.id);
+      columns.forEach(column => {
+        const cell = document.createElement('td');
+        const rawValue = column.key === 'title'
+          ? entry.title
+          : column.key === 'typeName'
+            ? entry.typeName || 'Entry'
+            : column.key === 'updatedAt'
+              ? entry.updatedAt || entry.createdAt || '—'
+              : (entry.fields || {})[column.key];
+        if (column.key === 'title') {
+          cell.className = 'table-entry-title';
+          cell.textContent = String(rawValue || '');
+        } else if (column.key === 'updatedAt') {
+          cell.textContent = rawValue ? new Date(rawValue).toLocaleDateString() : '—';
+        } else if (column.sensitive && rawValue) {
+          const definition = getEntryFieldDefinition(entry, column.key);
+          const revealButton = document.createElement('button');
+          revealButton.type = 'button';
+          revealButton.className = 'table-reveal-btn';
+          revealButton.textContent = maskFieldValue(String(rawValue), definition);
+          revealButton.setAttribute('aria-label', `Reveal ${column.label}`);
+          let revealed = false;
+          revealButton.addEventListener('click', () => {
+            revealed = !revealed;
+            revealButton.textContent = revealed
+              ? String(rawValue)
+              : maskFieldValue(String(rawValue), definition);
+            revealButton.setAttribute('aria-label', `${revealed ? 'Hide' : 'Reveal'} ${column.label}`);
+          });
+          cell.appendChild(revealButton);
+        } else {
+          cell.textContent = rawValue === undefined || rawValue === null || rawValue === ''
+            ? '—'
+            : String(rawValue);
+        }
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    });
+    table.appendChild(body);
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
+  }
+
+  function updateDisplayModeButtons() {
+    displayModeButtons.forEach(button => {
+      const isActive = button.dataset.displayMode === displayMode;
+      button.setAttribute('aria-pressed', String(isActive));
+      button.tabIndex = isActive ? 0 : -1;
+    });
+  }
+
+  function setDisplayMode(mode) {
+    displayMode = window.VantaLockVaultDisplay.normalizeMode(mode);
+    localStorage.setItem(window.VantaLockVaultDisplay.MODE_KEY, displayMode);
+    updateDisplayModeButtons();
+    renderVaultEntries();
+  }
+
+  function closeGlobalSearch() {
+    globalSearchMatches = [];
+    if (globalSearchOverlay) globalSearchOverlay.classList.add('hidden');
+    if (globalSearchInput) globalSearchInput.value = '';
+    if (globalSearchResults) globalSearchResults.replaceChildren();
+    if (globalSearchStatus) globalSearchStatus.textContent = '';
+  }
+
+  function focusVaultEntry(entryId) {
+    closeGlobalSearch();
+    activeVault = globalSearchTargetVault || activeVault;
+    const selectedTab = document.querySelector(`.vault-tab-btn[data-vault="${activeVault}"]`);
+    if (selectedTab) selectedTab.click();
+    else renderVaultEntries();
+
+    requestAnimationFrame(() => {
+      const entryElement = Array.from(document.querySelectorAll('[data-vault-entry-id]'))
+        .find(element => element.dataset.vaultEntryId === entryId);
+      if (!entryElement) return;
+      if (displayMode === 'list') {
+        const listItem = entryElement.closest('.entry-list-item');
+        const summary = listItem && listItem.querySelector('.entry-list-summary');
+        if (summary && summary.getAttribute('aria-expanded') !== 'true') summary.click();
+      }
+      entryElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      entryElement.classList.add('entry-search-target');
+      setTimeout(() => entryElement.classList.remove('entry-search-target'), 1800);
+    });
+  }
+
+  let globalSearchTargetVault = null;
+
+  function renderGlobalSearchResults(query) {
+    if (!globalSearchInput || !globalSearchResults || !globalSearchStatus) return;
+    globalSearchResults.replaceChildren();
+    globalSearchMatches = window.VantaLockVaultDisplay.searchEntries(
+      getActiveVaultEntries(),
+      query
+    );
+    globalSearchTargetVault = null;
+
+    if (!query.trim()) {
+      globalSearchStatus.textContent = 'Search titles, nicknames, and decrypted field values.';
+      return;
+    }
+    globalSearchStatus.textContent = globalSearchMatches.length
+      ? `${globalSearchMatches.length} result${globalSearchMatches.length === 1 ? '' : 's'}`
+      : 'No matching entries.';
+    globalSearchMatches.forEach(match => {
+      const result = document.createElement('button');
+      result.type = 'button';
+      result.className = 'global-search-result';
+      result.setAttribute('role', 'option');
+
+      const title = document.createElement('span');
+      title.className = 'global-search-result-title';
+      title.textContent = match.title;
+      const metadata = document.createElement('span');
+      metadata.className = 'global-search-result-meta';
+      const type = document.createElement('span');
+      type.textContent = match.typeName;
+      const compartment = document.createElement('span');
+      compartment.className = 'global-search-compartment';
+      compartment.textContent = (vaultMetadata[match.vault] && vaultMetadata[match.vault].title) ||
+        match.vault || 'Vault';
+      metadata.append(type, compartment);
+      result.append(title, metadata);
+      result.addEventListener('click', () => {
+        globalSearchTargetVault = match.vault;
+        focusVaultEntry(match.id);
+      });
+      globalSearchResults.appendChild(result);
+    });
+  }
+
+  function openGlobalSearch() {
+    if (!globalSearchOverlay || !dashboardViewContainer ||
+      dashboardViewContainer.classList.contains('hidden') ||
+      !['real', 'decoy'].includes(window.activeVaultType)) return;
+    globalSearchOverlay.classList.remove('hidden');
+    renderGlobalSearchResults('');
+    globalSearchInput.focus();
+  }
+
+  displayModeButtons.forEach((button, index) => {
+    button.addEventListener('click', () => setDisplayMode(button.dataset.displayMode));
+    button.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      const nextIndex = (index + direction + displayModeButtons.length) % displayModeButtons.length;
+      displayModeButtons[nextIndex].focus();
+      displayModeButtons[nextIndex].click();
+    });
+  });
+  updateDisplayModeButtons();
+
+  if (globalSearchOpenButton) globalSearchOpenButton.addEventListener('click', openGlobalSearch);
+  if (globalSearchCloseButton) globalSearchCloseButton.addEventListener('click', closeGlobalSearch);
+  if (globalSearchInput) {
+    globalSearchInput.addEventListener('input', () => renderGlobalSearchResults(globalSearchInput.value));
+  }
+  document.addEventListener('keydown', event => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      openGlobalSearch();
+    } else if (event.key === 'Escape' && globalSearchOverlay &&
+      !globalSearchOverlay.classList.contains('hidden')) {
+      closeGlobalSearch();
+    }
+  });
+
   function renderVaultEntries() {
-    const elContainer = document.getElementById("entry-list-container") || elContainer;
+    const entryContainer = document.getElementById('entry-list-container') || elContainer;
     const allEntries = getActiveVaultEntries();
     const currentVaultEntries = allEntries.filter(e => e.vault === activeVault);
     if (currentVaultEntries.length === 0) {
-      elContainer.innerHTML = `
+      entryContainer.innerHTML = `
         <div class="empty-vault-card">
           <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -2029,10 +2310,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    elContainer.innerHTML = '';
+    entryContainer.replaceChildren();
+    if (displayMode === 'table') {
+      renderVaultTable(currentVaultEntries, entryContainer);
+      return;
+    }
+
     currentVaultEntries.forEach(entry => {
       const card = document.createElement('div');
       card.className = 'entry-card';
+      card.dataset.vaultEntryId = String(entry.id);
 
       const isFile = entry.type === 'file';
       const availableTypes = (vaultMetadata[activeVault] && vaultMetadata[activeVault].types) || [];
@@ -2122,7 +2409,57 @@ document.addEventListener('DOMContentLoaded', () => {
         ${entry.notes ? `<div style="font-size: 13px; color: var(--text-secondary); background: #121212; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--surface-border);"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
       `;
 
-      elContainer.appendChild(card);
+      if (displayMode === 'list') {
+        const listItem = document.createElement('div');
+        listItem.className = 'entry-list-item';
+        listItem.dataset.vaultEntryId = String(entry.id);
+        const summary = document.createElement('button');
+        summary.type = 'button';
+        summary.className = 'entry-list-summary';
+        summary.setAttribute('aria-expanded', 'false');
+        const icon = document.createElement('span');
+        icon.className = 'entry-list-icon';
+        icon.innerHTML = typeConfig.icon || '';
+        const title = document.createElement('span');
+        title.className = 'entry-list-title';
+        title.textContent = entry.title || 'Untitled entry';
+        const type = document.createElement('span');
+        type.className = 'entry-list-type';
+        type.textContent = typeConfig.label || entry.typeName || 'Entry';
+        const preview = document.createElement('span');
+        preview.className = 'entry-list-preview';
+        const availablePreviewFields = Object.entries(entry.fields || {}).filter(([key, value]) =>
+          value && key !== 'notes' && key !== 'branch_notes'
+        );
+        const previewField = availablePreviewFields.find(([key]) =>
+          getEntryFieldDefinition(entry, key).sensitive
+        ) || availablePreviewFields[0];
+        if (previewField) {
+          const [key, value] = previewField;
+          preview.textContent = maskFieldValue(String(value), getEntryFieldDefinition(entry, key));
+        } else {
+          preview.textContent = isFile ? 'Encrypted file' : 'No preview';
+        }
+        const chevron = document.createElement('span');
+        chevron.className = 'entry-list-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '⌄';
+        summary.append(icon, title, type, preview, chevron);
+
+        const details = document.createElement('div');
+        details.className = 'entry-list-details hidden';
+        details.appendChild(card);
+        summary.addEventListener('click', () => {
+          const expanded = summary.getAttribute('aria-expanded') !== 'true';
+          summary.setAttribute('aria-expanded', String(expanded));
+          details.classList.toggle('hidden', !expanded);
+          listItem.classList.toggle('is-expanded', expanded);
+        });
+        listItem.append(summary, details);
+        entryContainer.appendChild(listItem);
+      } else {
+        entryContainer.appendChild(card);
+      }
     });
 
     // Eye toggle handlers

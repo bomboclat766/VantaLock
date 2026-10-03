@@ -77,12 +77,90 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         const dashboard = document.getElementById('dashboard-view-container');
         return dashboard && !dashboard.classList.contains('hidden');
       });
+      await page.evaluate(() => {
+        window.vaultEntries.push({
+          id: 'e2e-search-card',
+          vault: 'financial',
+          type: 'card',
+          typeName: 'Payment Card',
+          title: 'E2E Search Card',
+          fields: {
+            cardholder_name: 'Avery Example',
+            card_number: '4111111111119021'
+          },
+          createdAt: new Date().toISOString()
+        });
+        window.persistActiveVaultEntries();
+        window.renderVaultEntries();
+      });
 
-      await page.locator('#panic-lock-btn').click();
+      await page.locator('[data-display-mode="list"]').click();
+      const listSummary = page.locator('.entry-list-summary').filter({ hasText: 'E2E Search Card' });
+      expect(await listSummary.isVisible()).toBe(true);
+      expect(await listSummary.textContent()).toContain('9021');
+      expect(await listSummary.textContent()).not.toContain('4111111111119021');
+      await listSummary.click();
+      expect(await listSummary.getAttribute('aria-expanded')).toBe('true');
+      expect(await page.evaluate(() => localStorage.getItem('vantalock_entry_display_mode'))).toBe('list');
+
+      await page.locator('[data-display-mode="list"]').focus();
+      await page.keyboard.press('ArrowRight');
+      expect(await page.locator('[data-display-mode="table"]').getAttribute('aria-pressed')).toBe('true');
+      const tableRow = page.locator('tr[data-vault-entry-id="e2e-search-card"]');
+      expect(await tableRow.isVisible()).toBe(true);
+      const maskedCardNumber = tableRow.locator('.table-reveal-btn');
+      expect(await maskedCardNumber.textContent()).toContain('9021');
+      expect(await maskedCardNumber.textContent()).not.toContain('4111111111119021');
+      await maskedCardNumber.click();
+      expect(await maskedCardNumber.textContent()).toBe('4111111111119021');
+
+      await page.evaluate(() => { window.activeVaultType = 'decoy'; });
+      await page.locator('#global-search-open-btn').click();
+      await page.locator('#global-search-input').fill('E2E Search Card');
+      expect(await page.locator('#global-search-status').textContent()).toBe('No matching entries.');
+      await page.evaluate(() => {
+        localStorage.setItem('vantalock_decoy_vault_data', JSON.stringify([{
+          id: 'e2e-decoy-search',
+          vault: 'personal',
+          title: 'Decoy Only Entry',
+          typeName: 'Login',
+          fields: { username: 'decoy-user' }
+        }]));
+      });
+      await page.locator('#global-search-input').fill('decoy-user');
+      expect(await page.locator('.global-search-result').count()).toBe(1);
+      expect(await page.locator('#global-search-results').textContent()).not.toContain('E2E Search Card');
+      await page.locator('#global-search-input').fill('4111111111119021');
+      expect(await page.locator('#global-search-status').textContent()).toBe('No matching entries.');
+      await page.evaluate(() => { window.activeVaultType = 'real'; });
+      await page.locator('#global-search-close-btn').click();
+      await page.locator('[data-vault="personal"]').click();
+      await page.keyboard.press('Control+k');
+      expect(await page.locator('#global-search-overlay').isVisible()).toBe(true);
+      expect(await page.locator('#global-search-input').evaluate(element => document.activeElement === element)).toBe(true);
+      await page.locator('#global-search-input').fill('9021');
+      expect(await page.locator('.global-search-result').count()).toBe(1);
+      expect(await page.locator('#global-search-results').textContent()).not.toContain('4111111111119021');
+      await page.locator('.global-search-result').click();
+      await page.waitForFunction(() => document.getElementById('current-vault-title').textContent === 'Financial Vault');
+      const searchedTableRow = page.locator('tr[data-vault-entry-id="e2e-search-card"]');
+      expect(await searchedTableRow.isVisible()).toBe(true);
+      expect(await searchedTableRow.locator('.table-reveal-btn').textContent()).not.toContain('4111111111119021');
+
+      await page.locator('#global-search-open-btn').click();
+      await page.locator('#global-search-input').fill('9021');
+      expect(await page.locator('.global-search-result').count()).toBe(1);
+      expect(await page.locator('#global-search-results').textContent()).not.toContain('4111111111119021');
+      await page.evaluate(() => window.electronAPI.lockManagerLock('E2E search lock'));
       await page.waitForFunction(() => {
         const unlock = document.getElementById('unlock-vault-view');
-        return unlock && !unlock.classList.contains('hidden');
+        const overlay = document.getElementById('global-search-overlay');
+        return unlock && !unlock.classList.contains('hidden') &&
+          overlay && overlay.classList.contains('hidden');
       });
+      expect(await page.locator('#global-search-input').inputValue()).toBe('');
+      expect(await page.locator('#global-search-results').textContent()).toBe('');
+
       await page.locator('#unlock-mp-input').fill('WrongPassword!2026');
       await page.locator('#unlock-btn').click();
       await page.waitForFunction(() => {
@@ -112,6 +190,7 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         return splash && splash.style.display === 'none' &&
           unlock && !unlock.classList.contains('hidden');
       }, null, { timeout: 10000 });
+      expect(await reopenedPage.locator('[data-display-mode="table"]').getAttribute('aria-pressed')).toBe('true');
       await reopenedPage.locator('#unlock-mp-input').fill(masterPassword);
       await reopenedPage.locator('#unlock-btn').click();
       await reopenedPage.waitForFunction(() => {

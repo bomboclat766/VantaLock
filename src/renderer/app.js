@@ -1258,50 +1258,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial View Determination after splash dismiss
 
-  // Immediate Defensive Splash Dismissal & App Boot Trigger
-  let splashDismissed = false;
-  function dismissSplash() {
-    if (splashDismissed) return;
-    splashDismissed = true;
+  // Preserve the existing splash pulse before routing to the first screen.
+  let startupScheduled = false;
+  let startupFinished = false;
+  const startupStartedAt = performance.now();
 
+  function finishStartup() {
+    if (startupFinished) return;
+    startupFinished = true;
     const overlay = document.getElementById('splash-overlay') || splashOverlay;
-
-    const navigateToNextScreen = () => {
-      const isLockoutActive = typeof triggerLockoutModal === 'function' ? triggerLockoutModal() : false;
-      if (isLockoutActive) return;
-
+    const isLockoutActive = triggerLockoutModal();
+    if (!isLockoutActive) {
       const isFullySetup = localStorage.getItem('vantalock_setup_complete') === 'true';
-      if (!isFullySetup) {
-        showScreen('onboarding');
-      } else {
-        showScreen('unlock-vault');
-      }
-    };
-
-    navigateToNextScreen();
+      showScreen(isFullySetup ? 'unlock-vault' : 'onboarding');
+    }
     if (overlay) {
-      overlay.style.display = 'none';
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
+      setTimeout(() => { overlay.style.display = 'none'; }, 800);
     }
+  }
+
+  function dismissSplash() {
+    if (startupScheduled) return;
+    startupScheduled = true;
+    const elapsed = performance.now() - startupStartedAt;
+    setTimeout(finishStartup, Math.max(0, 2500 - elapsed));
+    setTimeout(finishStartup, 3000);
   }
 
   dismissSplash();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', dismissSplash);
-  }
-  window.addEventListener('load', dismissSplash);
-
-  // Backup fallback timers to guarantee splash overlay is dismissed
-  setTimeout(dismissSplash, 1200);
-  setTimeout(dismissSplash, 2500);
-
-  document.addEventListener('click', (e) => {
-    const overlay = document.getElementById('splash-overlay');
-    if (overlay && !splashDismissed && overlay.contains(e.target)) {
-      dismissSplash();
-    }
-  }, { capture: true });
 
 // Vault Unlock Form Handler
   let isVerificationFromUnlock = false;

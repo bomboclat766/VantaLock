@@ -1256,6 +1256,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
   if (forgotPwdBtn) {
     forgotPwdBtn.addEventListener('click', () => {
+      const storedSeed = localStorage.getItem('vantalock_seed_phrase');
+      if (!storedSeed) {
+        if (unlockErrorText) {
+          unlockErrorText.textContent = 'No recovery seed is stored on this device.';
+          unlockErrorText.style.display = 'block';
+        }
+        return;
+      }
+      activeRecoveryKeyWords = storedSeed.trim().split(/\s+/);
       isVerificationFromUnlock = true;
       setupRecoveryVerification();
     });

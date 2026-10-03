@@ -91,6 +91,9 @@ function showScreen(screenName) {
     document.querySelectorAll('.nav-divider').forEach(div => {
       div.style.display = isDecoy ? 'none' : 'block';
     });
+    if (typeof window.renderVaultEntries === 'function') {
+      window.renderVaultEntries();
+    }
     return;
   }
 
@@ -2099,6 +2102,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  window.renderVaultEntries = renderVaultEntries;
 
   // Vault & Tools Navigation Wiring
   vaultTabs.forEach(tab => {

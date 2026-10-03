@@ -393,13 +393,27 @@ function showScreen(screenName) {
 
   // Lockout Timer State Management
   let lockoutAnimFrame = null;
+  let lockoutExpiryTimeout = null;
+
+  function scheduleLockoutExpiry(expiresAt) {
+    if (lockoutExpiryTimeout) clearTimeout(lockoutExpiryTimeout);
+    const checkExpiry = () => {
+      lockoutExpiryTimeout = null;
+      if (!lockoutState.expireIfElapsed()) {
+        lockoutExpiryTimeout = setTimeout(checkExpiry, Math.max(1, expiresAt - Date.now()));
+      }
+    };
+    lockoutExpiryTimeout = setTimeout(checkExpiry, Math.max(0, expiresAt - Date.now()));
+  }
 
   function showUnlockAfterLockout() {
     const modal = document.getElementById('lockout-modal-overlay');
     if (modal) modal.style.display = 'none';
     if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
     lockoutAnimFrame = null;
-    showUnlockScreen();
+    if (lockoutExpiryTimeout) clearTimeout(lockoutExpiryTimeout);
+    lockoutExpiryTimeout = null;
+    showScreen('unlock-vault');
     setTimeout(() => {
       const passwordInput = document.getElementById('unlock-mp-input');
       if (passwordInput) passwordInput.focus();
@@ -493,7 +507,9 @@ function showScreen(screenName) {
     function updateFrame() {
       const remainingMs = expiresAt - Date.now();
       if (remainingMs <= 0) {
-        lockoutState.expireIfElapsed();
+        if (!lockoutState.expireIfElapsed()) {
+          lockoutAnimFrame = requestAnimationFrame(updateFrame);
+        }
         return;
       }
 
@@ -510,6 +526,7 @@ function showScreen(screenName) {
     }
 
     if (lockoutAnimFrame) cancelAnimationFrame(lockoutAnimFrame);
+    scheduleLockoutExpiry(expiresAt);
     updateFrame();
     return true;
   }

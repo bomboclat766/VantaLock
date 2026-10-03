@@ -547,13 +547,38 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       expect(await page.locator('#global-search-results').textContent()).toBe('');
 
       await page.locator('#unlock-mp-input').fill('WrongPassword!2026');
+      await page.evaluate(() => {
+        localStorage.setItem('vantalock_lockout_threshold', '1');
+        localStorage.setItem('vantalock_lockout_duration', '1');
+        window.__e2eLockoutNow = 1000000;
+        window.__e2eOriginalDateNow = Date.now;
+        Date.now = () => window.__e2eLockoutNow;
+      });
       await page.locator('#unlock-btn').click();
       await page.waitForFunction(() => {
-        const error = document.getElementById('unlock-error-text');
-        return error && error.style.display === 'block';
+        const modal = document.getElementById('lockout-modal-overlay');
+        return modal && modal.style.display === 'flex';
       });
       expect(await page.evaluate(() => localStorage.getItem('vantalock_failed_attempts'))).toBe('1');
       expect(await page.evaluate(() => window.activeVaultType)).toBe('real');
+      await page.evaluate(() => {
+        window.__e2eLockoutNow =
+          Number(localStorage.getItem('vantalock_lockout_expires_at')) + 1;
+      });
+      await page.waitForFunction(() => {
+        const modal = document.getElementById('lockout-modal-overlay');
+        const unlock = document.getElementById('unlock-vault-view');
+        const dashboard = document.getElementById('dashboard-view-container');
+        return modal && modal.style.display === 'none' &&
+          unlock && !unlock.classList.contains('hidden') &&
+          dashboard && dashboard.classList.contains('hidden');
+      });
+      expect(await page.evaluate(() => localStorage.getItem('vantalock_failed_attempts'))).toBe('0');
+      await page.evaluate(() => {
+        Date.now = window.__e2eOriginalDateNow;
+        delete window.__e2eOriginalDateNow;
+        delete window.__e2eLockoutNow;
+      });
 
       await page.locator('#unlock-mp-input').fill(masterPassword);
       await page.locator('#unlock-btn').click();

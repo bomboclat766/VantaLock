@@ -1650,7 +1650,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openFileViewer(entry) {
     if (!viewFileModal) return;
-    activeFileViewerEntry = entry;
+    const hasFilePayload = typeof entry.fileDataUrl === 'string' && entry.fileDataUrl.length > 0;
+    activeFileViewerEntry = hasFilePayload ? entry : null;
+    const openBtn = document.getElementById('file-modal-open-link');
+    if (openBtn) {
+      openBtn.disabled = !hasFilePayload;
+      openBtn.style.display = hasFilePayload ? 'inline-block' : 'none';
+    }
 
     fileModalTitle.textContent = entry.title || 'File View';
     fileModalNotes.textContent = entry.notes ? `Notes: ${entry.notes}` : '';
@@ -1658,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileModalPreviewContainer.innerHTML = '';
 
     const mime = entry.fields ? entry.fields.filetype : '';
-    if (entry.fileDataUrl) {
+    if (hasFilePayload) {
       if (mime.startsWith('image/')) {
         fileModalPreviewContainer.innerHTML = `<img src="${entry.fileDataUrl}" style="max-width: 100%; max-height: 300px; border-radius: 6px;" />`;
       } else if (mime.startsWith('video/')) {
@@ -1671,7 +1677,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      const openBtn = document.getElementById('file-modal-open-link');
       if (openBtn && openBtn.dataset.listenerBound !== 'true') {
         openBtn.dataset.listenerBound = 'true';
         openBtn.addEventListener('click', async () => {

@@ -359,34 +359,25 @@ function showScreen(screenName) {
 
 
   // Lockout Timer State Management
+  const lockoutState = window.VantaLockLockoutState.createLockoutState(
+    localStorage,
+    () => triggerLockoutModal()
+  );
+
   function getLockoutSettings() {
-    return {
-      threshold: parseInt(localStorage.getItem('vantalock_lockout_threshold') || '5', 10),
-      durationMinutes: parseInt(localStorage.getItem('vantalock_lockout_duration') || '5', 10)
-    };
+    return lockoutState.getSettings();
   }
 
   function getFailedAttemptCount() {
-    return parseInt(localStorage.getItem('vantalock_failed_attempts') || '0', 10);
+    return lockoutState.getFailedAttemptCount();
   }
 
   function recordFailedAttempt() {
-    let count = getFailedAttemptCount() + 1;
-    localStorage.setItem('vantalock_failed_attempts', String(count));
-    const settings = getLockoutSettings();
-    if (count >= settings.threshold) {
-      const durationMs = settings.durationMinutes * 60 * 1000;
-      const expiresAt = Date.now() + durationMs;
-      localStorage.setItem('vantalock_lockout_expires_at', String(expiresAt));
-      localStorage.setItem('vantalock_lockout_total_ms', String(durationMs));
-      triggerLockoutModal();
-    }
+    return lockoutState.recordFailedAttempt();
   }
 
   function resetFailedAttempts() {
-    localStorage.setItem('vantalock_failed_attempts', '0');
-    localStorage.removeItem('vantalock_lockout_expires_at');
-    localStorage.removeItem('vantalock_lockout_total_ms');
+    lockoutState.resetFailedAttempts();
   }
 
   let lockoutAnimFrame = null;
@@ -1313,17 +1304,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
         const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
-        // Check decoy passwords
         const decoyList = getDecoyPasswords();
-        const matchedDecoy = decoyList.find(d => d.password === pwdVal);
+        const result = await window.VantaLockAuthFlow.authenticatePassword({
+          password: pwdVal,
+          salt: storedSaltHex,
+          verifier: storedVerifier,
+          decoyPasswords: decoyList,
+          verifyMasterPassword: payload => window.electronAPI.verifyMasterPassword(payload),
+          recordFailedAttempt,
+          resetFailedAttempts
+        });
 
-        if (matchedDecoy) {
-          window.activeVaultType = 'decoy';
+        if (!result.accepted) {
+          if (unlockErrorText) unlockErrorText.style.display = 'block';
+          logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
+          return;
+        }
+
+        window.activeVaultType = result.vaultType;
+        if (result.vaultType === 'decoy') {
           const decoyData = getDecoyVaultData();
           if (!decoyData || decoyData.length === 0) {
             generateDecoyContent();
           }
-          resetFailedAttempts();
           await window.electronAPI.lockManagerSuccess();
           if (unlockErrorText) unlockErrorText.style.display = 'none';
           unlockVaultForm.reset();
@@ -1331,19 +1334,6 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        if (!storedSaltHex || !storedVerifier || !await window.electronAPI.verifyMasterPassword({
-          password: pwdVal,
-          salt: storedSaltHex,
-          verifier: storedVerifier
-        })) {
-          recordFailedAttempt();
-          if (unlockErrorText) unlockErrorText.style.display = 'block';
-          logActivity('SECURITY WARNING: Incorrect master password on vault unlock.');
-          return;
-        }
-
-        window.activeVaultType = 'real';
-        resetFailedAttempts();
         await window.electronAPI.lockManagerSuccess();
         if (unlockErrorText) unlockErrorText.style.display = 'none';
         unlockVaultForm.reset();

@@ -135,8 +135,11 @@ ipcMain.handle("open-file-native", async (event, { dataUrl, filename }) => {
     const fs = require('fs');
     const os = require('os');
     const path = require('path');
-    const tempDir = os.tmpdir();
-    const cleanFilename = filename || 'vault_temp_file.txt';
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vantalock-'));
+    const providedName = typeof filename === 'string' ? filename : '';
+    const normalizedName = providedName.replace(/[\\/]+/g, path.sep);
+    const basename = path.basename(normalizedName).replace(/[<>:"|?*\x00-\x1f]/g, '_');
+    const cleanFilename = basename && basename !== '.' && basename !== '..' ? basename : 'vault_temp_file.txt';
     const filePath = path.join(tempDir, cleanFilename);
 
     let base64Data = dataUrl || '';

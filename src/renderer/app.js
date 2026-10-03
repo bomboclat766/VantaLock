@@ -202,25 +202,25 @@ function showScreen(screenName) {
       browseWrapper.style.display = toggleCustom.checked ? 'block' : 'none';
     };
 
-    browseBtn.onclick = () => {
+    browseBtn.addEventListener('click', () => {
       const fileInp = document.createElement('input');
       fileInp.type = 'file';
       fileInp.multiple = true;
-      fileInp.onchange = () => {
+      fileInp.addEventListener('change', () => {
         if (fileInp.files && fileInp.files.length > 0) {
           customUploadedFiles = Array.from(fileInp.files);
           selectedText.textContent = `${customUploadedFiles.length} file(s) selected: ` + customUploadedFiles.map(f => f.name).join(', ');
         }
-      };
+      });
       fileInp.click();
-    };
+    });
 
-    skipBtn.onclick = () => {
+    skipBtn.addEventListener('click', () => {
       overlay.remove();
       if (typeof onComplete === 'function') onComplete();
-    };
+    });
 
-    saveBtn.onclick = () => {
+    saveBtn.addEventListener('click', () => {
       errorMsg.style.display = 'none';
       const pwdFields = overlay.querySelectorAll('.decoy-pwd-field');
       const confirmFields = overlay.querySelectorAll('.decoy-confirm-field');
@@ -264,7 +264,7 @@ function showScreen(screenName) {
 
       overlay.remove();
       if (typeof onComplete === 'function') onComplete();
-    };
+    });
   }
 
 
@@ -290,7 +290,7 @@ function showScreen(screenName) {
     });
 
     listElem.querySelectorAll('.delete-decoy-btn').forEach(btn => {
-      btn.onclick = () => {
+      btn.addEventListener('click', () => {
         const idx = parseInt(btn.getAttribute('data-index'), 10);
         if (confirm('Are you sure you want to remove this decoy password?')) {
           const list = getDecoyPasswords();
@@ -298,7 +298,7 @@ function showScreen(screenName) {
           saveDecoyPasswords(list);
           renderDecoyListUI();
         }
-      };
+      });
     });
 
     if (counterElem) {
@@ -325,7 +325,7 @@ function showScreen(screenName) {
       const addBtn = document.getElementById('add-decoy-pwd-btn');
       const inputInp = document.getElementById('new-decoy-pwd-input');
       if (addBtn && inputInp) {
-        addBtn.onclick = () => {
+        addBtn.addEventListener('click', () => {
           const val = inputInp.value.trim();
           if (!val) return;
           const list = getDecoyPasswords();
@@ -336,7 +336,7 @@ function showScreen(screenName) {
           inputInp.value = '';
           generateDecoyContent();
           renderDecoyListUI();
-        };
+        });
       }
 
       const threshSel = document.getElementById('lockout-threshold-select');
@@ -721,6 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileModalPreviewContainer = document.getElementById('file-modal-preview-container');
   const fileModalNotes = document.getElementById('file-modal-notes');
   const fileModalDownloadLink = document.getElementById('file-modal-download-link');
+  let activeFileViewerEntry = null;
   const closeViewFileModalBtn = document.getElementById('close-view-file-modal-btn');
 
   const addFileBtn = document.getElementById('add-file-btn');
@@ -1642,6 +1643,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openFileViewer(entry) {
     if (!viewFileModal) return;
+    activeFileViewerEntry = entry;
 
     fileModalTitle.textContent = entry.title || 'File View';
     fileModalNotes.textContent = entry.notes ? `Notes: ${entry.notes}` : '';
@@ -1663,19 +1665,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const openBtn = document.getElementById('file-modal-open-link');
-      if (openBtn) {
-        openBtn.onclick = async () => {
-          const fname = (entry.fields && entry.fields.filename) ? entry.fields.filename : 'vault_document.pdf';
+      if (openBtn && openBtn.dataset.listenerBound !== 'true') {
+        openBtn.dataset.listenerBound = 'true';
+        openBtn.addEventListener('click', async () => {
+          const currentEntry = activeFileViewerEntry;
+          if (!currentEntry || !currentEntry.fileDataUrl) return;
+          const fname = (currentEntry.fields && currentEntry.fields.filename) ? currentEntry.fields.filename : 'vault_document.pdf';
           if (window.electronAPI && typeof window.electronAPI.openFileNative === 'function') {
-            await window.electronAPI.openFileNative({ dataUrl: entry.fileDataUrl, filename: fname });
+            await window.electronAPI.openFileNative({ dataUrl: currentEntry.fileDataUrl, filename: fname });
           } else {
             // Web browser fallback
             const link = document.createElement('a');
-            link.href = entry.fileDataUrl;
+            link.href = currentEntry.fileDataUrl;
             link.download = fname;
             link.click();
           }
-        };
+        });
       }
     } else {
       fileModalPreviewContainer.innerHTML = '<div style="color: var(--text-secondary);">No file preview payload found.</div>';
@@ -2872,6 +2877,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
     let activeHealthScanInterval = null;
+    let activeHealthFixContext = null;
+    const biometricNoticeDismissHandlers = new WeakMap();
 
   function showBiometricAlertModal(title, message, onDismiss) {
     const modal = document.getElementById('biometric-notice-modal');
@@ -2890,12 +2897,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (msgElem) msgElem.textContent = message;
     modal.classList.remove('hidden');
 
-    const hide = () => {
+    biometricNoticeDismissHandlers.set(modal, onDismiss);
+    const dismiss = () => {
       modal.classList.add('hidden');
-      if (typeof onDismiss === 'function') onDismiss();
+      const callback = biometricNoticeDismissHandlers.get(modal);
+      biometricNoticeDismissHandlers.delete(modal);
+      if (typeof callback === 'function') callback();
     };
-    if (closeBtn) closeBtn.onclick = hide;
-    if (okBtn) okBtn.onclick = hide;
+    if (closeBtn && closeBtn.dataset.listenerBound !== 'true') {
+      closeBtn.dataset.listenerBound = 'true';
+      closeBtn.addEventListener('click', dismiss);
+    }
+    if (okBtn && okBtn.dataset.listenerBound !== 'true') {
+      okBtn.dataset.listenerBound = 'true';
+      okBtn.addEventListener('click', dismiss);
+    }
   }
 
   function evaluatePasswordEntropy(pwd) {
@@ -3141,14 +3157,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }, 350);
 
-      if (closeBtn) {
-        closeBtn.onclick = () => {
+      if (closeBtn && closeBtn.dataset.listenerBound !== 'true') {
+        closeBtn.dataset.listenerBound = 'true';
+        closeBtn.addEventListener('click', () => {
           if (activeHealthScanInterval) {
             clearInterval(activeHealthScanInterval);
             activeHealthScanInterval = null;
           }
           modal.classList.add('hidden');
-        };
+        });
       }
     } catch (e) {
       console.error('[Password Health Scan] openPasswordHealthModal fatal error:', e);
@@ -3270,7 +3287,7 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
 
           const fixBtn = card.querySelector('.fix-entry-btn');
-          fixBtn.onclick = () => {
+          fixBtn.addEventListener('click', () => {
             const fixModal = document.getElementById('fix-health-issue-modal');
             const titleElem = document.getElementById('fix-asset-title');
             const secretElem = document.getElementById('fix-current-secret');
@@ -3279,55 +3296,62 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmBtn = document.getElementById('confirm-fix-updated-btn');
             const closeBtn = document.getElementById('close-fix-issue-modal-btn');
 
-            const newGeneratedPassword = generateStrongPassword(24);
+            activeHealthFixContext = { item, password: generateStrongPassword(24), fixBtn, fixModal };
 
             if (titleElem) titleElem.textContent = item.title;
             if (secretElem) secretElem.textContent = item.pwdValue;
-            if (newPwdInp) newPwdInp.value = newGeneratedPassword;
+            if (newPwdInp) newPwdInp.value = activeHealthFixContext.password;
 
-            if (copyBtn) {
-              copyBtn.onclick = () => {
-                copySensitiveText(newGeneratedPassword);
+            if (copyBtn && copyBtn.dataset.listenerBound !== 'true') {
+              copyBtn.dataset.listenerBound = 'true';
+              copyBtn.addEventListener('click', () => {
+                if (!activeHealthFixContext) return;
+                copySensitiveText(activeHealthFixContext.password);
                 copyBtn.textContent = 'Copied!';
                 setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
-              };
+              });
             }
 
-            const closeModal = () => {
-              if (fixModal) fixModal.classList.add('hidden');
-            };
-
-            if (closeBtn) closeBtn.onclick = closeModal;
-
-            if (confirmBtn) {
-              confirmBtn.onclick = () => {
-                const activeArr = getActiveVaultEntries();
-                const entryObj = activeArr.find(e => e.id === item.entryId);
-                if (entryObj) {
-                  if (item.pwdKey === 'password' || !entryObj.fields) {
-                    entryObj.password = newGeneratedPassword;
-                  }
-                  if (entryObj.fields && item.pwdKey) {
-                    entryObj.fields[item.pwdKey] = newGeneratedPassword;
-                  }
-                  entryObj.updatedAt = new Date().toISOString();
-                  persistVaultEntriesToStorage();
-                  logActivity(`PASSWORD HEALTH FIX: Generated new 24-char secret for ${item.title}`);
-
-                  closeModal();
-                  fixBtn.textContent = 'Fixed ✓';
-                  fixBtn.disabled = true;
-                  fixBtn.style.background = 'rgba(16, 185, 129, 0.2)';
-                  fixBtn.style.color = '#10b981';
-                  fixBtn.style.borderColor = '#10b981';
-                  fixBtn.style.opacity = '1';
-                  fixBtn.style.cursor = 'default';
+            if (closeBtn && closeBtn.dataset.listenerBound !== 'true') {
+              closeBtn.dataset.listenerBound = 'true';
+              closeBtn.addEventListener('click', () => {
+                if (activeHealthFixContext && activeHealthFixContext.fixModal) {
+                  activeHealthFixContext.fixModal.classList.add('hidden');
                 }
-              };
+                activeHealthFixContext = null;
+              });
+            }
+
+            if (confirmBtn && confirmBtn.dataset.listenerBound !== 'true') {
+              confirmBtn.dataset.listenerBound = 'true';
+              confirmBtn.addEventListener('click', () => {
+                if (!activeHealthFixContext) return;
+                const { item: activeItem, password, fixBtn: activeFixBtn, fixModal: activeFixModal } = activeHealthFixContext;
+                const entryObj = getActiveVaultEntries().find(e => e.id === activeItem.entryId);
+                if (!entryObj) return;
+                if (activeItem.pwdKey === 'password' || !entryObj.fields) {
+                  entryObj.password = password;
+                }
+                if (entryObj.fields && activeItem.pwdKey) {
+                  entryObj.fields[activeItem.pwdKey] = password;
+                }
+                entryObj.updatedAt = new Date().toISOString();
+                persistVaultEntriesToStorage();
+                logActivity(`PASSWORD HEALTH FIX: Generated new 24-char secret for ${activeItem.title}`);
+                if (activeFixModal) activeFixModal.classList.add('hidden');
+                activeFixBtn.textContent = 'Fixed ✓';
+                activeFixBtn.disabled = true;
+                activeFixBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+                activeFixBtn.style.color = '#10b981';
+                activeFixBtn.style.borderColor = '#10b981';
+                activeFixBtn.style.opacity = '1';
+                activeFixBtn.style.cursor = 'default';
+                activeHealthFixContext = null;
+              });
             }
 
             if (fixModal) fixModal.classList.remove('hidden');
-          };
+          });
 
           issuesList.appendChild(card);
 

@@ -51,8 +51,6 @@
     function showLanding() {
       container.innerHTML = `
         <section class="external-import-card">
-          <h3 class="setup-title">Import</h3>
-          <p class="setup-desc">Restore a backup, or bring in a file from another password manager.</p>
           <div class="import-choice-grid">
             <button type="button" class="import-choice-card" data-import-choice="backup">
               <span class="import-choice-title">
@@ -61,7 +59,7 @@
               </span>
               <span class="import-choice-subtitle">Restore a file you exported from VantaLock.</span>
             </button>
-            <button type="button" class="import-choice-card import-choice-primary" data-import-choice="external">
+            <button type="button" class="import-choice-card" data-import-choice="external">
               <span class="import-choice-title">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h5M7 13h10M7 17h10"/></svg>
                 Another password manager

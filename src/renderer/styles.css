@@ -942,7 +942,7 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin: 18px 0 12px;
+  margin: 0 0 12px;
 }
 
 .import-choice-card {
@@ -951,7 +951,7 @@ button {
   gap: 8px;
   min-width: 0;
   padding: 12px 14px;
-  border: 0.5px solid #2a2a2a;
+  border: 1px solid #2a2a2a;
   border-radius: 8px;
   background: #141414;
   color: #e8e6e0;
@@ -959,17 +959,23 @@ button {
   cursor: pointer;
 }
 
-.import-choice-primary {
-  border: 1px solid #c9a24a;
-}
-
 .import-choice-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #c9a24a;
+  color: #e8e6e0;
   font-size: 14px;
   font-weight: 600;
+}
+
+.import-choice-card:hover,
+.import-choice-card:focus-visible {
+  border-color: #c9a24a;
+}
+
+.import-choice-card:hover .import-choice-title,
+.import-choice-card:focus-visible .import-choice-title {
+  color: #c9a24a;
 }
 
 .import-choice-title svg {

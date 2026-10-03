@@ -1084,8 +1084,8 @@ document.addEventListener('DOMContentLoaded', () => {
       desc: 'Export your encrypted local JSON vault backup.'
     },
     import: {
-      title: 'Import Vault',
-      desc: 'Import and decrypt an existing JSON vault backup.'
+      title: 'Import',
+      desc: 'Restore a backup, or bring in a file from another password manager.'
     },
     activity: {
       title: 'Activity Log',

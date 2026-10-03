@@ -935,7 +935,7 @@ button {
 }
 
 .external-import-card:has(.import-choice-grid) {
-  max-width: 1000px;
+  max-width: 600px;
   padding: 32px;
 }
 

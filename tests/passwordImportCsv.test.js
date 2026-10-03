@@ -1,9 +1,13 @@
 const {
+  MAX_ARCHIVE_BYTES,
+  MAX_ARCHIVE_ENTRIES,
+  MAX_ARCHIVE_UNCOMPRESSED_BYTES,
   MAX_FILE_BYTES,
   MAX_ROWS,
   parseGenericCsv,
   parsePasswordImportFile
 } = require('../src/main/passwordImport');
+const { createZip } = require('./helpers/zipFixture');
 
 describe('generic CSV password import parser', () => {
   test('parses quoted commas, escaped quotes, and embedded newlines', () => {
@@ -130,6 +134,120 @@ describe('generic CSV password import parser', () => {
     expect(JSON.stringify(parsed)).not.toContain('otp-secret');
   });
 
+  test('detects 1Password CSV, omits OTPAuth, and reports unsupported categories', () => {
+    const parsed = parsePasswordImportFile({
+      fileName: 'export.txt',
+      content: [
+        'Title,Website,Username,Password,Notes,OTPAuth,Type',
+        'Login,https://one.test,alice,secret,memo,otp-secret,Login',
+        'Card,,,1234,,,"Credit Card"',
+        'Secure memo,,,,note text,,Secure Note'
+      ].join('\n')
+    });
+    expect(parsed.format).toBe('onepassword-csv');
+    expect(parsed.rows).toEqual([
+      { title: 'Login', url: 'https://one.test', username: 'alice', password: 'secret', notes: 'memo' },
+      { title: 'Secure memo', url: '', username: '', password: '', notes: 'note text' }
+    ]);
+    expect(parsed.skippedItems).toEqual([
+      { reason: 'One-time-code secret is not stored' },
+      { reason: 'Payment cards are not supported yet.' }
+    ]);
+    expect(JSON.stringify(parsed)).not.toContain('otp-secret');
+  });
+
+  test('parses 1Password .1pux data and ignores archive attachments', async () => {
+    const exportData = JSON.stringify({
+      accounts: [{
+        vaults: [{
+          items: [
+            {
+              overview: { title: 'Synthetic Login', url: 'https://one.test', category: 'login' },
+              details: {
+                loginFields: [
+                  { designation: 'username', value: 'alice' },
+                  { designation: 'password', value: 'secret' },
+                  { designation: 'totp', value: 'otp-secret' }
+                ],
+                notesPlain: 'memo'
+              }
+            },
+            {
+              overview: { title: 'Synthetic Note', category: 'SECURE_NOTE' },
+              details: { notesPlain: 'note body' }
+            },
+            { overview: { title: 'Card', category: 'creditCard' }, details: {} },
+            { overview: { title: 'Identity', category: 'identity' }, details: {} },
+            { overview: { title: 'Old', category: 'login' }, archived: true, details: {} }
+          ]
+        }]
+      }]
+    });
+    const archive = createZip([
+      { name: 'export.data', data: exportData },
+      { name: 'attachments/file.bin', data: 'ignored attachment' }
+    ]);
+    const parsed = await parsePasswordImportFile({
+      fileName: 'disguised.bin',
+      content: new Uint8Array(archive)
+    });
+    expect(parsed.format).toBe('onepassword-1pux');
+    expect(parsed.rows).toEqual([
+      {
+        title: 'Synthetic Login',
+        url: 'https://one.test',
+        username: 'alice',
+        password: 'secret',
+        notes: 'memo'
+      },
+      { title: 'Synthetic Note', url: '', username: '', password: '', notes: 'note body' }
+    ]);
+    expect(parsed.skippedItems).toEqual([
+      { reason: 'One-time-code secret is not stored' },
+      { reason: 'Payment cards are not supported yet.' },
+      { reason: 'Identities are not supported yet.' },
+      { reason: 'Archived or trashed entries were skipped.' },
+      { reason: '1Password archive attachment was skipped.' }
+    ]);
+    expect(JSON.stringify(parsed)).not.toContain('otp-secret');
+  });
+
+  test('rejects .1pux archives that exceed the entry, uncompressed-size, or ratio limits', async () => {
+    const tooManyFiles = createZip(Array.from(
+      { length: MAX_ARCHIVE_ENTRIES + 1 },
+      (_value, index) => ({ name: `file-${index}.bin`, data: '' })
+    ));
+    await expect(parsePasswordImportFile({
+      fileName: 'x.1pux',
+      content: new Uint8Array(tooManyFiles)
+    })).rejects.toThrow('1Password archives may contain no more than 1,000 files.');
+
+    const oversizedEntry = createZip([{
+      name: 'export.data',
+      data: '{}',
+      method: 8,
+      uncompressedSize: MAX_ARCHIVE_UNCOMPRESSED_BYTES + 1
+    }]);
+    await expect(parsePasswordImportFile({
+      fileName: 'x.1pux',
+      content: new Uint8Array(oversizedEntry)
+    })).rejects.toThrow('1Password archives may not exceed 50 MB uncompressed.');
+
+    const ratioArchive = createZip([
+      { name: 'export.data', data: '{}' },
+      { name: 'attachment.bin', data: 'x'.repeat(20000), method: 8 }
+    ]);
+    await expect(parsePasswordImportFile({
+      fileName: 'x.1pux',
+      content: new Uint8Array(ratioArchive)
+    })).rejects.toThrow('The 1Password archive exceeds the 100:1 compression ratio limit.');
+
+    const oversizedArchive = new Uint8Array(MAX_ARCHIVE_BYTES + 1);
+    oversizedArchive.set([0x50, 0x4b, 0x03, 0x04]);
+    expect(() => parsePasswordImportFile({ fileName: 'x.1pux', content: oversizedArchive }))
+      .toThrow('1Password archives must be 50 MB or smaller.');
+  });
+
   test('creates deterministic names for blank and duplicate headers', () => {
     const parsed = parseGenericCsv('name,name,\nfirst,second,third');
     expect(parsed.headers).toEqual(['name', 'name (2)', 'Column 3']);
@@ -165,8 +283,8 @@ describe('generic CSV password import parser', () => {
 
   test('validates IPC payload types, filename length, size, and row cap in the main process', () => {
     expect(() => parsePasswordImportFile(null)).toThrow('Invalid import request.');
-    expect(() => parsePasswordImportFile({ fileName: 'x.csv', content: Buffer.from('x') }))
-      .toThrow('The import file must contain text.');
+    expect(() => parsePasswordImportFile({ fileName: 'x.csv', content: {} }))
+      .toThrow('The import file must contain text or bytes.');
     expect(() => parsePasswordImportFile({ fileName: 'x'.repeat(256), content: 'a,b' }))
       .toThrow('The import filename is invalid.');
     expect(() => parsePasswordImportFile({

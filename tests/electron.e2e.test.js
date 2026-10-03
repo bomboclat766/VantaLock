@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { createZip } = require('./helpers/zipFixture');
 
 const workspaceRoot = path.resolve(__dirname, '..');
 const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
@@ -731,6 +732,50 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       expect(bitwardenSkips).toContain('Payment cards are not supported yet.');
       expect(bitwardenSkips).toContain('Identities are not supported yet.');
       expect(bitwardenSkips).not.toContain('otpauth://synthetic');
+      await reopenedPage.locator('.import-cancel').click();
+      expect(await reopenedPage.evaluate(() => JSON.parse(
+        localStorage.getItem('vantalock_entries_store') || '[]'
+      ))).toHaveLength(entriesBeforeImport.length + 2);
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="external"]').click();
+      await reopenedPage.locator('#external-import-files').setInputFiles({
+        name: 'onepassword-export.bin',
+        mimeType: 'application/octet-stream',
+        buffer: createZip([
+          {
+            name: 'export.data',
+            data: JSON.stringify({
+              accounts: [{
+                vaults: [{
+                  items: [{
+                    overview: {
+                      title: 'Synthetic 1Password Login',
+                      url: 'https://onepassword.example.test',
+                      category: 'login'
+                    },
+                    details: {
+                      loginFields: [
+                        { designation: 'username', value: 'one-user' },
+                        { designation: 'password', value: 'one-secret' }
+                      ]
+                    }
+                  }]
+                }]
+              }]
+            })
+          },
+          { name: 'attachments/document.pdf', data: 'ignored synthetic attachment' }
+        ])
+      });
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      expect(await reopenedPage.locator('.import-format-name').textContent()).toBe('1Password (.1pux)');
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForSelector('.import-preview-list');
+      expect(await reopenedPage.locator('.import-preview-counts').textContent())
+        .toContain('1 logins, 0 secure notes ready');
+      expect(await reopenedPage.locator('.import-preview-skips').textContent())
+        .toContain('1Password archive attachment was skipped.');
       await reopenedPage.locator('.import-cancel').click();
       expect(await reopenedPage.evaluate(() => JSON.parse(
         localStorage.getItem('vantalock_entries_store') || '[]'

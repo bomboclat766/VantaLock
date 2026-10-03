@@ -30,7 +30,8 @@
     "bip39": "^3.1.0",
     "drizzle-orm": "^0.45.2",
     "electron-store": "^11.0.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

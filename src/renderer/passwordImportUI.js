@@ -16,8 +16,14 @@
     'generic-csv': 'Generic CSV',
     'chrome-csv': 'Chrome / Google Password Manager CSV',
     'bitwarden-json': 'Bitwarden (JSON)',
-    'bitwarden-csv': 'Bitwarden (CSV)'
+    'bitwarden-csv': 'Bitwarden (CSV)',
+    'onepassword-1pux': '1Password (.1pux)',
+    'onepassword-csv': '1Password (CSV)'
   };
+
+  async function readFileBytes(file) {
+    return new Uint8Array(await file.arrayBuffer());
+  }
 
   function mount(options) {
     const { container, core, parseFile, getEntries, persistEntries, initialCompartment, isDecoy } = options;
@@ -128,7 +134,7 @@
       try {
         parsedFiles = await Promise.all(files.map(async file => ({
           name: file.name,
-          parsed: await parseFile({ fileName: file.name, content: await file.text() })
+          parsed: await parseFile({ fileName: file.name, content: await readFileBytes(file) })
         })));
         formats = parsedFiles.map(file => file.parsed.format);
         mappings = parsedFiles.map((file, index) =>
@@ -159,6 +165,8 @@
               <option value="chrome-csv">Chrome / Google Password Manager CSV</option>
               <option value="bitwarden-json">Bitwarden (JSON)</option>
               <option value="bitwarden-csv">Bitwarden (CSV)</option>
+              <option value="onepassword-1pux">1Password (.1pux)</option>
+              <option value="onepassword-csv">1Password (CSV)</option>
             </select>
           </p>
           <div class="import-mapping-headings"><span>CSV column</span><span></span><span>Saved as</span></div>
@@ -192,7 +200,7 @@
         try {
           file.parsed = await parseFile({
             fileName: files[currentMappingIndex].name,
-            content: await files[currentMappingIndex].text(),
+            content: await readFileBytes(files[currentMappingIndex]),
             formatOverride: requestedFormat
           });
           formats[currentMappingIndex] = file.parsed.format;

@@ -1,5 +1,10 @@
 // Password-manager imports are parsed entirely on this device; this module makes no network calls.
+const yauzl = require('yauzl');
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_ARCHIVE_BYTES = 50 * 1024 * 1024;
+const MAX_ARCHIVE_ENTRIES = 1000;
+const MAX_ARCHIVE_UNCOMPRESSED_BYTES = 50 * 1024 * 1024;
+const MAX_COMPRESSION_RATIO = 100;
 const MAX_ROWS = 50000;
 const MAX_FILENAME_LENGTH = 255;
 
@@ -17,14 +22,33 @@ function validateImportRequest(request) {
   if (typeof fileName !== 'string' || fileName.length === 0 || fileName.length > MAX_FILENAME_LENGTH) {
     throw importError('The import filename is invalid.');
   }
-  if (typeof content !== 'string') throw importError('The import file must contain text.');
-  if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES) {
-    throw importError('Files must be 10 MB or smaller.');
+  if (typeof content !== 'string' && !(content instanceof Uint8Array)) {
+    throw importError('The import file must contain text or bytes.');
+  }
+  const byteLength = typeof content === 'string' ? Buffer.byteLength(content, 'utf8') : content.byteLength;
+  const zipBytes = typeof content === 'string' ? Buffer.from(content, 'binary') : Buffer.from(content);
+  const isZip = isZipContent(zipBytes);
+  if (byteLength > (isZip ? MAX_ARCHIVE_BYTES : MAX_FILE_BYTES)) {
+    throw importError(isZip ? '1Password archives must be 50 MB or smaller.' : 'Files must be 10 MB or smaller.');
   }
   if (request.formatOverride !== undefined &&
-      !['generic-csv', 'chrome-csv', 'bitwarden-json', 'bitwarden-csv'].includes(request.formatOverride)) {
+      ![
+        'generic-csv', 'chrome-csv', 'bitwarden-json', 'bitwarden-csv',
+        'onepassword-1pux', 'onepassword-csv'
+      ].includes(request.formatOverride)) {
     throw importError('The selected import format is invalid.');
   }
+}
+
+function isZipContent(buffer) {
+  return buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b &&
+    ((buffer[2] === 0x03 && buffer[3] === 0x04) ||
+      (buffer[2] === 0x05 && buffer[3] === 0x06) ||
+      (buffer[2] === 0x07 && buffer[3] === 0x08));
+}
+
+function getImportBuffer(content) {
+  return typeof content === 'string' ? Buffer.from(content, 'utf8') : Buffer.from(content);
 }
 
 function detectVantaLockBackup(content) {
@@ -167,7 +191,10 @@ function detectCsvFormat(headers) {
   const bitwardenHeaders = ['type', 'name', 'loginuri', 'loginusername', 'loginpassword'];
   if (bitwardenHeaders.every(header => normalized.has(header))) return 'bitwarden-csv';
   const chromeHeaders = ['name', 'url', 'username', 'password', 'note'];
-  return chromeHeaders.every(header => normalized.has(header)) ? 'chrome-csv' : 'generic-csv';
+  if (chromeHeaders.every(header => normalized.has(header))) return 'chrome-csv';
+  if (normalized.has('title') && normalized.has('username') && normalized.has('password') &&
+      (normalized.has('url') || normalized.has('website'))) return 'onepassword-csv';
+  return 'generic-csv';
 }
 
 function stringValue(value) {
@@ -290,32 +317,291 @@ function parseBitwardenCsv(parsedCsv) {
   };
 }
 
+function normalizeCollection(value) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  return Object.values(value);
+}
+
+function normalizeOnePasswordRows(items) {
+  if (items.length > MAX_ROWS) throw importError('Files may contain no more than 50,000 rows.');
+  const headers = ['title', 'url', 'username', 'password', 'notes'];
+  const rows = [];
+  const skippedItems = [];
+  const normalize = value => String(value || '').toLocaleLowerCase().replace(/[^a-z0-9]/g, '');
+  items.forEach(item => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      skippedItems.push({ reason: 'Malformed 1Password item is not supported yet.' });
+      return;
+    }
+    if (item.archived === true || item.trashed === true || item.state === 'archived' || item.state === 'trashed') {
+      skippedItems.push({ reason: 'Archived or trashed entries were skipped.' });
+      return;
+    }
+    const overview = item.overview && typeof item.overview === 'object' && !Array.isArray(item.overview)
+      ? item.overview
+      : {};
+    const details = item.details && typeof item.details === 'object' && !Array.isArray(item.details)
+      ? item.details
+      : {};
+    const category = normalize(overview.category || item.category || item.type);
+    const loginFields = Array.isArray(details.loginFields) ? details.loginFields : [];
+    const isCard = category.includes('creditcard') || category === 'card' || category.includes('paymentcard');
+    const isIdentity = category.includes('identity');
+    if (isCard || isIdentity) {
+      skippedItems.push({ reason: isCard
+        ? 'Payment cards are not supported yet.'
+        : 'Identities are not supported yet.' });
+      return;
+    }
+    if (Array.isArray(item.files) && item.files.length > 0 ||
+        Array.isArray(item.attachments) && item.attachments.length > 0) {
+      skippedItems.push({ reason: 'Attachments are not supported yet.' });
+      return;
+    }
+    const values = Object.create(null);
+    let hasTotp = false;
+    loginFields.forEach(field => {
+      if (!field || typeof field !== 'object' || Array.isArray(field)) return;
+      const designation = normalize(field.designation || field.label || field.name);
+      if (['totp', 'otp', 'oneTimePassword', 'oneTimeCode'].map(normalize).includes(designation)) {
+        if (typeof field.value === 'string' && field.value) hasTotp = true;
+        return;
+      }
+      if (designation === 'username' || designation === 'password') {
+        values[designation] = typeof field.value === 'string' ? field.value : '';
+      }
+    });
+    if (hasTotp) skippedItems.push({ reason: 'One-time-code secret is not stored' });
+    const notes = typeof details.notesPlain === 'string' ? details.notesPlain : '';
+    const name = typeof overview.title === 'string' ? overview.title : '';
+    const url = typeof overview.url === 'string' ? overview.url : '';
+    const isLogin = Boolean(values.username || values.password || loginFields.length || category === 'login');
+    const isNote = Boolean(notes) || category.includes('securenote') || category === 'note';
+    if (!isLogin && !isNote) {
+      skippedItems.push({ reason: 'This 1Password item type is not supported yet.' });
+      return;
+    }
+    rows.push({
+      title: name,
+      url,
+      username: values.username || '',
+      password: values.password || '',
+      notes
+    });
+  });
+  return { headers, rows, skippedItems };
+}
+
+function parseOnePasswordJson(content) {
+  let data;
+  try {
+    data = JSON.parse(content);
+  } catch (_error) {
+    throw importError('The 1Password export data is not valid JSON.');
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw importError('The 1Password export data has an unsupported structure.');
+  }
+  const items = [];
+  normalizeCollection(data.accounts).forEach(account => {
+    if (!account || typeof account !== 'object' || Array.isArray(account)) return;
+    normalizeCollection(account.vaults).forEach(vault => {
+      if (!vault || typeof vault !== 'object' || Array.isArray(vault)) return;
+      items.push(...normalizeCollection(vault.items));
+    });
+  });
+  return { format: 'onepassword-1pux', ...normalizeOnePasswordRows(items) };
+}
+
+function parseOnePasswordCsv(parsedCsv) {
+  const normalize = value => String(value).trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, '');
+  const findHeader = names => parsedCsv.headers.find(header => names.includes(normalize(header)));
+  const header = {
+    title: findHeader(['title']),
+    url: findHeader(['url', 'website']),
+    username: findHeader(['username']),
+    password: findHeader(['password']),
+    notes: findHeader(['notes']),
+    otp: findHeader(['otpauth']),
+    type: findHeader(['type'])
+  };
+  if (!header.title || !header.username || !header.password) {
+    throw importError('The 1Password CSV is missing required login columns.');
+  }
+  const rows = [];
+  const skippedItems = parsedCsv.skippedItems.slice();
+  parsedCsv.rows.forEach(row => {
+    const category = header.type ? normalize(row[header.type]) : '';
+    const otpValue = header.otp ? row[header.otp] : '';
+    if (otpValue) skippedItems.push({ reason: 'One-time-code secret is not stored' });
+    if (category.includes('card')) {
+      skippedItems.push({ reason: 'Payment cards are not supported yet.' });
+      return;
+    }
+    if (category.includes('identity')) {
+      skippedItems.push({ reason: 'Identities are not supported yet.' });
+      return;
+    }
+    if (category && !['login', 'password', 'note', 'securenote'].includes(category)) {
+      skippedItems.push({ reason: 'This 1Password item type is not supported yet.' });
+      return;
+    }
+    rows.push({
+      title: row[header.title] || '',
+      url: header.url ? row[header.url] || '' : '',
+      username: row[header.username] || '',
+      password: row[header.password] || '',
+      notes: header.notes ? row[header.notes] || '' : ''
+    });
+  });
+  return { format: 'onepassword-csv', headers: ['title', 'url', 'username', 'password', 'notes'], rows, skippedItems };
+}
+
+function readZipEntry(zipfile, entry) {
+  return new Promise((resolve, reject) => {
+    zipfile.openReadStream(entry, (error, stream) => {
+      if (error) return reject(importError('The 1Password export data could not be read.'));
+      const chunks = [];
+      let length = 0;
+      stream.on('data', chunk => {
+        length += chunk.length;
+        if (length > MAX_ARCHIVE_UNCOMPRESSED_BYTES) {
+          stream.destroy(importError('1Password archives may not exceed 50 MB uncompressed.'));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      stream.on('error', () => reject(importError('The 1Password export data could not be read.')));
+      stream.on('end', () => resolve(Buffer.concat(chunks, length).toString('utf8')));
+    });
+  });
+}
+
+function parseOnePasswordArchive(buffer) {
+  return new Promise((resolve, reject) => {
+    yauzl.fromBuffer(buffer, {
+      lazyEntries: true,
+      decodeStrings: true,
+      validateEntrySizes: true
+    }, (openError, zipfile) => {
+      if (openError || !zipfile) {
+        reject(importError('The 1Password archive is invalid or corrupted.'));
+        return;
+      }
+      let fileCount = 0;
+      let totalUncompressed = 0;
+      let totalCompressed = 0;
+      let dataEntry = null;
+      let failed = false;
+      const skippedItems = [];
+      const fail = error => {
+        if (failed) return;
+        failed = true;
+        zipfile.close();
+        reject(error);
+      };
+      zipfile.on('error', () => fail(importError('The 1Password archive is invalid or corrupted.')));
+      zipfile.on('entry', entry => {
+        const isDirectory = entry.fileName.endsWith('/');
+        if (!isDirectory) {
+          fileCount++;
+          totalUncompressed += entry.uncompressedSize;
+          totalCompressed += entry.compressedSize;
+          if (fileCount > MAX_ARCHIVE_ENTRIES) {
+            fail(importError('1Password archives may contain no more than 1,000 files.'));
+            return;
+          }
+          if (totalUncompressed > MAX_ARCHIVE_UNCOMPRESSED_BYTES) {
+            fail(importError('1Password archives may not exceed 50 MB uncompressed.'));
+            return;
+          }
+          if ((entry.uncompressedSize > 0 &&
+              (entry.compressedSize === 0 || entry.uncompressedSize > entry.compressedSize * MAX_COMPRESSION_RATIO)) ||
+              (totalUncompressed > totalCompressed * MAX_COMPRESSION_RATIO)) {
+            fail(importError('The 1Password archive exceeds the 100:1 compression ratio limit.'));
+            return;
+          }
+          if (entry.fileName.split('/').pop().toLocaleLowerCase() === 'export.data') {
+            if (dataEntry) {
+              fail(importError('The 1Password archive contains multiple export.data files.'));
+              return;
+            }
+            dataEntry = entry;
+          } else {
+            skippedItems.push({ reason: '1Password archive attachment was skipped.' });
+          }
+        }
+        zipfile.readEntry();
+      });
+      zipfile.on('end', async () => {
+        if (failed) return;
+        if (!dataEntry) {
+          fail(importError('The 1Password archive does not contain export.data.'));
+          return;
+        }
+        try {
+          const json = await readZipEntry(zipfile, dataEntry);
+          const parsed = parseOnePasswordJson(json);
+          resolve({
+            ...parsed,
+            skippedItems: parsed.skippedItems.concat(skippedItems)
+          });
+        } catch (error) {
+          fail(error);
+        }
+      });
+      zipfile.readEntry();
+    });
+  });
+}
+
 function parsePasswordImportFile(request) {
   validateImportRequest(request);
-  if (detectVantaLockBackup(request.content)) {
+  const buffer = getImportBuffer(request.content);
+  const zipContent = isZipContent(buffer);
+  if (request.formatOverride === 'onepassword-1pux' || (!request.formatOverride && zipContent)) {
+    if (!zipContent) throw importError('This is not a 1Password .1pux archive.');
+    return parseOnePasswordArchive(buffer);
+  }
+  let content = typeof request.content === 'string' ? request.content : '';
+  if (!content) {
+    try {
+      content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+    } catch (_error) {
+      throw importError('The selected file is not valid UTF-8 text or a supported archive.');
+    }
+  }
+  if (detectVantaLockBackup(content)) {
     throw importError(
       'That looks like a VantaLock backup. Use the VantaLock backup option.',
       'VANTALOCK_BACKUP'
     );
   }
   const formatOverride = request.formatOverride;
-  if (formatOverride === 'bitwarden-json') return parseBitwardenJson(request.content);
-  if (!formatOverride && request.content.trimStart().startsWith('{')) {
+  if (formatOverride === 'onepassword-csv') {
+    return parseOnePasswordCsv(parseGenericCsv(content));
+  }
+  if (formatOverride === 'bitwarden-json') return parseBitwardenJson(content);
+  if (!formatOverride && content.trimStart().startsWith('{')) {
     let data;
     try {
-      data = JSON.parse(request.content);
+      data = JSON.parse(content);
     } catch (_error) {
       // Non-JSON content is parsed as CSV below.
     }
     if (data && typeof data === 'object' && !Array.isArray(data) &&
         (Array.isArray(data.items) || data.encrypted === true)) {
-      return parseBitwardenJson(request.content);
+      return parseBitwardenJson(content);
     }
   }
-  const parsed = parseGenericCsv(request.content);
+  const parsed = parseGenericCsv(content);
   const detectedFormat = detectCsvFormat(parsed.headers);
   if (formatOverride === 'bitwarden-csv' || (!formatOverride && detectedFormat === 'bitwarden-csv')) {
     return parseBitwardenCsv(parsed);
+  }
+  if (detectedFormat === 'onepassword-csv' && !formatOverride) {
+    return parseOnePasswordCsv(parsed);
   }
   return {
     format: formatOverride || detectedFormat,
@@ -324,6 +610,10 @@ function parsePasswordImportFile(request) {
 }
 
 module.exports = {
+  MAX_ARCHIVE_BYTES,
+  MAX_ARCHIVE_ENTRIES,
+  MAX_ARCHIVE_UNCOMPRESSED_BYTES,
+  MAX_COMPRESSION_RATIO,
   MAX_FILE_BYTES,
   MAX_ROWS,
   detectDelimiter,
@@ -331,6 +621,9 @@ module.exports = {
   detectVantaLockBackup,
   parseBitwardenCsv,
   parseBitwardenJson,
+  parseOnePasswordArchive,
+  parseOnePasswordCsv,
+  parseOnePasswordJson,
   parseGenericCsv,
   parsePasswordImportFile,
   validateImportRequest

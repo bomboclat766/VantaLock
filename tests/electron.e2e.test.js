@@ -607,6 +607,70 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         const dashboard = document.getElementById('dashboard-view-container');
         return dashboard && !dashboard.classList.contains('hidden');
       });
+      await reopenedPage.locator('[data-vault="personal"]').click();
+      await reopenedPage.evaluate(() => { window.activeVaultType = 'decoy'; });
+      await reopenedPage.locator('[data-tool="import"]').evaluate(button => button.click());
+      expect(await reopenedPage.locator('.import-disabled-message').textContent())
+        .toContain("Import isn't available right now.");
+      await reopenedPage.evaluate(() => { window.activeVaultType = 'real'; });
+      await reopenedPage.locator('[data-vault="personal"]').click();
+      await reopenedPage.locator('[data-tool="import"]').click();
+      expect(await reopenedPage.locator('.import-choice-card').count()).toBe(2);
+      await reopenedPage.locator('[data-import-choice="external"]').click();
+      const csvFile = {
+        name: 'synthetic-passwords.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from(
+          'Title,URL,Username,Password,Notes\n' +
+          'Synthetic Login,https://login.example.test,alice,synthetic-secret,login note\n' +
+          'Synthetic Note,https://notes.example.test,bob,,note text\n'
+        )
+      };
+      const entriesBeforeImport = await reopenedPage.evaluate(() =>
+        JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]')
+      );
+      const chooseCsv = () => reopenedPage.locator('#external-import-files').setInputFiles(csvFile);
+      await chooseCsv();
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForSelector('.import-preview-list');
+      expect(await reopenedPage.locator('.import-preview-counts').textContent())
+        .toContain('1 logins, 1 secure notes ready');
+      expect(await reopenedPage.locator('.import-preview-password').first().textContent()).toBe('••••••••');
+      expect(await reopenedPage.evaluate(() => localStorage.getItem('vantalock_entries_store')))
+        .toEqual(JSON.stringify(entriesBeforeImport));
+      await reopenedPage.locator('.import-cancel').click();
+      expect(await reopenedPage.evaluate(() => localStorage.getItem('vantalock_entries_store')))
+        .toEqual(JSON.stringify(entriesBeforeImport));
+      await reopenedPage.locator('[data-import-choice="external"]').click();
+      await chooseCsv();
+      await reopenedPage.locator('.import-continue').click();
+      await reopenedPage.waitForSelector('.import-mapping-grid');
+      await reopenedPage.locator('[data-action="continue"]').click();
+      await reopenedPage.waitForSelector('.import-preview-list');
+      await reopenedPage.locator('.import-confirm').click();
+      await reopenedPage.waitForSelector('.import-success');
+      const importedEntries = await reopenedPage.evaluate(() =>
+        JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]')
+      );
+      expect(importedEntries).toHaveLength(entriesBeforeImport.length + 2);
+      expect(importedEntries.find(entry => entry.title === 'Synthetic Login')).toMatchObject({
+        vault: 'personal',
+        type: 'login',
+        fields: {
+          username: 'alice',
+          password: 'synthetic-secret',
+          url: 'https://login.example.test'
+        }
+      });
+      expect(importedEntries.find(entry => entry.title === 'Synthetic Note')).toMatchObject({
+        vault: 'personal',
+        type: 'note',
+        fields: {
+          content: 'Username: bob\nWebsite: https://notes.example.test\nNotes: note text'
+        }
+      });
       expect(pageErrors).toEqual([]);
     } finally {
       if (app) await app.close();

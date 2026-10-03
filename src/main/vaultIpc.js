@@ -8,6 +8,7 @@ const {
 } = require('../crypto/vaultCrypto');
 const { generateRecoveryKey } = require('../crypto/recoveryKey');
 const { exportEncryptedVault } = require('../crypto/vaultBackup');
+const { parsePasswordImportFile } = require('./passwordImport');
 
 function parseSalt(saltHex) {
   if (typeof saltHex !== 'string' || !/^[0-9a-f]{32}$/i.test(saltHex)) {
@@ -49,6 +50,8 @@ function validateBackupData(data) {
 }
 
 function registerVaultIpc(ipcMain, { lockManager, clipboard }) {
+  ipcMain.handle('parse-password-import-file', (_event, request) => parsePasswordImportFile(request));
+
   ipcMain.handle('create-vault-credentials', async (_event, password) => {
     if (typeof password !== 'string' || password.length === 0) {
       throw new Error('A password is required');

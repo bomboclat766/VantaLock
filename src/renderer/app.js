@@ -2596,6 +2596,81 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Render Tool View Component
+  function renderLegacyBackupImport(onBack) {
+    elContainer.innerHTML = `
+      <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
+        <button type="button" class="import-back-link" id="legacy-import-back-btn">Back</button>
+        <h3 class="setup-title" style="font-size: 18px;">Import Vault</h3>
+        <p class="setup-desc">Restore or import vault entries from an encrypted JSON file.</p>
+        <div class="form-group">
+          <label class="form-label" for="import-file-input">Select Backup File (.json)</label>
+          <input type="file" id="import-file-input" class="input-field" accept=".json" />
+        </div>
+        <button type="button" id="import-json-btn" class="btn-primary">Import Vault Data</button>
+        <div id="import-status-msg" class="strength-text" style="margin-top: 12px;"></div>
+      </div>`;
+    const importBtn = document.getElementById('import-json-btn');
+    const importInput = document.getElementById('import-file-input');
+    const importMsg = document.getElementById('import-status-msg');
+    document.getElementById('legacy-import-back-btn').addEventListener('click', onBack);
+
+    importBtn.addEventListener('click', () => {
+      const file = importInput.files[0];
+      if (!file) {
+        importMsg.style.color = '#ef4444';
+        importMsg.textContent = 'Please select a valid backup JSON file first.';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async event => {
+        try {
+          const password = window.prompt('Enter the backup password. For legacy backups, enter your current master password to protect the migrated copy.');
+          if (!password) return;
+          const result = await window.electronAPI.importEncryptedVault({
+            exportString: event.target.result,
+            password,
+            fallbackSalt: localStorage.getItem('vantalock_vault_salt')
+          });
+          if (!result.ok) {
+            console.error('[Vault Import] Failed:', result.code, result.detail);
+            importMsg.style.color = '#ef4444';
+            importMsg.textContent = result.message;
+            return;
+          }
+          const importedEntries = result.entries;
+          vaultEntries = window.VantaLockVaultImport.persistImportedEntries(
+            vaultEntries,
+            importedEntries,
+            saveVaultEntriesToStorage
+          );
+          importMsg.style.color = '#10b981';
+          importMsg.textContent = result.migrated
+            ? `Imported ${importedEntries.length} entries. A re-encrypted, password-protected backup was downloaded.`
+            : `Successfully imported ${importedEntries.length} entries!`;
+          logActivity(`IMPORT: Imported ${importedEntries.length} entries.`);
+          if (result.migratedBackup) {
+            const blob = new Blob([result.migratedBackup], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${file.name.replace(/\.json$/i, '')}-migrated.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+          }
+        } catch (err) {
+          console.error('[Vault Import] Unexpected import failure:', err);
+          importMsg.style.color = '#ef4444';
+          importMsg.textContent = `Import failed: ${err.message || 'unexpected error'}`;
+        }
+      };
+      reader.onerror = () => {
+        importMsg.style.color = '#ef4444';
+        importMsg.textContent = 'File read error: the selected backup could not be read.';
+      };
+      reader.readAsText(file);
+    });
+  }
+
   function renderToolView(toolKey) {
     if (toolKey === 'security') {
       elContainer.innerHTML = `
@@ -3148,86 +3223,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'import') {
-      elContainer.innerHTML = `
-        <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
-          <h3 class="setup-title" style="font-size: 18px;">Import Vault</h3>
-          <p class="setup-desc">Restore or import vault entries from an encrypted JSON file.</p>
-
-          <div class="form-group">
-            <label class="form-label">Select Backup File (.json)</label>
-            <input type="file" id="import-file-input" class="input-field" accept=".json" />
-          </div>
-
-          <button id="import-json-btn" class="btn-primary">Import Vault Data</button>
-          <div id="import-status-msg" class="strength-text" style="margin-top: 12px;"></div>
-        </div>
-      `;
-
-      const importBtn = document.getElementById('import-json-btn');
-      const importInput = document.getElementById('import-file-input');
-      const importMsg = document.getElementById('import-status-msg');
-
-      if (importBtn && importInput) {
-        importBtn.addEventListener('click', () => {
-          const file = importInput.files[0];
-          if (!file) {
-            importMsg.style.color = '#ef4444';
-            importMsg.textContent = 'Please select a valid backup JSON file first.';
-            return;
-          }
-
-          const reader = new FileReader();
-          reader.onload = async (e) => {
-            try {
-              const password = window.prompt('Enter the backup password. For legacy backups, enter your current master password to protect the migrated copy.');
-              if (!password) return;
-              const result = await window.electronAPI.importEncryptedVault({
-                exportString: e.target.result,
-                password,
-                fallbackSalt: localStorage.getItem('vantalock_vault_salt')
-              });
-              if (!result.ok) {
-                console.error('[Vault Import] Failed:', result.code, result.detail);
-                importMsg.style.color = '#ef4444';
-                importMsg.textContent = result.message;
-                return;
-              }
-
-              const importedEntries = result.entries;
-              vaultEntries = window.VantaLockVaultImport.persistImportedEntries(
-                vaultEntries,
-                importedEntries,
-                saveVaultEntriesToStorage
-              );
-              importMsg.style.color = '#10b981';
-              importMsg.textContent = result.migrated
-                ? `Imported ${importedEntries.length} entries. A re-encrypted, password-protected backup was downloaded.`
-                : `Successfully imported ${importedEntries.length} entries!`;
-              logActivity(`IMPORT: Imported ${importedEntries.length} entries from ${file.name}.`);
-              if (result.migratedBackup) {
-                const blob = new Blob([result.migratedBackup], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `${file.name.replace(/\.json$/i, '')}-migrated.json`;
-                link.click();
-                URL.revokeObjectURL(url);
-              }
-            } catch (err) {
-              console.error('[Vault Import] Unexpected import failure:', err);
-              importMsg.style.color = '#ef4444';
-              importMsg.textContent = `Import failed: ${err.message || 'unexpected error'}`;
-            }
-          };
-          reader.onerror = () => {
-            const readError = reader.error || new Error('Unknown file read error');
-            console.error('[Vault Import] File read failed:', readError);
-            importMsg.style.color = '#ef4444';
-            importMsg.textContent = `File read error: ${readError.message}`;
-          };
-          reader.readAsText(file);
-        });
-      }
+      window.VantaLockPasswordImportUI.mount({
+        container: elContainer,
+        core: window.VantaLockPasswordImportCore,
+        parseFile: request => window.electronAPI.parsePasswordImportFile(request),
+        getEntries: () => vaultEntries,
+        persistEntries: entries => {
+          if (!saveVaultEntriesToStorage(entries)) return false;
+          vaultEntries = entries;
+          return true;
+        },
+        initialCompartment: activeVault,
+        isDecoy: window.activeVaultType === 'decoy',
+        onLegacyBackup: onBack => renderLegacyBackupImport(onBack)
+      });
     } else if (toolKey === 'activity') {
       elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 640px; margin: 0 auto;">

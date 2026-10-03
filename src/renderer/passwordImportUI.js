@@ -1,0 +1,312 @@
+// Imported password data stays in this renderer's memory and is never sent over a network.
+(function exposePasswordImportUI(root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (root) root.VantaLockPasswordImportUI = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function createPasswordImportUI() {
+  const TARGET_LABELS = {
+    title: 'Title',
+    website: 'Website',
+    username: 'Username',
+    password: 'Password',
+    notes: 'Notes',
+    ignore: 'Ignore'
+  };
+
+  function mount(options) {
+    const { container, core, parseFile, getEntries, persistEntries, initialCompartment, isDecoy } = options;
+    let files = [];
+    let parsedFiles = [];
+    let mappings = [];
+    let previewEntries = [];
+    let currentMappingIndex = 0;
+    let compartment = initialCompartment === 'personal' ? initialCompartment : 'personal';
+    let previewCounts = null;
+
+    function clearImportData() {
+      files = [];
+      parsedFiles = [];
+      mappings = [];
+      previewEntries = [];
+      currentMappingIndex = 0;
+      previewCounts = null;
+    }
+
+    function showLanding() {
+      container.innerHTML = `
+        <section class="external-import-card">
+          <h3 class="setup-title">Import</h3>
+          <p class="setup-desc">Restore a backup, or bring in a file from another password manager.</p>
+          <div class="import-choice-grid">
+            <button type="button" class="import-choice-card" data-import-choice="backup">
+              <span class="import-choice-title">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                VantaLock backup
+              </span>
+              <span class="import-choice-subtitle">Restore a file you exported from VantaLock.</span>
+            </button>
+            <button type="button" class="import-choice-card import-choice-primary" data-import-choice="external">
+              <span class="import-choice-title">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h5M7 13h10M7 17h10"/></svg>
+                Another password manager
+              </span>
+              <span class="import-choice-subtitle">Read on this device only. Nothing is uploaded.</span>
+            </button>
+          </div>
+          <p class="import-supported-formats">Works with Chrome, Bitwarden, 1Password, KeePass, and any CSV.</p>
+        </section>`;
+      container.querySelector('[data-import-choice="backup"]').addEventListener('click', () => {
+        options.onLegacyBackup(showLanding);
+      });
+      container.querySelector('[data-import-choice="external"]').addEventListener('click', showPicker);
+    }
+
+    function showPicker(errorMessage = '') {
+      container.innerHTML = `
+        <section class="external-import-card">
+          <button type="button" class="import-back-link" data-action="back">Back</button>
+          <h3 class="setup-title">Another password manager</h3>
+          <p class="setup-desc">Choose CSV files to read locally. Nothing is saved until you confirm the import.</p>
+          <label class="form-label" for="external-import-files">Select files</label>
+          <input id="external-import-files" class="input-field import-file-input" type="file" accept=".csv,.json,.xml,.1pux" multiple />
+          <ul class="import-file-list" aria-label="Selected files"></ul>
+          <p class="import-error" role="alert"></p>
+          <div class="import-footer">
+            <span></span>
+            <button type="button" class="btn-primary import-continue" ${files.length ? '' : 'disabled'}>Continue</button>
+          </div>
+        </section>`;
+      const input = container.querySelector('#external-import-files');
+      const list = container.querySelector('.import-file-list');
+      const continueButton = container.querySelector('.import-continue');
+      container.querySelector('[data-action="back"]').addEventListener('click', () => {
+        clearImportData();
+        showLanding();
+      });
+      container.querySelector('.import-error').textContent = errorMessage;
+      function renderFiles() {
+        list.replaceChildren();
+        files.forEach((file, index) => {
+          const item = document.createElement('li');
+          const name = document.createElement('span');
+          name.textContent = file.name;
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'import-remove-file';
+          remove.setAttribute('aria-label', `Remove ${file.name}`);
+          remove.textContent = 'Remove';
+          remove.addEventListener('click', () => {
+            files.splice(index, 1);
+            renderFiles();
+          });
+          item.append(name, remove);
+          list.appendChild(item);
+        });
+        continueButton.disabled = files.length === 0;
+      }
+      input.addEventListener('change', () => {
+        files = Array.from(input.files || []);
+        renderFiles();
+      });
+      continueButton.addEventListener('click', parseChosenFiles);
+      renderFiles();
+    }
+
+    async function parseChosenFiles() {
+      const error = container.querySelector('.import-error');
+      const continueButton = container.querySelector('.import-continue');
+      continueButton.disabled = true;
+      error.textContent = '';
+      try {
+        parsedFiles = await Promise.all(files.map(async file => ({
+          name: file.name,
+          parsed: await parseFile({ fileName: file.name, content: await file.text() })
+        })));
+        mappings = parsedFiles.map(file => core.createHeaderMapping(file.parsed.headers));
+        currentMappingIndex = 0;
+        showMapping();
+      } catch (failure) {
+        error.textContent = failure && failure.message
+          ? failure.message
+          : 'The selected files could not be read.';
+        continueButton.disabled = files.length === 0;
+      }
+    }
+
+    function showMapping(errorMessage = '') {
+      const file = parsedFiles[currentMappingIndex];
+      const mapping = mappings[currentMappingIndex];
+      container.innerHTML = `
+        <section class="external-import-card">
+          <button type="button" class="import-back-link" data-action="back">Back</button>
+          <h3 class="setup-title">Match columns to VantaLock fields</h3>
+          <p class="setup-desc import-file-heading"></p>
+          <p class="import-detected-format">Detected: Generic CSV</p>
+          <div class="import-mapping-headings"><span>CSV column</span><span></span><span>Saved as</span></div>
+          <div class="import-mapping-grid"></div>
+          <p class="import-warning" role="status"></p>
+          <p class="import-error" role="alert"></p>
+          <div class="import-footer">
+            <span class="import-helper-text">Guessed from your headers. Change any of them.</span>
+            <div><button type="button" class="btn-primary import-continue" data-action="continue">Continue</button>
+              <button type="button" class="import-back-link" data-action="previous">Back</button></div>
+          </div>
+        </section>`;
+      container.querySelector('.import-file-heading').textContent =
+        `File ${currentMappingIndex + 1} of ${parsedFiles.length}: ${file.name}`;
+      container.querySelector('[data-action="back"]').addEventListener('click', () => {
+        parsedFiles = [];
+        mappings = [];
+        showPicker();
+      });
+      const grid = container.querySelector('.import-mapping-grid');
+      file.parsed.headers.forEach(header => {
+        const source = document.createElement('span');
+        source.className = 'import-source-field';
+        source.textContent = header;
+        const arrow = document.createElement('span');
+        arrow.className = 'import-map-arrow';
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.textContent = '→';
+        const select = document.createElement('select');
+        select.className = 'import-map-select';
+        select.setAttribute('aria-label', `Map ${header}`);
+        Object.entries(TARGET_LABELS).forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        });
+        select.value = mapping[header] || 'ignore';
+        select.addEventListener('change', () => {
+          mapping[header] = select.value;
+          select.classList.toggle('is-ignored', select.value === 'ignore');
+          updateMappingWarning();
+        });
+        select.classList.toggle('is-ignored', select.value === 'ignore');
+        grid.append(source, arrow, select);
+      });
+      function updateMappingWarning() {
+        const warning = container.querySelector('.import-warning');
+        warning.textContent = Object.values(mapping).includes('password')
+          ? ''
+          : 'No Password column is mapped. Rows will be imported as Secure Notes.';
+      }
+      updateMappingWarning();
+      container.querySelector('.import-error').textContent = errorMessage;
+      container.querySelector('[data-action="previous"]').addEventListener('click', () => {
+        if (currentMappingIndex > 0) {
+          currentMappingIndex--;
+          showMapping();
+        } else {
+          showPicker();
+        }
+      });
+      container.querySelector('[data-action="continue"]').addEventListener('click', () => {
+        if (currentMappingIndex + 1 < parsedFiles.length) {
+          currentMappingIndex++;
+          showMapping();
+        } else {
+          buildMergedPreview();
+        }
+      });
+    }
+
+    function buildMergedPreview() {
+      const allEntries = [];
+      let emptyRowsSkipped = 0;
+      let otherSkipped = 0;
+      parsedFiles.forEach((file, index) => {
+        const preview = core.buildPreview(file.parsed, mappings[index]);
+        allEntries.push(...preview.entries);
+        emptyRowsSkipped += preview.emptyRowsSkipped;
+        otherSkipped += preview.skippedItems.length;
+      });
+      previewEntries = allEntries;
+      previewCounts = { emptyRowsSkipped, otherSkipped };
+      compartment = 'personal';
+      showPreview();
+    }
+
+    function showPreview(errorMessage = '') {
+      const loginCount = previewEntries.filter(entry => entry.type === 'login').length;
+      const noteCount = previewEntries.length - loginCount;
+      container.innerHTML = `
+        <section class="external-import-card">
+          <button type="button" class="import-back-link" data-action="back">Back</button>
+          <h3 class="setup-title">Review import</h3>
+          <div class="import-save-into"><span>Save into</span><button type="button" class="is-selected" data-compartment="personal">Personal</button></div>
+          <div class="import-preview-list"></div>
+          <p class="import-preview-counts"></p>
+          <p class="import-preview-skips"></p>
+          <p class="import-error" role="alert"></p>
+          <div class="import-footer">
+            <button type="button" class="import-cancel">Cancel</button>
+            <button type="button" class="btn-primary import-confirm" ${previewEntries.length ? '' : 'disabled'}>Import ${previewEntries.length} entries</button>
+          </div>
+        </section>`;
+      const list = container.querySelector('.import-preview-list');
+      previewEntries.slice(0, 10).forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'import-preview-row';
+        const title = document.createElement('span');
+        title.textContent = entry.title;
+        const username = document.createElement('span');
+        username.textContent = entry.type === 'login' ? entry.fields.username : 'Secure Note';
+        const maskedPassword = document.createElement('span');
+        maskedPassword.className = 'import-preview-password';
+        maskedPassword.textContent = entry.type === 'login' ? '••••••••' : '';
+        row.append(title, username, maskedPassword);
+        list.appendChild(row);
+      });
+      container.querySelector('.import-preview-counts').textContent =
+        `${loginCount} logins, ${noteCount} secure notes ready, ${previewCounts.emptyRowsSkipped} empty rows skipped. Nothing is saved until you import.`;
+      const skipSummary = previewCounts.otherSkipped
+        ? `${previewCounts.otherSkipped} rows skipped because they had no usable title.`
+        : '';
+      container.querySelector('.import-preview-skips').textContent = skipSummary;
+      container.querySelector('.import-error').textContent = errorMessage;
+      container.querySelector('[data-action="back"]').addEventListener('click', () => {
+        currentMappingIndex = parsedFiles.length - 1;
+        showMapping();
+      });
+      container.querySelector('.import-cancel').addEventListener('click', () => {
+        clearImportData();
+        showLanding();
+      });
+      container.querySelector('.import-confirm').addEventListener('click', confirmImport);
+    }
+
+    function confirmImport() {
+      const button = container.querySelector('.import-confirm');
+      const error = container.querySelector('.import-error');
+      button.disabled = true;
+      try {
+        const importedEntries = core.createVaultEntries(previewEntries, compartment);
+        core.persistImport(getEntries(), importedEntries, persistEntries, 5000);
+        const count = importedEntries.length;
+        clearImportData();
+        container.innerHTML = `
+          <section class="external-import-card">
+            <h3 class="setup-title">Import complete</h3>
+            <p class="setup-desc import-success"></p>
+            <button type="button" class="import-back-link">Back to Import</button>
+          </section>`;
+        container.querySelector('.import-success').textContent = `Imported ${count} entries into Personal.`;
+        container.querySelector('.import-back-link').addEventListener('click', showLanding);
+      } catch (failure) {
+        error.textContent = failure && failure.message ? failure.message : 'Import failed.';
+        button.disabled = false;
+      }
+    }
+
+    if (isDecoy) {
+      container.innerHTML = '<div class="setup-card import-disabled-message">Import isn\'t available right now.</div>';
+    } else {
+      showLanding();
+    }
+    return { clear: clearImportData, showLanding };
+  }
+
+  return { mount };
+});

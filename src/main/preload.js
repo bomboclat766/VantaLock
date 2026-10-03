@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   decryptVaultData: (payload) => ipcRenderer.invoke('decrypt-vault-data', payload),
   exportEncryptedVault: (payload) => ipcRenderer.invoke('export-encrypted-vault', payload),
   importEncryptedVault: (payload) => ipcRenderer.invoke('import-encrypted-vault', payload),
+  parsePasswordImportFile: (request) => ipcRenderer.invoke('parse-password-import-file', request),
   lockManagerActivity: () => ipcRenderer.invoke('lock-manager-activity'),
   lockManagerSuccess: () => ipcRenderer.invoke('lock-manager-success'),
   lockManagerLock: (reason) => ipcRenderer.invoke('lock-manager-lock', reason),

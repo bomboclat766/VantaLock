@@ -817,6 +817,13 @@ button {
   width: 100%;
 }
 
+.vault-password-dialog-error {
+  min-height: 18px;
+  margin: -8px 0 12px;
+  color: var(--danger-red);
+  font-size: 12px;
+}
+
 .vault-password-dialog-actions {
   display: flex;
   justify-content: flex-end;

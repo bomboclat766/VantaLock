@@ -20,9 +20,15 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       });
       const page = await app.firstWindow();
       const pageErrors = [];
+      const failedResponses = [];
       page.on('pageerror', error => pageErrors.push(error.message));
       page.on('console', message => {
-        if (message.type() === 'error') pageErrors.push(message.text());
+        if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+          pageErrors.push(message.text());
+        }
+      });
+      page.on('response', response => {
+        if (!response.ok()) failedResponses.push(response.url());
       });
       await page.waitForSelector('#get-started-btn');
       await page.evaluate(() => {
@@ -613,7 +619,12 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       const reopenedPage = await app.firstWindow();
       reopenedPage.on('pageerror', error => pageErrors.push(error.message));
       reopenedPage.on('console', message => {
-        if (message.type() === 'error') pageErrors.push(message.text());
+        if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
+          pageErrors.push(message.text());
+        }
+      });
+      reopenedPage.on('response', response => {
+        if (!response.ok()) failedResponses.push(response.url());
       });
       await reopenedPage.waitForFunction(() => {
         const splash = document.getElementById('splash-overlay');
@@ -644,6 +655,62 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         };
       });
       expect(unlockAnimationSize).toMatchObject({ width: '160px', overlayPresent: true });
+
+      const installedVersion = await reopenedPage.evaluate(() => window.electronAPI.getAppVersion());
+      const dashboardTabs = [
+        '[data-vault="financial"]',
+        '[data-vault="legal"]',
+        '[data-vault="personal"]',
+        '[data-tool="security"]',
+        '[data-tool="seed"]',
+        '[data-tool="export"]',
+        '[data-tool="import"]',
+        '[data-tool="activity"]',
+        '[data-tool="about"]'
+      ];
+      for (const tabSelector of dashboardTabs) {
+        const tab = reopenedPage.locator(tabSelector);
+        await tab.click();
+        const expectedTitle = await reopenedPage.locator('#current-vault-title').textContent();
+
+        await reopenedPage.locator('#panic-lock-btn').click();
+        await reopenedPage.waitForFunction(() => {
+          const unlock = document.getElementById('unlock-vault-view');
+          const dashboard = document.getElementById('dashboard-view-container');
+          return unlock && !unlock.classList.contains('hidden') &&
+            dashboard && dashboard.classList.contains('hidden');
+        });
+        await reopenedPage.locator('#unlock-mp-input').fill(masterPassword);
+        await reopenedPage.locator('#unlock-btn').click();
+        await reopenedPage.waitForFunction(() => {
+          const dashboard = document.getElementById('dashboard-view-container');
+          const setup = document.getElementById('setup-view-container');
+          return dashboard && !dashboard.classList.contains('hidden') &&
+            setup && setup.classList.contains('hidden');
+        });
+
+        expect(await reopenedPage.locator(tabSelector).getAttribute('class')).toContain('active');
+        expect(await reopenedPage.locator('#current-vault-title').textContent()).toBe(expectedTitle);
+        if (tabSelector === '[data-tool="import"]') {
+          expect(await reopenedPage.locator('.import-choice-card').count()).toBe(2);
+          expect(await reopenedPage.locator('.entry-card, .empty-vault-card').count()).toBe(0);
+        } else if (tabSelector === '[data-tool="export"]') {
+          expect(await reopenedPage.locator('#export-json-btn').count()).toBe(1);
+          expect(await reopenedPage.locator('.entry-card, .empty-vault-card').count()).toBe(0);
+        } else if (tabSelector === '[data-tool="about"]') {
+          await reopenedPage.waitForFunction(version =>
+            document.getElementById('about-local-ver')?.textContent === `v${version}`,
+          installedVersion);
+          expect(await reopenedPage.locator('strong').filter({ hasText: 'Application Build Version:' }).count())
+            .toBe(1);
+          expect(await reopenedPage.locator('#about-local-ver').textContent())
+            .toBe(`v${installedVersion}`);
+          expect(await reopenedPage.locator('#about-latest-ver').count()).toBe(1);
+          expect(await reopenedPage.locator('a[href="https://github.com/bomboclat766/VantaLock/releases/latest"]').count())
+            .toBe(1);
+        }
+      }
+
       await reopenedPage.locator('[data-vault="personal"]').click();
       await reopenedPage.evaluate(() => { window.activeVaultType = 'decoy'; });
       await reopenedPage.locator('[data-tool="import"]').evaluate(button => button.click());
@@ -915,6 +982,22 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
 
       await reopenedPage.locator('#export-json-btn').click();
       await reopenedPage.waitForSelector('#vault-password-dialog-input');
+      await reopenedPage.locator('#vault-password-dialog-input').fill('WrongPassword!2026');
+      await reopenedPage.locator('#vault-password-dialog-submit').click();
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('vault-password-dialog-error')?.textContent ===
+          'Incorrect master password.'
+      );
+      expect(await reopenedPage.locator('#vault-password-dialog-input').count()).toBe(1);
+      expect(await reopenedPage.locator('#export-status-msg').textContent()).toBe('');
+      await reopenedPage.locator('#vault-password-dialog-input').fill(masterPassword);
+      await reopenedPage.locator('#vault-password-dialog-submit').click();
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('export-status-msg')?.textContent.includes('exported successfully')
+      );
+
+      await reopenedPage.locator('#export-json-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-input');
       await reopenedPage.locator('#vault-password-dialog-input').fill(masterPassword);
       await reopenedPage.locator('#vault-password-dialog-submit').click();
       await reopenedPage.waitForFunction(() =>
@@ -934,6 +1017,15 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       await reopenedPage.locator('#import-file-input').setInputFiles(backupPath);
       await reopenedPage.locator('#import-json-btn').click();
       await reopenedPage.waitForSelector('#vault-password-dialog-input');
+      await reopenedPage.locator('#vault-password-dialog-input').fill('WrongPassword!2026');
+      await reopenedPage.locator('#vault-password-dialog-submit').click();
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('vault-password-dialog-error')?.textContent.includes('Wrong password')
+      );
+      expect(await reopenedPage.locator('#vault-password-dialog-input').count()).toBe(1);
+      expect(await reopenedPage.evaluate(() =>
+        JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]').length
+      )).toBe(entriesBeforeBackupImport.length);
       await reopenedPage.locator('#vault-password-dialog-input').fill(masterPassword);
       await reopenedPage.locator('#vault-password-dialog-submit').click();
       await reopenedPage.waitForFunction(expectedCount => {
@@ -1019,6 +1111,9 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
         JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]').length
       )).toBe(beforeRecoveryImport * 2);
       expect(pageErrors).toEqual([]);
+      expect(failedResponses.filter(url =>
+        !url.startsWith('https://api.github.com/repos/bomboclat766/VantaLock/releases/latest')
+      )).toEqual([]);
     } finally {
       if (app) await app.close();
       fs.rmSync(profileDirectory, { recursive: true, force: true });

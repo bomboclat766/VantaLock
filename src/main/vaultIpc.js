@@ -100,7 +100,7 @@ function registerVaultIpc(ipcMain, { lockManager, clipboard }) {
   });
 
   ipcMain.handle('import-encrypted-vault', async (_event, {
-    exportString, password, fallbackSalt, credentialType = 'master'
+    exportString, password, fallbackSalt, fallbackVerifier, credentialType = 'master'
   }) => {
     if (credentialType !== 'master' && credentialType !== 'recovery') {
       return importFailure('UNSUPPORTED_CREDENTIAL', 'Unsupported backup credential type.');
@@ -130,6 +130,20 @@ function registerVaultIpc(ipcMain, { lockManager, clipboard }) {
     }
 
     if (parsedPackage.salt === null) {
+      let validCurrentMaster = false;
+      try {
+        const currentKey = await derivePasswordKey(password, fallbackSalt);
+        validCurrentMaster = verifyKey(currentKey, fallbackVerifier);
+      } catch (_error) {
+        validCurrentMaster = false;
+      }
+      if (!validCurrentMaster) {
+        return importFailure(
+          'WRONG_PASSWORD',
+          'Enter the current master password to migrate this legacy backup.'
+        );
+      }
+
       let entries;
       try {
         const legacyKey = Buffer.alloc(32);

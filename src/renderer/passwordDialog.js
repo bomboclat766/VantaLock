@@ -5,7 +5,13 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createPasswordDialog() {
   let activeDialog = null;
 
-  function requestPassword({ title, message, submitLabel = 'Continue', allowRecoveryPhrase = false }) {
+  function requestPassword({
+    title,
+    message,
+    submitLabel = 'Continue',
+    allowRecoveryPhrase = false,
+    validatePassword
+  }) {
     if (activeDialog) activeDialog(null);
 
     return new Promise(resolve => {
@@ -47,6 +53,12 @@
       input.required = true;
       input.setAttribute('aria-label', label.textContent);
 
+      const error = document.createElement('p');
+      error.id = 'vault-password-dialog-error';
+      error.className = 'vault-password-dialog-error';
+      error.setAttribute('role', 'alert');
+      error.setAttribute('aria-live', 'polite');
+
       const buttons = document.createElement('div');
       buttons.className = 'vault-password-dialog-actions';
 
@@ -70,13 +82,16 @@
 
       fieldGroup.append(label, input);
       buttons.append(cancel, submit);
-      form.append(fieldGroup);
+      form.append(fieldGroup, error);
       if (allowRecoveryPhrase) form.append(recoveryLink);
       form.append(buttons);
       card.append(heading, description, form);
       overlay.appendChild(card);
 
+      let finished = false;
       const finish = password => {
+        if (finished) return;
+        finished = true;
         if (activeDialog === finish) activeDialog = null;
         document.removeEventListener('keydown', onKeyDown);
         overlay.remove();
@@ -96,13 +111,33 @@
       overlay.addEventListener('click', event => {
         if (event.target === overlay) finish(null);
       });
-      form.addEventListener('submit', event => {
+      form.addEventListener('submit', async event => {
         event.preventDefault();
         if (!input.value) {
+          error.textContent = 'Enter your master password to continue.';
           input.focus();
           return;
         }
-        finish({ method: 'password', password: input.value });
+        error.textContent = '';
+        submit.disabled = true;
+        try {
+          if (validatePassword) {
+            const validation = await validatePassword(input.value);
+            if (validation !== true) {
+              error.textContent = validation && validation.message
+                ? validation.message
+                : 'Incorrect master password.';
+              return;
+            }
+          }
+          if (!finished) finish({ method: 'password', password: input.value });
+        } catch (failure) {
+          error.textContent = failure && failure.message
+            ? `Could not verify password: ${failure.message}`
+            : 'Could not verify password. Please try again.';
+        } finally {
+          if (!finished) submit.disabled = false;
+        }
       });
       document.addEventListener('keydown', onKeyDown);
       document.body.appendChild(overlay);

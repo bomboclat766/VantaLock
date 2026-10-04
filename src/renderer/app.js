@@ -124,7 +124,9 @@ function showScreen(screenName) {
     document.querySelectorAll('.nav-divider').forEach(div => {
       div.style.display = isDecoy ? 'none' : 'block';
     });
-    if (typeof window.renderVaultEntries === 'function') {
+    if (typeof window.renderCurrentDashboardView === 'function') {
+      window.renderCurrentDashboardView();
+    } else if (typeof window.renderVaultEntries === 'function') {
       window.renderVaultEntries();
     }
     return;
@@ -1099,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     about: {
       title: 'About VantaLock',
-      desc: `App Version: 1.1.44 | License: Activated | Zero-Cloud Encryption`
+      desc: 'Application version and release information.'
     }
   };
 
@@ -2671,6 +2673,17 @@ let isVerificationFromUnlock = false;
     });
   });
 
+  window.renderCurrentDashboardView = () => {
+    const isDecoy = window.activeVaultType === 'decoy';
+    const activeVaultTab = document.querySelector('.vault-tab-btn:not(.tool-tab-btn).active');
+    const activeToolTab = document.querySelector('.tool-tab-btn.active');
+    const selectedTab = isDecoy
+      ? activeVaultTab
+      : (activeToolTab || activeVaultTab);
+    const fallbackTab = document.querySelector('.vault-tab-btn:not(.tool-tab-btn)');
+    (selectedTab || fallbackTab)?.click();
+  };
+
   // Render Tool View Component
   function renderLegacyBackupImport(onBack) {
     elContainer.innerHTML = `
@@ -2700,16 +2713,29 @@ let isVerificationFromUnlock = false;
       const reader = new FileReader();
       reader.onload = async event => {
         const exportString = event.target.result;
+        let validatedImportResult = null;
         try {
           const credential = await requestBackupCredential({
             title: 'Import Encrypted Backup',
             message: 'Enter the master password used for this backup, or verify your recovery phrase if it was encrypted with that phrase.',
             submitLabel: 'Import Backup',
-            restoreView: () => renderLegacyBackupImport(onBack)
+            restoreView: () => renderLegacyBackupImport(onBack),
+            validatePassword: async password => {
+              const result = await window.electronAPI.importEncryptedVault({
+                exportString,
+                password,
+                credentialType: 'master',
+                fallbackSalt: localStorage.getItem('vantalock_vault_salt'),
+                fallbackVerifier: localStorage.getItem('vantalock_vault_verifier')
+              });
+              if (!result.ok) return { valid: false, message: result.message };
+              validatedImportResult = result;
+              return true;
+            }
           });
           if (!credential) return;
           importMsg = document.getElementById('import-status-msg');
-          const result = await window.electronAPI.importEncryptedVault({
+          const result = validatedImportResult || await window.electronAPI.importEncryptedVault({
             exportString,
             password: credential.password,
             credentialType: credential.credentialType,
@@ -3009,7 +3035,16 @@ let isVerificationFromUnlock = false;
         const credential = await window.VantaLockPasswordDialog.requestPassword({
           title: 'Enable Biometric Unlock',
           message: 'Enter your current master password to enable Touch ID unlock.',
-          submitLabel: 'Continue'
+          submitLabel: 'Continue',
+          validatePassword: async password => {
+            const salt = localStorage.getItem('vantalock_vault_salt');
+            const verifier = localStorage.getItem('vantalock_vault_verifier');
+            if (!salt || !verifier) {
+              return { valid: false, message: 'Vault credentials are unavailable.' };
+            }
+            const valid = await window.electronAPI.verifyMasterPassword({ password, salt, verifier });
+            return valid ? true : { valid: false, message: 'Incorrect master password.' };
+          }
         });
         if (!credential) return false;
 
@@ -3292,17 +3327,35 @@ let isVerificationFromUnlock = false;
       if (exportBtn) {
         exportBtn.addEventListener('click', async () => {
           try {
+            let validatedExportString = null;
+            const salt = localStorage.getItem('vantalock_vault_salt');
+            const verifier = localStorage.getItem('vantalock_vault_verifier');
             const credential = await requestBackupCredential({
               title: 'Export Encrypted Backup',
               message: 'Enter your master password, or verify your recovery phrase to encrypt this backup. Use the same credential to import it later.',
               submitLabel: 'Export Backup',
-              restoreView: () => renderToolView('export')
+              restoreView: () => renderToolView('export'),
+              validatePassword: async password => {
+                try {
+                  validatedExportString = await window.electronAPI.exportEncryptedVault({
+                    entries: vaultEntries,
+                    password,
+                    salt,
+                    verifier,
+                    credentialType: 'master'
+                  });
+                  return true;
+                } catch (error) {
+                  if (error.message && error.message.includes('Master password is incorrect')) {
+                    return { valid: false, message: 'Incorrect master password.' };
+                  }
+                  throw error;
+                }
+              }
             });
             if (!credential) return;
             exportMsg = document.getElementById('export-status-msg');
-            const salt = localStorage.getItem('vantalock_vault_salt');
-            const verifier = localStorage.getItem('vantalock_vault_verifier');
-            const exportedStr = await window.electronAPI.exportEncryptedVault({
+            const exportedStr = validatedExportString || await window.electronAPI.exportEncryptedVault({
               entries: vaultEntries,
               password: credential.password,
               salt,
@@ -3390,45 +3443,60 @@ let isVerificationFromUnlock = false;
           <p class="setup-desc">Sovereign Encrypted Storage • Pure Black Edition</p>
 
           <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--surface-border); text-align: left;">
-            <div style="margin-bottom: 8px; font-size: 13px;"><strong>Current Installed Version:</strong> <span id="about-local-ver">v1.0.23</span></div>
+            <div style="margin-bottom: 8px; font-size: 13px;"><strong>Application Build Version:</strong> <span id="about-local-ver">Loading...</span></div>
             <div style="margin-bottom: 8px; font-size: 13px;"><strong>Latest GitHub Release:</strong> <span id="about-latest-ver">Checking...</span></div>
             <div style="margin-bottom: 8px; font-size: 13px;"><strong>License Status:</strong> Activated</div>
             <div style="font-size: 13px;"><strong>Encryption:</strong> AES-256-GCM + Argon2id</div>
           </div>
 
           <div id="about-update-banner" class="strength-text" style="margin-bottom: 16px;"></div>
-
           <a href="https://github.com/bomboclat766/VantaLock/releases/latest" target="_blank" class="btn-secondary" style="display: inline-block; text-decoration: none; padding: 12px 24px;">Check for Updates on GitHub</a>
         </div>
       `;
 
-      const pkg = { version: '1.1.49' };
-      const currentVerTag = `v${pkg.version || '1.0.0'}`;
       const localVerSpan = document.getElementById('about-local-ver');
       const latestVerSpan = document.getElementById('about-latest-ver');
       const updateBanner = document.getElementById('about-update-banner');
 
-      if (localVerSpan) localVerSpan.textContent = currentVerTag;
-
-      fetch('https://api.github.com/repos/bomboclat766/VantaLock/releases/latest')
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.tag_name) {
-            latestVerSpan.textContent = data.tag_name;
-            if (data.tag_name !== currentVerTag) {
-              updateBanner.style.color = '#10b981';
-              updateBanner.textContent = `⚡ Update available! (${data.tag_name})`;
-            } else {
-              updateBanner.style.color = 'var(--text-secondary)';
-              updateBanner.textContent = '✓ You are running the latest release.';
-            }
-          } else {
-            latestVerSpan.textContent = `${currentVerTag} (Offline fallback)`;
+      (async () => {
+        try {
+          const installedVersion = await window.electronAPI.getAppVersion();
+          if (typeof installedVersion !== 'string' || !installedVersion.trim()) {
+            throw new Error('Installed application version is unavailable.');
           }
-        })
-        .catch(err => {
-          if (latestVerSpan) latestVerSpan.textContent = `${currentVerTag} (Offline fallback)`;
-        });
+          const currentVerTag = `v${installedVersion.trim().replace(/^v/i, '')}`;
+          if (localVerSpan) localVerSpan.textContent = currentVerTag;
+
+          try {
+            const response = await fetch('https://api.github.com/repos/bomboclat766/VantaLock/releases/latest');
+            if (!response.ok) throw new Error(`GitHub release check failed (${response.status}).`);
+            const data = await response.json();
+            if (data && data.tag_name) {
+              if (latestVerSpan) latestVerSpan.textContent = data.tag_name;
+              if (data.tag_name !== currentVerTag) {
+                if (updateBanner) {
+                  updateBanner.style.color = '#10b981';
+                  updateBanner.textContent = `⚡ Update available! (${data.tag_name})`;
+                }
+              } else if (updateBanner) {
+                updateBanner.style.color = 'var(--text-secondary)';
+                updateBanner.textContent = '✓ You are running the latest release.';
+              }
+            } else if (latestVerSpan) {
+              latestVerSpan.textContent = `${currentVerTag} (Offline fallback)`;
+            }
+          } catch (_error) {
+            if (latestVerSpan) latestVerSpan.textContent = `${currentVerTag} (Offline fallback)`;
+          }
+        } catch (error) {
+          console.error('Could not read installed application version:', error);
+          if (localVerSpan) localVerSpan.textContent = 'Unavailable';
+          if (updateBanner) {
+            updateBanner.style.color = '#ef4444';
+            updateBanner.textContent = 'Installed application version could not be loaded.';
+          }
+        }
+      })();
     }
   }
 

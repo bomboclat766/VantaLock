@@ -118,10 +118,20 @@ describe('Vault crypto IPC wiring', () => {
 
   test('imports a legacy zero-key fixture and returns a new password-protected backup', async () => {
     const password = 'CurrentMasterPassword!2026';
+    const credentials = await invoke('create-vault-credentials', password);
+    const wrongPassword = await invoke('import-encrypted-vault', {
+      exportString: JSON.stringify(legacyBackupFixture),
+      password: 'WrongMasterPassword!2026',
+      fallbackSalt: credentials.salt,
+      fallbackVerifier: credentials.verifier
+    });
+    expect(wrongPassword).toMatchObject({ ok: false, code: 'WRONG_PASSWORD' });
+
     const result = await invoke('import-encrypted-vault', {
       exportString: JSON.stringify(legacyBackupFixture),
       password,
-      fallbackSalt: null
+      fallbackSalt: credentials.salt,
+      fallbackVerifier: credentials.verifier
     });
 
     expect(result).toMatchObject({ ok: true, migrated: true });
@@ -140,7 +150,7 @@ describe('Vault crypto IPC wiring', () => {
     const reread = await invoke('import-encrypted-vault', {
       exportString: result.migratedBackup,
       password,
-      fallbackSalt: null
+      fallbackSalt: credentials.salt
     });
     expect(reread).toMatchObject({ ok: true, migrated: false, entries: result.entries });
   }, 15000);

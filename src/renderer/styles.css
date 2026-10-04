@@ -827,6 +827,23 @@ button {
   width: auto;
 }
 
+.vault-password-recovery-link {
+  display: block;
+  margin: -10px 0 16px auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brass-accent);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.vault-password-recovery-link:focus-visible {
+  outline: 2px solid var(--brass-accent);
+  outline-offset: 3px;
+}
+
 .type-chips-grid {
   display: flex;
   gap: 8px;

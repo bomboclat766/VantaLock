@@ -1,4 +1,5 @@
 const { registerVaultIpc } = require('../src/main/vaultIpc');
+const { generateRecoveryKey } = require('../src/crypto/recoveryKey');
 const legacyBackupFixture = require('./fixtures/legacy-zero-key-backup.json');
 
 describe('Vault crypto IPC wiring', () => {
@@ -86,6 +87,33 @@ describe('Vault crypto IPC wiring', () => {
       fallbackSalt: credentials.salt
     });
     expect(wrongPassword).toMatchObject({ ok: false, code: 'WRONG_PASSWORD' });
+  }, 15000);
+
+  test('round-trips a recovery-phrase encrypted backup and rejects invalid recovery phrases', async () => {
+    const recoveryPhrase = generateRecoveryKey();
+    const entries = [{ id: 'recovery-entry', title: 'Recovery Protected' }];
+    const backup = await invoke('export-encrypted-vault', {
+      entries,
+      password: recoveryPhrase,
+      salt: '0123456789abcdef0123456789abcdef',
+      verifier: 'unused-for-recovery-credentials',
+      credentialType: 'recovery'
+    });
+
+    const imported = await invoke('import-encrypted-vault', {
+      exportString: backup,
+      password: recoveryPhrase,
+      credentialType: 'recovery'
+    });
+    expect(imported).toMatchObject({ ok: true, migrated: false, entries });
+
+    await expect(invoke('export-encrypted-vault', {
+      entries,
+      password: 'not a valid recovery phrase',
+      salt: '0123456789abcdef0123456789abcdef',
+      verifier: 'unused-for-recovery-credentials',
+      credentialType: 'recovery'
+    })).rejects.toThrow('The recovery phrase is invalid');
   }, 15000);
 
   test('imports a legacy zero-key fixture and returns a new password-protected backup', async () => {

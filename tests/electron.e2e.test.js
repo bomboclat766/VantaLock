@@ -72,6 +72,14 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       });
       await page.locator('#proceed-to-verify-rk-btn').click();
       await page.waitForFunction(() => document.querySelectorAll('.rk-verify-input').length === 4);
+      await page.locator('#back-to-seed-btn').click();
+      await page.waitForFunction(() => {
+        const reveal = document.getElementById('recovery-key-reveal-step');
+        return reveal && !reveal.classList.contains('hidden') &&
+          document.querySelectorAll('#recovery-words-grid .word-chip').length === 24;
+      });
+      await page.locator('#proceed-to-verify-rk-btn').click();
+      await page.waitForFunction(() => document.querySelectorAll('.rk-verify-input').length === 4);
 
       const seedWords = await page.evaluate(() => localStorage.getItem('vantalock_seed_phrase').split(/\s+/));
       const verificationFields = page.locator('.rk-verify-input');
@@ -614,6 +622,14 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
           unlock && !unlock.classList.contains('hidden');
       }, null, { timeout: 10000 });
       expect(await reopenedPage.locator('[data-display-mode="table"]').getAttribute('aria-pressed')).toBe('true');
+      await reopenedPage.locator('#forgot-pwd-btn').click();
+      await reopenedPage.waitForSelector('.rk-verify-input');
+      await reopenedPage.locator('#back-to-seed-btn').click();
+      await reopenedPage.waitForFunction(() => {
+        const unlock = document.getElementById('unlock-vault-view');
+        return unlock && !unlock.classList.contains('hidden');
+      });
+      expect(await reopenedPage.locator('#vault-password-dialog-input').count()).toBe(0);
       await reopenedPage.locator('#unlock-mp-input').fill(masterPassword);
       await reopenedPage.locator('#unlock-btn').click();
       await reopenedPage.waitForFunction(() => {
@@ -891,6 +907,9 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       await reopenedPage.locator('[data-tool="export"]').click();
       await reopenedPage.locator('#export-json-btn').click();
       await reopenedPage.waitForSelector('#vault-password-dialog-input');
+      await reopenedPage.locator('.vault-password-dialog').screenshot({
+        path: path.join(workspaceRoot, 'proof_assets/backup_password_dialog.png')
+      });
       await reopenedPage.locator('#vault-password-dialog-cancel').click();
       expect(await reopenedPage.locator('#vault-password-dialog-input').count()).toBe(0);
 
@@ -929,6 +948,76 @@ const canRunElectronE2E = process.env.RUN_ELECTRON_E2E === '1' &&
       expect(roundTripEntries).toHaveLength(entriesBeforeBackupImport.length * 2);
       expect(roundTripEntries.filter(entry => entry.title === 'Synthetic Login')).toHaveLength(2);
       expect(roundTripEntries.filter(entry => entry.title === 'Synthetic Note')).toHaveLength(2);
+
+      const recoveryBackupPath = path.join(profileDirectory, 'recovery-roundtrip-backup.json');
+      await app.evaluate(({ dialog }, filePath) => {
+        dialog.showSaveDialog = async () => ({ canceled: false, filePath });
+      }, recoveryBackupPath);
+      await reopenedPage.locator('[data-tool="export"]').click();
+      await reopenedPage.locator('#export-json-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-recovery');
+      await reopenedPage.locator('#vault-password-dialog-recovery').click();
+      await reopenedPage.waitForSelector('.rk-verify-input');
+      await reopenedPage.locator('#back-to-seed-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-recovery');
+      expect(await reopenedPage.locator('#vault-password-dialog-title').textContent())
+        .toBe('Export Encrypted Backup');
+      await reopenedPage.locator('#vault-password-dialog-recovery').click();
+      await reopenedPage.waitForSelector('.rk-verify-input');
+      const recoveryFields = reopenedPage.locator('.rk-verify-input');
+      const recoveryFieldCount = await recoveryFields.count();
+      await recoveryFields.first().fill('not-a-recovery-word');
+      await reopenedPage.locator('#verify-rk-btn').click();
+      expect(await reopenedPage.locator('#rk-error-text').evaluate(element => element.style.display))
+        .toBe('block');
+      for (let fieldIndex = 0; fieldIndex < recoveryFieldCount; fieldIndex++) {
+        const wordIndex = Number(await recoveryFields.nth(fieldIndex).getAttribute('data-index'));
+        await recoveryFields.nth(fieldIndex).fill(seedWords[wordIndex]);
+      }
+      await reopenedPage.locator('#verify-rk-btn').click();
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('dashboard-view-container')?.classList.contains('hidden') === false
+      );
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('export-status-msg')?.textContent.includes('exported successfully')
+      );
+      const recoveryBackupText = fs.readFileSync(recoveryBackupPath, 'utf8');
+      expect(recoveryBackupText).not.toContain('synthetic-secret');
+
+      const beforeRecoveryImport = await reopenedPage.evaluate(() =>
+        JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]').length
+      );
+      await reopenedPage.locator('[data-tool="import"]').click();
+      await reopenedPage.locator('[data-import-choice="backup"]').click();
+      await reopenedPage.locator('#import-file-input').setInputFiles(recoveryBackupPath);
+      await reopenedPage.locator('#import-json-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-recovery');
+      await reopenedPage.locator('#vault-password-dialog-recovery').click();
+      await reopenedPage.waitForSelector('.rk-verify-input');
+      await reopenedPage.locator('#back-to-seed-btn').click();
+      await reopenedPage.waitForSelector('#vault-password-dialog-recovery');
+      expect(await reopenedPage.locator('#vault-password-dialog-title').textContent())
+        .toBe('Import Encrypted Backup');
+      await reopenedPage.locator('#vault-password-dialog-recovery').click();
+      await reopenedPage.waitForSelector('.rk-verify-input');
+      const recoveryImportFields = reopenedPage.locator('.rk-verify-input');
+      const recoveryImportFieldCount = await recoveryImportFields.count();
+      for (let fieldIndex = 0; fieldIndex < recoveryImportFieldCount; fieldIndex++) {
+        const wordIndex = Number(await recoveryImportFields.nth(fieldIndex).getAttribute('data-index'));
+        await recoveryImportFields.nth(fieldIndex).fill(seedWords[wordIndex]);
+      }
+      await reopenedPage.locator('#verify-rk-btn').click();
+      await reopenedPage.waitForFunction(() =>
+        document.getElementById('dashboard-view-container')?.classList.contains('hidden') === false
+      );
+      await reopenedPage.waitForFunction(() =>
+        Boolean(document.getElementById('import-status-msg')?.textContent)
+      , null, { timeout: 15000 });
+      expect(await reopenedPage.locator('#import-status-msg').textContent())
+        .toContain(`Successfully imported ${beforeRecoveryImport} entries`);
+      expect(await reopenedPage.evaluate(() =>
+        JSON.parse(localStorage.getItem('vantalock_entries_store') || '[]').length
+      )).toBe(beforeRecoveryImport * 2);
       expect(pageErrors).toEqual([]);
     } finally {
       if (app) await app.close();

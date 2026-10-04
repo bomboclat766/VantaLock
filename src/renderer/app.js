@@ -710,6 +710,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.electronAPI.onVaultLocked((reason) => {
     logActivity(`VAULT LOCKED: ${reason}`);
     localStorage.removeItem('vantalock_unlocked_session');
+    if (pendingBackupRecoveryVerification) {
+      const resolveVerification = pendingBackupRecoveryVerification;
+      pendingBackupRecoveryVerification = null;
+      resolveVerification(null);
+    }
     closeGlobalSearch();
     showUnlockScreen();
   });
@@ -823,6 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const globalSearchStatus = document.getElementById('global-search-status');
 
   let activeRecoveryKeyWords = [];
+  let pendingBackupRecoveryVerification = null;
   let verificationIndices = [];
   let activeVault = 'financial';
   let activeEntryType = null;
@@ -1367,7 +1373,53 @@ document.addEventListener('DOMContentLoaded', () => {
   dismissSplash();
 
 // Vault Unlock Form Handler
-  let isVerificationFromUnlock = false;
+let isVerificationFromUnlock = false;
+
+  async function requestBackupCredential({ restoreView, ...options }) {
+    const storedPhrase = localStorage.getItem('vantalock_seed_phrase') || '';
+    const recoveryWords = storedPhrase.trim().split(/\s+/).filter(Boolean);
+    const hasRecoveryPhrase = recoveryWords.length === 24;
+  while (true) {
+    const credential = await window.VantaLockPasswordDialog.requestPassword({
+      ...options,
+      allowRecoveryPhrase: hasRecoveryPhrase
+    });
+    if (!credential) return null;
+    if (credential.method === 'password') {
+      return { password: credential.password, credentialType: 'master' };
+    }
+    if (credential.method !== 'recovery' || !hasRecoveryPhrase) return null;
+
+    activeRecoveryKeyWords = recoveryWords;
+    isVerificationFromUnlock = false;
+    const verificationResult = await new Promise(resolve => {
+      pendingBackupRecoveryVerification = result => {
+        if (result) {
+          showScreen('dashboard');
+          if (restoreView) {
+            restoreView();
+          } else {
+            returnToActiveBackupTool();
+          }
+        }
+        resolve(result);
+      };
+      setupRecoveryVerification();
+    });
+    if (verificationResult && verificationResult.method === 'back') continue;
+    if (verificationResult && verificationResult.phrase) {
+      return { password: verificationResult.phrase, credentialType: 'recovery' };
+    }
+    return null;
+  }
+  }
+
+  function returnToActiveBackupTool() {
+    showScreen('dashboard');
+    const activeTool = document.querySelector('.tool-tab-btn.active');
+    const toolKey = activeTool && activeTool.getAttribute('data-tool');
+    if (toolKey) renderToolView(toolKey);
+  }
 
   const forgotPwdBtn = document.getElementById('forgot-pwd-btn');
   if (forgotPwdBtn) {
@@ -1691,7 +1743,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (backToSeedBtn) {
     backToSeedBtn.addEventListener('click', () => {
-      if (isVerificationFromUnlock) {
+      if (pendingBackupRecoveryVerification) {
+        const resolveVerification = pendingBackupRecoveryVerification;
+        pendingBackupRecoveryVerification = null;
+        resolveVerification({ method: 'back' });
+      } else if (isVerificationFromUnlock) {
         showUnlockScreen();
       } else {
         showScreen('recovery-key-reveal');
@@ -1722,6 +1778,13 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('vantalock_setup_complete', 'true');
       if (activeRecoveryKeyWords.length) localStorage.setItem('vantalock_seed_phrase', activeRecoveryKeyWords.join(' '));
       logActivity('SECURITY: 24-word recovery phrase backup verified.');
+      if (pendingBackupRecoveryVerification) {
+        const resolveVerification = pendingBackupRecoveryVerification;
+        pendingBackupRecoveryVerification = null;
+        const verifiedPhrase = activeRecoveryKeyWords.join(' ');
+        resolveVerification({ method: 'verified', phrase: verifiedPhrase });
+        return;
+      }
       showDecoyVaultOnboardingModal(() => { showScreen('dashboard'); });
     });
   }
@@ -2624,7 +2687,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
     const importBtn = document.getElementById('import-json-btn');
     const importInput = document.getElementById('import-file-input');
-    const importMsg = document.getElementById('import-status-msg');
+    let importMsg = document.getElementById('import-status-msg');
     document.getElementById('legacy-import-back-btn').addEventListener('click', onBack);
 
     importBtn.addEventListener('click', () => {
@@ -2636,16 +2699,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const reader = new FileReader();
       reader.onload = async event => {
+        const exportString = event.target.result;
         try {
-          const password = await window.VantaLockPasswordDialog.requestPassword({
+          const credential = await requestBackupCredential({
             title: 'Import Encrypted Backup',
-            message: 'Enter the backup password. For legacy backups, enter your current master password to protect the migrated copy.',
-            submitLabel: 'Import Backup'
+            message: 'Enter the master password used for this backup, or verify your recovery phrase if it was encrypted with that phrase.',
+            submitLabel: 'Import Backup',
+            restoreView: () => renderLegacyBackupImport(onBack)
           });
-          if (!password) return;
+          if (!credential) return;
+          importMsg = document.getElementById('import-status-msg');
           const result = await window.electronAPI.importEncryptedVault({
-            exportString: event.target.result,
-            password,
+            exportString,
+            password: credential.password,
+            credentialType: credential.credentialType,
             fallbackSalt: localStorage.getItem('vantalock_vault_salt')
           });
           if (!result.ok) {
@@ -2662,8 +2729,8 @@ document.addEventListener('DOMContentLoaded', () => {
           );
           importMsg.style.color = '#10b981';
           importMsg.textContent = result.migrated
-            ? `Imported ${importedEntries.length} entries. Save the re-encrypted backup when prompted.`
-            : `Successfully imported ${importedEntries.length} entries!`;
+            ? `Imported ${importedEntries.length} entries. Save the re-encrypted backup when prompted; it uses your ${credential.credentialType === 'recovery' ? 'recovery phrase' : 'master password'}.`
+            : `Successfully imported ${importedEntries.length} entries${credential.credentialType === 'recovery' ? ' using your recovery phrase' : ''}!`;
           logActivity(`IMPORT: Imported ${importedEntries.length} entries.`);
           if (result.migratedBackup) {
             const migratedFilename = `vantalock-migrated-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -2939,12 +3006,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       async function enableBiometricsFromSecurityCenter() {
-        const password = await window.VantaLockPasswordDialog.requestPassword({
+        const credential = await window.VantaLockPasswordDialog.requestPassword({
           title: 'Enable Biometric Unlock',
           message: 'Enter your current master password to enable Touch ID unlock.',
           submitLabel: 'Continue'
         });
-        if (!password) return false;
+        if (!credential) return false;
 
         const salt = localStorage.getItem('vantalock_vault_salt');
         const verifier = localStorage.getItem('vantalock_vault_verifier');
@@ -2954,7 +3021,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return window.VantaLockBiometricFlow.enableBiometricUnlock({
           api: window.electronAPI,
           storage: localStorage,
-          password,
+          password: credential.password,
           salt,
           verifier
         });
@@ -3221,23 +3288,26 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       const exportBtn = document.getElementById('export-json-btn');
-      const exportMsg = document.getElementById('export-status-msg');
+      let exportMsg = document.getElementById('export-status-msg');
       if (exportBtn) {
         exportBtn.addEventListener('click', async () => {
           try {
-            const password = await window.VantaLockPasswordDialog.requestPassword({
+            const credential = await requestBackupCredential({
               title: 'Export Encrypted Backup',
-              message: 'Enter your master password to encrypt this backup.',
-              submitLabel: 'Export Backup'
+              message: 'Enter your master password, or verify your recovery phrase to encrypt this backup. Use the same credential to import it later.',
+              submitLabel: 'Export Backup',
+              restoreView: () => renderToolView('export')
             });
-            if (!password) return;
+            if (!credential) return;
+            exportMsg = document.getElementById('export-status-msg');
             const salt = localStorage.getItem('vantalock_vault_salt');
             const verifier = localStorage.getItem('vantalock_vault_verifier');
             const exportedStr = await window.electronAPI.exportEncryptedVault({
               entries: vaultEntries,
-              password,
+              password: credential.password,
               salt,
-              verifier
+              verifier,
+              credentialType: credential.credentialType
             });
             const saved = await window.electronAPI.saveEncryptedBackup({
               contents: exportedStr,
@@ -3250,7 +3320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!saved.saved) throw new Error('The encrypted backup could not be saved.');
 
             exportMsg.style.color = '#10b981';
-            exportMsg.textContent = 'Vault backup exported successfully!';
+            exportMsg.textContent = `Vault backup exported successfully${credential.credentialType === 'recovery' ? ' using your recovery phrase' : ''}!`;
             logActivity('BACKUP: Encrypted JSON backup exported.');
           } catch (err) {
             exportMsg.style.color = '#ef4444';

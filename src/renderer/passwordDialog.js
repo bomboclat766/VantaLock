@@ -5,7 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function createPasswordDialog() {
   let activeDialog = null;
 
-  function requestPassword({ title, message, submitLabel = 'Continue' }) {
+  function requestPassword({ title, message, submitLabel = 'Continue', allowRecoveryPhrase = false }) {
     if (activeDialog) activeDialog(null);
 
     return new Promise(resolve => {
@@ -37,7 +37,7 @@
       const label = document.createElement('label');
       label.className = 'form-label';
       label.htmlFor = 'vault-password-dialog-input';
-      label.textContent = 'Master or backup password';
+      label.textContent = 'Master password';
 
       const input = document.createElement('input');
       input.id = 'vault-password-dialog-input';
@@ -62,9 +62,17 @@
       submit.id = 'vault-password-dialog-submit';
       submit.textContent = submitLabel;
 
+      const recoveryLink = document.createElement('button');
+      recoveryLink.type = 'button';
+      recoveryLink.className = 'vault-password-recovery-link';
+      recoveryLink.id = 'vault-password-dialog-recovery';
+      recoveryLink.textContent = 'Use 24-word recovery phrase instead';
+
       fieldGroup.append(label, input);
       buttons.append(cancel, submit);
-      form.append(fieldGroup, buttons);
+      form.append(fieldGroup);
+      if (allowRecoveryPhrase) form.append(recoveryLink);
+      form.append(buttons);
       card.append(heading, description, form);
       overlay.appendChild(card);
 
@@ -84,6 +92,7 @@
 
       activeDialog = finish;
       cancel.addEventListener('click', () => finish(null));
+      recoveryLink.addEventListener('click', () => finish({ method: 'recovery' }));
       overlay.addEventListener('click', event => {
         if (event.target === overlay) finish(null);
       });
@@ -93,7 +102,7 @@
           input.focus();
           return;
         }
-        finish(input.value);
+        finish({ method: 'password', password: input.value });
       });
       document.addEventListener('keydown', onKeyDown);
       document.body.appendChild(overlay);

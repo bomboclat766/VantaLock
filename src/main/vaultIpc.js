@@ -6,7 +6,7 @@ const {
   encryptData,
   decryptData
 } = require('../crypto/vaultCrypto');
-const { generateRecoveryKey } = require('../crypto/recoveryKey');
+const { generateRecoveryKey, validateRecoveryKey } = require('../crypto/recoveryKey');
 const { exportEncryptedVault } = require('../crypto/vaultBackup');
 const { parsePasswordImportFile } = require('./passwordImport');
 
@@ -82,16 +82,32 @@ function registerVaultIpc(ipcMain, { lockManager, clipboard }) {
     return decryptData(payload, derivedKey);
   });
 
-  ipcMain.handle('export-encrypted-vault', async (_event, { entries, password, salt, verifier }) => {
+  ipcMain.handle('export-encrypted-vault', async (_event, {
+    entries, password, salt, verifier, credentialType = 'master'
+  }) => {
     const saltBuffer = parseSalt(salt);
+    if (credentialType !== 'master' && credentialType !== 'recovery') {
+      throw new Error('Unsupported backup credential type');
+    }
+    if (credentialType === 'recovery' && !validateRecoveryKey(password)) {
+      throw new Error('The recovery phrase is invalid');
+    }
     const derivedKey = await derivePasswordKey(password, salt);
-    if (!verifyKey(derivedKey, verifier)) {
+    if (credentialType === 'master' && !verifyKey(derivedKey, verifier)) {
       throw new Error('Master password is incorrect');
     }
     return exportEncryptedVault(entries, derivedKey, { salt: saltBuffer });
   });
 
-  ipcMain.handle('import-encrypted-vault', async (_event, { exportString, password, fallbackSalt }) => {
+  ipcMain.handle('import-encrypted-vault', async (_event, {
+    exportString, password, fallbackSalt, credentialType = 'master'
+  }) => {
+    if (credentialType !== 'master' && credentialType !== 'recovery') {
+      return importFailure('UNSUPPORTED_CREDENTIAL', 'Unsupported backup credential type.');
+    }
+    if (credentialType === 'recovery' && !validateRecoveryKey(password)) {
+      return importFailure('WRONG_PASSWORD', 'The recovery phrase is invalid.');
+    }
     let parsedPackage;
     try {
       parsedPackage = JSON.parse(exportString);

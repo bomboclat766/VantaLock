@@ -56,6 +56,15 @@
 function showScreen(screenName) {
   const setupContainer = document.getElementById('setup-view-container');
   const dashboardContainer = document.getElementById('dashboard-view-container');
+  const titlebarBar = document.getElementById('titlebar-bar');
+
+  if (titlebarBar) {
+    if (screenName === 'dashboard') {
+      titlebarBar.classList.add('unlocked');
+    } else {
+      titlebarBar.classList.remove('unlocked');
+    }
+  }
 
   const screenMap = {
     'onboarding': 'onboarding-container',
@@ -69,6 +78,19 @@ function showScreen(screenName) {
   if (screenName === 'dashboard') {
     if (setupContainer) setupContainer.classList.add('hidden');
     if (dashboardContainer) dashboardContainer.classList.remove('hidden');
+
+    const isDecoy = window.activeVaultType === 'decoy';
+    document.querySelectorAll('.tool-tab-btn').forEach(btn => {
+      btn.style.display = isDecoy ? 'none' : 'flex';
+    });
+    document.querySelectorAll('.nav-section-title').forEach(title => {
+      if (title.textContent.trim().toLowerCase() === 'tools') {
+        title.style.display = isDecoy ? 'none' : 'block';
+      }
+    });
+    document.querySelectorAll('.nav-divider').forEach(div => {
+      div.style.display = isDecoy ? 'none' : 'block';
+    });
     return;
   }
 
@@ -85,6 +107,12 @@ function showScreen(screenName) {
     const target = document.getElementById(targetId);
     if (target) target.classList.remove('hidden');
   }
+
+  if (screenName === 'recovery-key-reveal') {
+    if (typeof window.setupRecoveryKeyScreen === 'function') {
+      setupRecoveryKeyScreen();
+    }
+  }
 }
 
   // Top-Level Un-Nested Decoy Vault Onboarding Modal Handler
@@ -94,7 +122,7 @@ function showScreen(screenName) {
 
     const overlay = document.createElement('div');
     overlay.id = 'decoy-onboarding-modal-root';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000000 !important; z-index: 9999; display: flex; align-items: center; justify-content: center;';
 
     overlay.innerHTML = `
       <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--surface-card, #141414); border: 1px solid var(--surface-border, #262626); border-radius: 12px; padding: 32px; max-width: 520px; width: 90%; color: var(--text-primary, #ffffff); box-shadow: 0 20px 40px rgba(0,0,0,0.8);">
@@ -275,7 +303,7 @@ function showScreen(screenName) {
 
     if (counterElem) {
       if (decoys.length >= 5) {
-        counterElem.textContent = "5/5 decoy vault passwords added. That's enough decoy passwords, no one would hack you now.";
+        counterElem.textContent = "That's enough decoy passwords, no one would hack you now.";
       } else {
         counterElem.textContent = `${decoys.length}/5 decoy vault passwords added.`;
       }
@@ -370,11 +398,12 @@ function showScreen(screenName) {
       resetFailedAttempts();
       const modal = document.getElementById('lockout-modal-overlay');
       if (modal) modal.style.display = 'none';
-      if (unlockVaultView) unlockVaultView.classList.remove('hidden');
+      const uvElemClear = document.getElementById('unlock-vault-view'); if (uvElemClear) uvElemClear.classList.remove('hidden');
       return false;
     }
 
-    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    const uvElem = document.getElementById('unlock-vault-view');
+    if (uvElem) uvElem.classList.add('hidden');
 
     let modal = document.getElementById('lockout-modal-overlay');
     if (!modal) {
@@ -396,10 +425,8 @@ function showScreen(screenName) {
       `;
       modal.innerHTML = `
         <div style="background: var(--surface-card, #141414); border: 1px solid var(--surface-border, #222222); border-radius: 12px; padding: 40px; text-align: center; max-width: 420px; width: 90%;">
-          <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-            <svg class="brand-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brass-accent, #c9a24a)" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div class="futuristic-title" style="font-size: 28px; letter-spacing: 5px; color: var(--brass-accent, #c9a24a); margin: 0;">VantaLock</div>
           </div>
           <div style="position: relative; width: 160px; height: 160px; margin: 0 auto 24px auto;">
             <svg width="160" height="160" viewBox="0 0 160 160" style="transform: rotate(-90deg);">
@@ -484,75 +511,112 @@ function showScreen(screenName) {
     const existing = getDecoyVaultData();
     if (existing && existing.length > 0) return existing;
 
-    const fakeEntries = [
-      {
-        id: 'decoy-fin-1',
-        vault: 'financial',
-        title: 'City Power & Light - Utility Account',
-        typeName: 'Login',
-        username: 'user_48921@citypower.com',
-        password: 'Password123!',
-        notes: 'Monthly billing cycle on 15th',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-fin-2',
-        vault: 'financial',
-        title: 'First National Savings Summary',
-        typeName: 'Bank Account',
-        accountNumber: '4892-1092-8821',
-        routingNumber: '021000021',
-        notes: 'Primary emergency savings balance: $12,450.00',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-fin-3',
-        vault: 'financial',
-        title: 'Apex Investment Banking Login',
-        typeName: 'Login',
-        username: 'investor_jason',
-        password: 'SecureInvestment2025!',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-leg-1',
-        vault: 'legal',
-        title: 'Residential Lease Agreement (Unit 4B)',
-        typeName: 'Legal Deed',
-        notes: 'Standard 12-month lease agreement. Rent: $1,850/mo.',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-leg-2',
-        vault: 'legal',
-        title: 'Auto Insurance Policy Reference',
-        typeName: 'Insurance',
-        policyNumber: 'POL-99201-AX',
-        notes: 'Comprehensive coverage provider contact: 1-800-555-0199',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-per-1',
-        vault: 'personal',
-        title: 'Personal Webmail Access',
-        typeName: 'Login',
-        username: 'jason.vault.test@mailnet.com',
-        password: 'MyMailPassword2025#',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'decoy-per-2',
-        vault: 'personal',
-        title: 'StreamFlix Family Subscription',
-        typeName: 'Login',
-        username: 'family_streamer',
-        password: 'StreamingService99!',
-        createdAt: new Date().toISOString()
-      }
+    const firstNames = ["James", "Sarah", "Michael", "Emily", "David", "Jessica", "Robert", "Amanda", "William", "Ashley"];
+    const lastNames = ["Miller", "Davis", "Wilson", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin"];
+    const domains = ["mailnet-service.org", "fastmail-vault.net", "secureconnect-portal.com", "apex-cloudhub.org", "metro-utilities-bill.net"];
+
+    const financialTitles = [
+      "Apex Mutual Savings Account", "Metro Municipal Utility Portal", "Highland Credit Union Visa",
+      "Pinnacle Retirement 401k", "Starlight Electric & Gas", "Summit Investment Portfolio",
+      "Vanguard Index Growth Fund", "Cascade Auto Finance Loan", "Harbor Federal Checking", "Northwest Property Tax Portal"
     ];
 
-    saveDecoyVaultData(fakeEntries);
-    return fakeEntries;
+    const legalTitles = [
+      "Residential Lease Agreement 2024", "Auto Insurance Policy Schedule", "Homeowners Property Policy",
+      "Power of Attorney Designation", "Estate Planning Memorandum", "Vehicle Title Certificate (SUV)",
+      "Employment Non-Disclosure Agreement", "Health Insurance Member ID Card", "Passport Renewal Record 2023", "Commercial Sublease Copy"
+    ];
+
+    const personalTitles = [
+      "Personal Webmail Account", "Family Cloud Storage Vault", "Home Wi-Fi Network Passcode",
+      "Gym Membership Portal", "Subscription Streaming Access", "Smart Home Hub Gateway",
+      "Travel Rewards Loyalty Card", "Medical Portal Access Credentials", "Personal Blog Admin Access", "Online Library Card Record"
+    ];
+
+    function getRandomPastDate(monthsAgoMin, monthsAgoMax) {
+      const now = Date.now();
+      const minMs = monthsAgoMin * 30 * 24 * 60 * 60 * 1000;
+      const maxMs = monthsAgoMax * 30 * 24 * 60 * 60 * 1000;
+      const pastTime = now - (minMs + Math.floor(Math.random() * (maxMs - minMs)));
+      return new Date(pastTime).toISOString();
+    }
+
+    function createEntriesForCompartment(vaultName, titleList, targetCount) {
+      const entries = [];
+      const shuffled = [...titleList].sort(() => 0.5 - Math.random());
+
+      for (let i = 0; i < targetCount; i++) {
+        const title = shuffled[i];
+        const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const dom = domains[Math.floor(Math.random() * domains.length)];
+        const date = getRandomPastDate(1, 18);
+        const entryId = 'decoy-' + vaultName.slice(0,3) + '-' + (i + 1) + '-' + Math.floor(Math.random() * 10000);
+
+        if (i % 3 === 0 && vaultName !== 'personal') {
+          // Card / Account Style Entry
+          entries.push({
+            id: entryId,
+            vault: vaultName,
+            title: title,
+            type: 'card',
+            typeName: 'Payment Card',
+            fields: {
+              cardholder: `${fn} ${ln}`,
+              number: `4000 1234 5678 ${1000 + Math.floor(Math.random() * 8999)}`,
+              expiry: `0${1 + Math.floor(Math.random() * 8)}/2${8 + Math.floor(Math.random() * 2)}`,
+              cvv: `${100 + Math.floor(Math.random() * 899)}`
+            },
+            notes: `Primary ${vaultName} payment card account. Auto-pay active.`,
+            createdAt: date
+          });
+        } else if (i % 4 === 0) {
+          // File Stub Entry
+          const fileExt = i % 2 === 0 ? 'pdf' : 'png';
+          entries.push({
+            id: entryId,
+            vault: vaultName,
+            title: title,
+            type: 'file',
+            typeName: 'Encrypted File',
+            notes: `Scanned copy of ${title.toLowerCase()} document.`,
+            fileDataUrl: fileExt === 'png' ? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' : 'data:application/pdf;base64,JVBERi0xLjEKMSAwIG9iag4KPDwLKSBvYmoKZW5kb2JqCnRyYWlsZXIKPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==',
+            fields: {
+              filename: `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}.${fileExt}`,
+              filesize: `${(0.8 + Math.random() * 2.4).toFixed(1)} MB`,
+              filetype: fileExt === 'png' ? 'image/png' : 'application/pdf'
+            },
+            createdAt: date
+          });
+        } else {
+          // Login Entry
+          entries.push({
+            id: entryId,
+            vault: vaultName,
+            title: title,
+            type: 'login',
+            typeName: 'Login',
+            fields: {
+              username: `${fn.toLowerCase()}.${ln.toLowerCase()}@${dom}`,
+              password: `${fn}Pass#20${23 + Math.floor(Math.random() * 3)}!`,
+              url: `https://www.${dom}/login`
+            },
+            notes: `Verified portal login for ${title}. Keep password secure.`,
+            createdAt: date
+          });
+        }
+      }
+      return entries;
+    }
+
+    const generated = [
+      ...createEntriesForCompartment('financial', financialTitles, 8),
+      ...createEntriesForCompartment('legal', legalTitles, 7),
+      ...createEntriesForCompartment('personal', personalTitles, 9)
+    ];
+
+    saveDecoyVaultData(generated);
+    return generated;
   }
 
 let calculatePasswordStrength, encryptData, deriveKey, verifyKey, generateSalt, createVerifier;
@@ -706,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const typeChipsGrid = document.getElementById('type-chips-grid');
   const dynamicFieldsContainer = document.getElementById('dynamic-fields-container');
   const entryDynamicForm = document.getElementById('entry-dynamic-form');
-  const entryListContainer = document.getElementById('entry-list-container');
+  const elContainer = document.getElementById('entry-list-container');
 
   let activeRecoveryKeyWords = [];
   let verificationIndices = [];
@@ -994,7 +1058,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (onboardingContainer) onboardingContainer.classList.add('hidden');
     if (masterPasswordModal) masterPasswordModal.classList.add('hidden');
     if (biometricOptinModal) biometricOptinModal.classList.add('hidden');
-    if (unlockVaultView) unlockVaultView.classList.add('hidden');
+    const uvElem = document.getElementById('unlock-vault-view');
+    if (uvElem) uvElem.classList.add('hidden');
     if (recoveryKeyRevealStep) recoveryKeyRevealStep.classList.add('hidden');
     if (recoveryKeyVerifyStep) recoveryKeyVerifyStep.classList.add('hidden');
 
@@ -1002,6 +1067,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (panicLockBtn) {
       panicLockBtn.style.display = targetView === 'dashboard' ? 'flex' : 'none';
     }
+
+    // Decoy Vault Guard: Hide Tools section in sidebar ONLY when in decoy vault mode
+    const isDecoy = window.activeVaultType === 'decoy';
+    document.querySelectorAll('.tool-tab-btn').forEach(btn => {
+      btn.style.display = isDecoy ? 'none' : 'flex';
+    });
+    document.querySelectorAll('.nav-section-title').forEach(title => {
+      if (title.textContent.trim().toLowerCase() === 'tools') {
+        title.style.display = isDecoy ? 'none' : 'block';
+      }
+    });
+    document.querySelectorAll('.nav-divider').forEach(div => {
+      div.style.display = isDecoy ? 'none' : 'block';
+    });
 
     // 3. Reveal target view
     if (targetView === 'dashboard') {
@@ -1032,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (targetView === 'biometric-optin') {
         if (biometricOptinModal) biometricOptinModal.classList.remove('hidden');
       } else if (targetView === 'unlock-vault') {
-        if (unlockVaultView) unlockVaultView.classList.remove('hidden');
+        const uvElemClear = document.getElementById('unlock-vault-view'); if (uvElemClear) uvElemClear.classList.remove('hidden');
         if (lockStatusText) lockStatusText.textContent = 'VAULT SECURED';
         triggerAutoBiometricsUnlock();
       } else if (targetView === 'recovery-key-reveal') {
@@ -1071,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedSaltHex = localStorage.getItem('vantalock_vault_salt');
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const salt = storedSaltHex;
               const currDerivedKey = await deriveKey(pwd, salt);
               if (verifyKey(currDerivedKey, storedVerifier)) {
                 logActivity('SECURITY: Vault unlocked via Biometrics.');
@@ -1119,23 +1198,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Global password toggle button binding helper
+  // Global password toggle delegation & helper
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pwd-toggle-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const targetId = btn.getAttribute('data-target');
+    const targetInput = targetId ? document.getElementById(targetId) : btn.parentElement ? btn.parentElement.querySelector('input') : null;
+    if (targetInput) {
+      const isPwd = targetInput.type === 'password';
+      targetInput.type = isPwd ? 'text' : 'password';
+      btn.innerHTML = isPwd ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    }
+  });
+
   function setupPasswordToggles() {
-    document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-      btn.replaceWith(btn.cloneNode(true));
-    });
-    document.querySelectorAll('.pwd-toggle-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const targetId = btn.getAttribute('data-target');
-        const targetInput = document.getElementById(targetId);
-        if (targetInput) {
-          const isPwd = targetInput.type === 'password';
-          targetInput.type = isPwd ? 'text' : 'password';
-          btn.innerHTML = isPwd ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.45 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-        }
-      });
-    });
+    // Retained for compatibility; delegated handler above manages clicks dynamically.
   }
 
   // Initial View Determination after splash dismiss
@@ -1160,26 +1238,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
+    navigateToNextScreen();
     if (overlay) {
-      overlay.style.transition = 'opacity 0.3s ease, pointer-events 0.3s ease';
+      overlay.style.display = 'none';
       overlay.style.opacity = '0';
       overlay.style.pointerEvents = 'none';
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        navigateToNextScreen();
-      }, 300);
-    } else {
-      navigateToNextScreen();
     }
   }
 
+  dismissSplash();
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(dismissSplash, 600);
-    });
-  } else {
-    setTimeout(dismissSplash, 600);
+    document.addEventListener('DOMContentLoaded', dismissSplash);
   }
+  window.addEventListener('load', dismissSplash);
 
   // Backup fallback timers to guarantee splash overlay is dismissed
   setTimeout(dismissSplash, 1200);
@@ -1237,6 +1308,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (matchedDecoy) {
           window.activeVaultType = 'decoy';
+          const decoyData = getDecoyVaultData();
+          if (!decoyData || decoyData.length === 0) {
+            generateDecoyContent();
+          }
           resetFailedAttempts();
           if (unlockErrorText) unlockErrorText.style.display = 'none';
           unlockVaultForm.reset();
@@ -1245,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (storedSaltHex && storedVerifier) {
-          const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+          const salt = storedSaltHex;
           const currDerivedKey = await deriveKey(pwdVal, salt);
 
           if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -1331,20 +1406,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function setupRecoveryKeyScreen() {
-    const rawPhrase = generateRecoveryKey();
-    activeRecoveryKeyWords = Array.isArray(rawPhrase) ? rawPhrase : (typeof rawPhrase === 'string' ? rawPhrase.trim().split(/\s+/) : []);
+  window.setupRecoveryKeyScreen = function setupRecoveryKeyScreen() {
+    const gridElem = document.getElementById('recovery-words-grid') || recoveryWordsGrid;
+    let rawPhrase = localStorage.getItem('vantalock_seed_phrase');
+    if (!rawPhrase) {
+      rawPhrase = generateRecoveryKey();
+      if (Array.isArray(rawPhrase)) rawPhrase = rawPhrase.join(' ');
+      localStorage.setItem('vantalock_seed_phrase', rawPhrase);
+    }
+    activeRecoveryKeyWords = typeof rawPhrase === 'string' ? rawPhrase.trim().split(/\s+/) : (Array.isArray(rawPhrase) ? rawPhrase : []);
 
-    recoveryWordsGrid.innerHTML = '';
-    activeRecoveryKeyWords.forEach((word, idx) => {
-      const chip = document.createElement('div');
-      chip.className = 'word-chip';
-      chip.innerHTML = `<span class="word-num">${idx + 1}.</span> <span>${word}</span>`;
-      recoveryWordsGrid.appendChild(chip);
-    });
+    if (gridElem) {
+      gridElem.innerHTML = '';
+      activeRecoveryKeyWords.forEach((word, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'word-chip';
+        chip.innerHTML = `<span class="word-num">${idx + 1}.</span> <span>${word}</span>`;
+        gridElem.appendChild(chip);
+      });
+    }
 
     logActivity('SECURITY: 24-word recovery phrase generated.');
-    showScreen('recovery-key-reveal');
   }
 
   if (copyRkBtn) {
@@ -1527,8 +1609,21 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      fileModalDownloadLink.href = entry.fileDataUrl;
-      fileModalDownloadLink.download = (entry.fields && entry.fields.filename) ? entry.fields.filename : 'vault-file';
+      const openBtn = document.getElementById('file-modal-open-link');
+      if (openBtn) {
+        openBtn.onclick = async () => {
+          const fname = (entry.fields && entry.fields.filename) ? entry.fields.filename : 'vault_document.pdf';
+          if (window.electronAPI && typeof window.electronAPI.openFileNative === 'function') {
+            await window.electronAPI.openFileNative({ dataUrl: entry.fileDataUrl, filename: fname });
+          } else {
+            // Web browser fallback
+            const link = document.createElement('a');
+            link.href = entry.fileDataUrl;
+            link.download = fname;
+            link.click();
+          }
+        };
+      }
     } else {
       fileModalPreviewContainer.innerHTML = '<div style="color: var(--text-secondary);">No file preview payload found.</div>';
     }
@@ -1750,10 +1845,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderVaultEntries() {
+    const elContainer = document.getElementById("entry-list-container") || elContainer;
     const allEntries = getActiveVaultEntries();
     const currentVaultEntries = allEntries.filter(e => e.vault === activeVault);
     if (currentVaultEntries.length === 0) {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="empty-vault-card">
           <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
@@ -1766,7 +1862,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    entryListContainer.innerHTML = '';
+    elContainer.innerHTML = '';
     currentVaultEntries.forEach(entry => {
       const card = document.createElement('div');
       card.className = 'entry-card';
@@ -1859,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${entry.notes ? `<div style="font-size: 13px; color: var(--text-secondary); background: #121212; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--surface-border);"><strong>Notes:</strong> ${entry.notes}</div>` : ''}
       `;
 
-      entryListContainer.appendChild(card);
+      elContainer.appendChild(card);
     });
 
     // Eye toggle handlers
@@ -1975,7 +2071,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Render Tool View Component
   function renderToolView(toolKey) {
     if (toolKey === 'security') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Security Settings</h3>
 
@@ -2152,7 +2248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const salt = storedSaltHex;
               const currDerivedKey = await deriveKey(currPwd, salt);
 
               if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -2288,7 +2384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'seed') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">24-Word Recovery Phrase</h3>
           <p class="setup-desc">Re-displaying your recovery phrase requires master password confirmation.</p>
@@ -2356,7 +2452,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const storedVerifier = localStorage.getItem('vantalock_vault_verifier');
 
             if (storedSaltHex && storedVerifier) {
-              const salt = typeof Buffer !== 'undefined' ? Buffer.from(storedSaltHex, 'hex') : storedSaltHex;
+              const salt = storedSaltHex;
               const currDerivedKey = await deriveKey(pwdVal, salt);
 
               if (!verifyKey(currDerivedKey, storedVerifier)) {
@@ -2439,7 +2535,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'export') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Backup & Export Vault</h3>
           <p class="setup-desc">Export an encrypted local JSON copy of all vault entries.</p>
@@ -2453,7 +2549,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (exportBtn) {
         exportBtn.addEventListener('click', () => {
           try {
-            const mockKey = Buffer.alloc(32, 'a');
+            const mockKey = new Uint8Array(32);
             const exportedStr = exportEncryptedVault(vaultEntries, mockKey);
             const blob = new Blob([exportedStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -2473,7 +2569,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'import') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Import Vault</h3>
           <p class="setup-desc">Restore or import vault entries from an encrypted JSON file.</p>
@@ -2504,7 +2600,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const reader = new FileReader();
           reader.onload = (e) => {
             try {
-              const mockKey = Buffer.alloc(32, 'a');
+              const mockKey = new Uint8Array(32);
               const importedEntries = importEncryptedVault(e.target.result, mockKey);
               vaultEntries = vaultEntries.concat(importedEntries);
               saveVaultEntriesToStorage();
@@ -2520,7 +2616,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'activity') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 640px; margin: 0 auto;">
           <h3 class="setup-title" style="font-size: 18px;">Activity Log</h3>
 
@@ -2560,7 +2656,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     } else if (toolKey === 'about') {
-      entryListContainer.innerHTML = `
+      elContainer.innerHTML = `
         <div class="setup-card" style="max-width: 600px; margin: 0 auto; text-align: center;">
           <h3 class="setup-title" style="font-size: 20px;">VantaLock Desktop</h3>
           <p class="setup-desc">Sovereign Encrypted Storage • Pure Black Edition</p>
@@ -2578,7 +2674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      const pkg = require('../../package.json');
+      const pkg = { version: '1.1.49' };
       const currentVerTag = `v${pkg.version || '1.0.0'}`;
       const localVerSpan = document.getElementById('about-local-ver');
       const latestVerSpan = document.getElementById('about-latest-ver');
@@ -2618,21 +2714,34 @@ document.addEventListener('DOMContentLoaded', () => {
   if (enableBiometricsBtn) {
     enableBiometricsBtn.addEventListener('click', async () => {
       try {
-        if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
-          const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
-          if (authenticated && pendingMasterPassword) {
-            const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
-            localStorage.setItem('vantalock_secure_token', token);
-            localStorage.setItem('vantalock_biometrics_enabled', 'true');
-            logActivity('SECURITY: Biometric unlock enabled during onboarding.');
+        const supported = await checkBiometricsSupport();
+        if (supported) {
+          if (window.electronAPI && typeof window.electronAPI.promptBiometrics === 'function') {
+            const authenticated = await window.electronAPI.promptBiometrics('Enable Biometric Unlock');
+            if (authenticated && pendingMasterPassword) {
+              const token = await window.electronAPI.storeSecureToken(pendingMasterPassword);
+              localStorage.setItem('vantalock_secure_token', token);
+              localStorage.setItem('vantalock_biometrics_enabled', 'true');
+              logActivity('SECURITY: Biometric unlock enabled during onboarding.');
+            } else {
+              localStorage.setItem('vantalock_biometrics_enabled', 'false');
+            }
           } else {
-            localStorage.setItem('vantalock_biometrics_enabled', 'false');
+            localStorage.setItem('vantalock_biometrics_enabled', 'true');
           }
+          pendingMasterPassword = '';
+          setupRecoveryKeyScreen();
+        } else {
+          showBiometricAlertModal(
+            'Biometric Support Not Available',
+            "Biometric authentication isn't available on this device. This feature requires Touch ID (macOS) or Windows Hello with configured fingerprint, face, or PIN (Windows).",
+            () => { pendingMasterPassword = ''; setupRecoveryKeyScreen(); }
+          );
+          localStorage.setItem('vantalock_biometrics_enabled', 'false');
         }
       } catch (e) {
         console.error('Biometric enablement failed:', e);
         localStorage.setItem('vantalock_biometrics_enabled', 'false');
-      } finally {
         pendingMasterPassword = '';
         setupRecoveryKeyScreen();
       }
@@ -2753,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let activeHealthScanInterval = null;
 
-  function showBiometricAlertModal(title, message) {
+  function showBiometricAlertModal(title, message, onDismiss) {
     const modal = document.getElementById('biometric-notice-modal');
     const titleElem = document.getElementById('bio-notice-title');
     const msgElem = document.getElementById('bio-notice-message');
@@ -2762,6 +2871,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!modal) {
       alert(title + '\n\n' + message);
+      if (typeof onDismiss === 'function') onDismiss();
       return;
     }
 
@@ -2769,7 +2879,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (msgElem) msgElem.textContent = message;
     modal.classList.remove('hidden');
 
-    const hide = () => modal.classList.add('hidden');
+    const hide = () => {
+      modal.classList.add('hidden');
+      if (typeof onDismiss === 'function') onDismiss();
+    };
     if (closeBtn) closeBtn.onclick = hide;
     if (okBtn) okBtn.onclick = hide;
   }

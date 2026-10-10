@@ -1,6 +1,6 @@
 [package]
 name = "vantalock_core"
-version = "1.1.79"
+version = "1.1.80"
 edition = "2021"
 
 [dependencies]
@@ -19,7 +19,7 @@ hex = "0.4"
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_System_Memory"] }
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Memory"] }
 
 [dev-dependencies]
 tempfile = "3.8"

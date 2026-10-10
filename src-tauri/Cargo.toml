@@ -1,9 +1,10 @@
 [package]
 name = "vantalock_core"
-version = "1.1.49"
+version = "1.1.78"
 edition = "2021"
 
 [dependencies]
+tauri = { version = "2", features = [] }
 argon2 = "0.5"
 aes-gcm = "0.10"
 zeroize = { version = "1.8", features = ["zeroize_derive"] }
@@ -22,3 +23,7 @@ windows-sys = { version = "0.52", features = ["Win32_System_Memory"] }
 
 [dev-dependencies]
 tempfile = "3.8"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.tauri.app/config/capability/2",
+  "identifier": "main-capability",
+  "description": "Strict allowlist of commands for VantaLock",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-setup-vault",
+    "allow-generate-recovery-seed",
+    "allow-unlock-vault",
+    "allow-unlock-with-biometric",
+    "allow-lock-vault",
+    "allow-lockout-status",
+    "allow-set-lockout-policy",
+    "allow-list-entries",
+    "allow-get-entry",
+    "allow-copy-field",
+    "allow-create-entry",
+    "allow-update-entry",
+    "allow-delete-entry",
+    "allow-add-attachment",
+    "allow-open-attachment",
+    "allow-backup-create",
+    "allow-backup-restore",
+    "allow-activate-license",
+    "allow-check-for-update",
+    "allow-get-app-version"
+  ]
+}

@@ -30,30 +30,78 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev build-essential pkg-config libssl-dev
+
       - name: Install Dependencies
         run: npm ci
 
-      - name: Build Production Binaries
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            npx electron-builder --win nsis zip --x64
-          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
-            npx electron-builder --mac dmg zip
-          else
-            npx electron-builder --linux AppImage tar.gz
-          fi
+      - name: Build Tauri Installers
+        run: npm run tauri build
+
+      - name: Check Installer and Installed App Sizes
         shell: bash
+        run: |
+          set -euo pipefail
+          bundle_dir="src-tauri/target/release/bundle"
+          installer_count=0
+          size_limit=10000000
+          installed_limit=15000000
+
+          # AppImages are excluded until the WebKitGTK runtime can meet the 10 MB limit.
+          while IFS= read -r installer; do
+            installer_count=$((installer_count + 1))
+            size=$(wc -c < "$installer")
+            echo "Installer: $installer ($size bytes; limit $size_limit bytes)"
+            if [ "$size" -gt "$size_limit" ]; then
+              echo "::error::$installer exceeds the 10000000-byte installer limit"
+              exit 1
+            fi
+          done < <(find "$bundle_dir" -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.deb' -o -name '*.rpm' \) -print)
+
+          if [ "$installer_count" -eq 0 ]; then
+            echo "::error::No installer files were found"
+            exit 1
+          fi
+
+          installed_dir=""
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            installed_dir=$(find "$bundle_dir" -type d -name '*.app' -print -quit)
+          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+            echo "Installed app tree: unavailable on Windows without installing the NSIS package; installer size is checked above."
+          else
+            echo "Installed app tree: unavailable on Linux without installing the DEB package; AppDir staging is not treated as installed."
+          fi
+
+          if [ -n "$installed_dir" ]; then
+            size_kib=$(du -sk "$installed_dir" | awk '{print $1}')
+            size=$((size_kib * 1024))
+            echo "Installed app tree: $installed_dir ($size bytes; limit $installed_limit bytes)"
+            if [ "$size" -gt "$installed_limit" ]; then
+              echo "::error::$installed_dir exceeds the 15000000-byte installed app limit"
+              exit 1
+            fi
+          elif [ "${{ matrix.os }}" != "windows-latest" ]; then
+            echo "::error::No installed app tree was found for ${{ matrix.os }}"
+            exit 1
+          fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: vantalock-installer-${{ matrix.os }}
+          if-no-files-found: error
           path: |
-            dist/*.exe
-            dist/*.dmg
-            dist/*.AppImage
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.rpm
 
   release:
     name: Create GitHub Release
@@ -70,8 +118,8 @@ jobs:
       - name: Create or Update Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.49' }}
-          name: Release ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.49' }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.78' }}
+          name: Release ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.78' }}
           draft: false
           prerelease: false
           files: artifacts/**/*

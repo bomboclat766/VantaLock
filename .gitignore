@@ -5,3 +5,10 @@ build/
 *.log
 .DS_Store
 landing-page/downloads/linux-unpacked/
+local.db
+*.db
+*.enc
+target/
+target
+src-tauri/target/
+src-tauri/target

@@ -45,16 +45,90 @@ jobs:
       - name: Build Tauri Installers
         run: npm run tauri build
 
-      - name: Check Installer and Installed App Sizes
+      - name: Check Linux Installer and Installed App Sizes
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           set -euo pipefail
           bundle_dir="src-tauri/target/release/bundle"
-          installer_count=0
           size_limit=10000000
           installed_limit=15000000
 
-          # AppImages are excluded until the WebKitGTK runtime can meet the 10 MB limit.
+          # Measured AppImage: 79215096 bytes; excluded because it exceeds the 10000000-byte installer cap.
+          while IFS= read -r installer; do
+            size=$(wc -c < "$installer")
+            echo "Installer: $installer ($size bytes; limit $size_limit bytes)"
+            if [ "$size" -gt "$size_limit" ]; then
+              echo "::error::$installer exceeds the 10000000-byte installer limit"
+              exit 1
+            fi
+          done < <(find "$bundle_dir" -type f \( -name '*.deb' -o -name '*.rpm' \) -print)
+
+          deb=$(find "$bundle_dir" -type f -name '*.deb' -print -quit)
+          if [ -z "$deb" ]; then
+            echo "::error::No installer files were found"
+            exit 1
+          fi
+
+          sudo dpkg -i "$deb"
+          package_name=$(dpkg-deb -f "$deb" Package)
+          installed_bytes=0
+          while IFS= read -r installed_file; do
+            if [ -f "$installed_file" ]; then
+              file_size=$(du -sb "$installed_file" | awk '{print $1}')
+              installed_bytes=$((installed_bytes + file_size))
+              echo "Installed file: $installed_file ($file_size bytes)"
+            fi
+          done < <(dpkg -L "$package_name")
+          echo "Installed app tree: $installed_bytes bytes (limit $installed_limit bytes)"
+          if [ "$installed_bytes" -gt "$installed_limit" ]; then
+            echo "::error::Installed app tree exceeds the 15000000-byte installed app limit"
+            exit 1
+          fi
+
+      - name: Check Windows Installer and Installed App Sizes
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $bundleDir = "src-tauri/target/release/bundle"
+          $sizeLimit = 10000000
+          $installedLimit = 15000000
+          $installers = @(Get-ChildItem -Path $bundleDir -Recurse -File -Filter *.exe)
+          if ($installers.Count -eq 0) {
+            Write-Error "No Windows installer files were found"
+          }
+          foreach ($installer in $installers) {
+            $size = $installer.Length
+            Write-Host "Installer: $($installer.FullName) ($size bytes; limit $sizeLimit bytes)"
+            if ($size -gt $sizeLimit) {
+              Write-Error "$($installer.FullName) exceeds the 10000000-byte installer limit"
+            }
+          }
+          $installer = $installers | Where-Object { $_.DirectoryName -match 'nsis' } | Select-Object -First 1
+          if ($null -eq $installer) {
+            Write-Error "No NSIS installer was found"
+          }
+          $installDir = Join-Path $env:RUNNER_TEMP "vantalock-installed"
+          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+          & $installer.FullName /S "/D=$installDir"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS installer exited with code $LASTEXITCODE"
+          }
+          $installedSize = (Get-ChildItem -Path $installDir -Recurse -File | Measure-Object -Property Length -Sum).Sum
+          Write-Host "Installed app tree: $installedSize bytes (limit $installedLimit bytes)"
+          if ($installedSize -gt $installedLimit) {
+            Write-Error "Installed app tree exceeds the 15000000-byte installed app limit"
+          }
+
+      - name: Check macOS Installer and Installed App Sizes
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle_dir="src-tauri/target/release/bundle"
+          size_limit=10000000
+          installed_limit=15000000
+          installer_count=0
           while IFS= read -r installer; do
             installer_count=$((installer_count + 1))
             size=$(wc -c < "$installer")
@@ -63,32 +137,21 @@ jobs:
               echo "::error::$installer exceeds the 10000000-byte installer limit"
               exit 1
             fi
-          done < <(find "$bundle_dir" -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.deb' -o -name '*.rpm' \) -print)
-
+          done < <(find "$bundle_dir" -type f -name '*.dmg' -print)
           if [ "$installer_count" -eq 0 ]; then
-            echo "::error::No installer files were found"
+            echo "::error::No macOS installer files were found"
             exit 1
           fi
-
-          installed_dir=""
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            installed_dir=$(find "$bundle_dir" -type d -name '*.app' -print -quit)
-          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-            echo "Installed app tree: unavailable on Windows without installing the NSIS package; installer size is checked above."
-          else
-            echo "Installed app tree: unavailable on Linux without installing the DEB package; AppDir staging is not treated as installed."
+          installed_dir=$(find "$bundle_dir" -type d -name '*.app' -print -quit)
+          if [ -z "$installed_dir" ]; then
+            echo "::error::No macOS .app bundle was found"
+            exit 1
           fi
-
-          if [ -n "$installed_dir" ]; then
-            size_kib=$(du -sk "$installed_dir" | awk '{print $1}')
-            size=$((size_kib * 1024))
-            echo "Installed app tree: $installed_dir ($size bytes; limit $installed_limit bytes)"
-            if [ "$size" -gt "$installed_limit" ]; then
-              echo "::error::$installed_dir exceeds the 15000000-byte installed app limit"
-              exit 1
-            fi
-          elif [ "${{ matrix.os }}" != "windows-latest" ]; then
-            echo "::error::No installed app tree was found for ${{ matrix.os }}"
+          size_kib=$(du -sk "$installed_dir" | awk '{print $1}')
+          installed_size=$((size_kib * 1024))
+          echo "Installed app tree: $installed_dir ($installed_size bytes; limit $installed_limit bytes)"
+          if [ "$installed_size" -gt "$installed_limit" ]; then
+            echo "::error::$installed_dir exceeds the 15000000-byte installed app limit"
             exit 1
           fi
 

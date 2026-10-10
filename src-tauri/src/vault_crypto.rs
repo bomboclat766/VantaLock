@@ -86,7 +86,9 @@ pub fn lock_memory(slice: &mut [u8]) -> bool {
 
 #[cfg(windows)]
 pub fn lock_memory(slice: &mut [u8]) -> bool {
-    use windows_sys::Win32::System::Memory::VirtualLock;
+    extern "system" {
+        fn VirtualLock(lpAddress: *mut std::ffi::c_void, dwSize: usize) -> i32;
+    }
     unsafe { VirtualLock(slice.as_mut_ptr() as *mut _, slice.len()) != 0 }
 }
 
